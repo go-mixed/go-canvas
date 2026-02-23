@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.8"
+# dependencies = [
+#     "taichi>=1.7.0",
+# ]
+# ///
+"""
+TCM 生成器 - 使用 Compute Graph 方式
+
+编译 Taichi kernel 为 AOT 模块（TCM 文件）
+支持架构：CPU (x64/ARM64)、CUDA、Vulkan
+
+使用方法:
+    uv run ./render/tcm/generate_tcm.py
+"""
+
+import sys
+from pathlib import Path
+
+# 添加根目录到 Python 路径
+parent_dir = Path(__file__).parent.parent.parent
+if str(parent_dir) not in sys.path:
+    sys.path.insert(0, str(parent_dir))
+
+import taichi as ti
+from render.kernel.layer import render_layer_no_mask, render_layer_with_mask
+from render.kernel.image import cv_image_to_ti
+
+# 要导出的 kernel 列表
+kernels = [
+    render_layer_no_mask,
+    render_layer_with_mask,
+    cv_image_to_ti,
+]
+
+# 架构名称映射
+architectures = {
+    ti.cpu: "cpu",
+    ti.cuda: "cuda",
+    ti.vulkan: "vulkan",
+}
+
+
+def create_tcm_module(arch, output_file: Path):
+    """
+    为指定架构创建 TCM 模块
+
+    Args:
+        arch: Taichi 架构
+        output_file: 输出文件路径
+    """
+
+    try:
+        # 重置并初始化 Taichi
+        ti.reset()
+        ti.init(arch=arch)
+        m = ti.aot.Module(arch)
+
+        for kernel in kernels:
+            print(f" - {kernel.__name__}")
+            m.add_kernel(kernel)
+
+        # 保存为 TCM 文件
+        m.archive(str(output_file))
+
+        print(f"{output_file} 生成成功!")
+
+    except Exception as e:
+        print(f"[ERROR] 生成 {output_file} 失败: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+def main():
+    """主函数"""
+    print(f"Taichi {ti.__version__} TCM 生成器")
+
+    # 输出目录
+    output_dir = Path(__file__).parent
+    print(f"输出目录: {output_dir}")
+
+
+    # 为每个架构生成 TCM
+    for arch, arch_name in architectures.items():
+        print()
+        output_file = output_dir / f"{arch_name}.tcm"
+
+        create_tcm_module(arch, output_file)
+
+
+if __name__ == "__main__":
+    main()
