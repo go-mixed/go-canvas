@@ -1,6 +1,6 @@
 import taichi as ti
 
-from render.kernel.sample import *
+from ti.kernel.sample import *
 
 
 @ti.func
@@ -187,10 +187,3 @@ def render_layer_with_mask(
                 screen[x_screen, y_screen] = new_color
 
 
-@ti.kernel
-def fill_texture(
-    texture: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),
-    value: ti.types.vector(4, ti.f32)
-):
-    for i, j in texture:
-        texture[i, j] = value

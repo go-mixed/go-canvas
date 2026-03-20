@@ -3,6 +3,7 @@ package render
 import (
 	"iter"
 	"slices"
+	"slideshow/ti"
 	"sync"
 )
 
@@ -10,12 +11,20 @@ import (
 type Stage struct {
 	children []ISprite
 
-	screen Screen
-	mutex  sync.Mutex
+	renderer *Renderer
+	screen   ISprite
+	mutex    sync.Mutex
 }
 
-type Screen struct {
-	Sprite
+func NewStage(r *Renderer, width, height uint32) (*Stage, error) {
+	screen, err := NewBlockSprite(r, width, height)
+	if err != nil {
+		return nil, err
+	}
+	return &Stage{
+		renderer: r,
+		screen:   screen,
+	}, nil
 }
 
 func (s *Stage) Add(sprite ISprite) {
@@ -43,5 +52,39 @@ func (s *Stage) Children() iter.Seq[ISprite] {
 }
 
 func (s *Stage) Render() {
-	s.screen.FillColor(0xFFFFFFFF)
+	s.screen.FillTexture(ti.RGBA(0xffffffff))
+
+	//for child := range s.Children() {
+	//
+	//	options := ti.RenderLayerOptions{
+	//		X:        child.X(),
+	//		Y:        child.Y(),
+	//		Width:    child.Width(),
+	//		Height:   child.Height(),
+	//		Cx:       child.CenterX(),
+	//		Cy:       child.CenterY(),
+	//		Scale:    child.Scale(),
+	//		Rotation: child.Rotation(),
+	//		Alpha:    child.Alpha(),
+	//		MinX:     0,
+	//		MaxX:     int32(s.screen.Width()),
+	//		MinY:     0,
+	//		MaxY:     int32(s.screen.Height()),
+	//	}
+	//
+	//	s.renderer.module.RenderLayerNoMask(
+	//		child.Texture(),
+	//		s.screen.Texture(),
+	//		options,
+	//	)
+	//
+	//}
+}
+
+func (s *Stage) Texture() *ti.TiImage {
+	return s.screen.Texture()
+}
+
+func (s *Stage) Release() {
+	s.screen.Release()
 }

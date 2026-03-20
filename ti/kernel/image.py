@@ -29,3 +29,16 @@ def cv_image_to_ti(
     for i, j in output:
         output[i, j] = cv_color_to_ti(input[j, i])
 
+
+@ti.kernel
+def fill_texture(
+    texture: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),
+    r: ti.f32, g: ti.f32, b: ti.f32, a: ti.f32
+):
+    """
+    填充纹理
+    """
+    v = ti.math.vec4(r, g, b, a)
+    for i, j in texture:
+        texture[i, j] = v
+

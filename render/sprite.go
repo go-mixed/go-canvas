@@ -1,38 +1,149 @@
 package render
 
 import (
+	"image/color"
 	"math"
-	"slideshow/types"
-
-	"github.com/go-mixed/go-taichi/taichi"
+	"slideshow/ti"
 )
 
 type Sprite struct {
-	types.Rect[float32]
-	Scale    float32 // 1.0 for no scaling
-	Rotation float32 // 0.0 for no rotation, in radians
+	rect     ti.Rectangle[float32]
+	scale    float32 // 1.0 for no scaling
+	rotation float32 // 0.0 for no rotation, in radians
+	alpha    float32 // 0.0 for no alpha, 1.0 for full alpha
 
-	texture *taichi.NdArray
+	texture  *ti.TiImage
+	renderer *Renderer
 }
 
 type ISprite interface {
+	X() float32
+	Y() float32
+	Width() float32
+	Height() float32
+	Scale() float32
+	Rotation() float32
+	Alpha() float32
+	// CenterX 实际的中心点x
 	CenterX() float32
+	// CenterY 实际的中心点y
 	CenterY() float32
+	Texture() *ti.TiImage
+
+	SetX(x float32) ISprite
+	SetY(y float32) ISprite
+	SetScale(scale float32) ISprite
+	SetRotation(rotation float32) ISprite
+	SetAlpha(alpha float32) ISprite
+	SetTexture(texture *ti.TiImage) ISprite
+	FillTexture(rgba color.Color)
+
+	// Release 释放资源（必须调用，不然GPU显存泄漏）
 	Release()
 }
 
+var _ ISprite = (*Sprite)(nil)
+
+// NewSprite 创建精灵，需要传入纹理
+func NewSprite(renderer *Renderer, texture *ti.TiImage) ISprite {
+	shape := texture.Shape()
+	return &Sprite{
+		rect:     ti.Rect(0, 0, float32(shape[0]), float32(shape[1])),
+		alpha:    1.0,
+		texture:  texture,
+		scale:    1.0,
+		renderer: renderer,
+	}
+}
+
+// NewBlockSprite 创建纯色块精灵，颜色为透明的
+func NewBlockSprite(renderer *Renderer, width, height uint32) (ISprite, error) {
+	texture, err := ti.NewTiImage(renderer.runtime, width, height)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewSprite(renderer, texture), nil
+}
+
+func (s *Sprite) SetX(x float32) ISprite {
+	s.rect = s.rect.MoveTo(x, s.rect.Y())
+	return s
+}
+
+func (s *Sprite) X() float32 {
+	return s.rect.X()
+}
+
+func (s *Sprite) SetY(y float32) ISprite {
+	s.rect = s.rect.MoveTo(s.rect.X(), y)
+	return s
+}
+
+func (s *Sprite) Y() float32 {
+	return s.rect.Y()
+}
+
+func (s *Sprite) Width() float32 {
+	return s.rect.Dx()
+}
+
+func (s *Sprite) Height() float32 {
+	return s.rect.Dy()
+}
+
+func (s *Sprite) SetScale(scale float32) ISprite {
+	s.scale = scale
+	return s
+}
+
+func (s *Sprite) Scale() float32 {
+	return s.scale
+}
+
+func (s *Sprite) SetRotation(rotation float32) ISprite {
+	s.rotation = rotation
+	return s
+}
+
+func (s *Sprite) Rotation() float32 {
+	return s.rotation
+}
+
+func (s *Sprite) SetAlpha(alpha float32) ISprite {
+	s.alpha = alpha
+	return s
+}
+
+func (s *Sprite) Alpha() float32 {
+	return s.alpha
+}
+
 func (s *Sprite) CenterX() float32 {
-	panic("not implemented")
+	return s.rect.Center().X
 }
 
 func (s *Sprite) CenterY() float32 {
-	panic("not implemented")
+	return s.rect.Center().Y
 }
 
-func (s Screen) FillColor(color uint32) {
-
+// SetTexture 设置精灵纹理
+func (s *Sprite) SetTexture(texture *ti.TiImage) ISprite {
+	if s.texture != nil {
+		s.texture.Release()
+	}
+	s.texture = texture
+	return s
 }
 
+// FillTexture 填充纯色
+func (s *Sprite) FillTexture(color color.Color) {
+	s.renderer.module.FillTexture(s.texture, color)
+}
+
+func (s *Sprite) Texture() *ti.TiImage {
+	return s.texture
+}
 func (s *Sprite) Release() {
 	if s.texture != nil {
 		s.texture.Release()
@@ -44,24 +155,22 @@ func (s *Sprite) Release() {
 //   - parentWidth, parentHeight: 父级显示区域尺寸
 //
 // 返回：包围盒在屏幕坐标系中的范围
-func (s *Sprite) BoundingBox(
-	parentWidth, parentHeight float32,
-) types.Rect[float32] {
+func (s *Sprite) BoundingBox(parentWidth, parentHeight float32) ti.Rectangle[float32] {
 	cx, cy := s.CenterX(), s.CenterY()
 	// 精灵中心在屏幕上的位置
-	centerX, centerY := s.X+cx, s.Y+cy
+	centerX, centerY := s.X()+cx, s.Y()+cy
 
 	// 纹理四个角点（相对于纹理中心）
 	corners := [][2]float32{
-		{0 - cx, 0 - cy},              // 左上
-		{s.Width - cx, 0 - cy},        // 右上
-		{s.Width - cx, s.Height - cy}, // 右下
-		{0 - cx, s.Height - cy},       // 左下
+		{0 - cx, 0 - cy},                  // 左上
+		{s.Width() - cx, 0 - cy},          // 右上
+		{s.Width() - cx, s.Height() - cy}, // 右下
+		{0 - cx, s.Height() - cy},         // 左下
 	}
 
 	// 旋转矩阵
-	cosR := float32(math.Cos(float64(s.Rotation)))
-	sinR := float32(math.Sin(float64(s.Rotation)))
+	cosR := float32(math.Cos(float64(s.rotation)))
+	sinR := float32(math.Sin(float64(s.rotation)))
 
 	// 变换所有角点到屏幕坐标系
 	var minX, maxX, minY, maxY float32
@@ -72,8 +181,8 @@ func (s *Sprite) BoundingBox(
 		dx, dy := corner[0], corner[1]
 
 		// 先缩放，再旋转，最后平移
-		scaledDx := dx * s.Scale
-		scaledDy := dy * s.Scale
+		scaledDx := dx * s.scale
+		scaledDy := dy * s.scale
 		rx := scaledDx*cosR - scaledDy*sinR + centerX
 		ry := scaledDx*sinR + scaledDy*cosR + centerY
 
@@ -93,30 +202,7 @@ func (s *Sprite) BoundingBox(
 	}
 
 	// 计算包围盒并与父级区域求交集
-	bbox := types.Rect[float32]{
-		Position: types.Position[float32]{
-			X: max(0, minX),
-			Y: max(0, minY),
-		},
-		Size: types.Size[float32]{
-			Width:  min(parentWidth-1, maxX),
-			Height: min(parentHeight-1, maxY),
-		},
-	}
+	bbox := ti.Rect(max(0, minX), max(0, minY), min(parentWidth-1, maxX), min(parentHeight-1, maxY))
 
 	return bbox
-}
-
-type ImageSprite struct {
-	Sprite
-}
-
-var _ ISprite = (*ImageSprite)(nil)
-
-func (s *ImageSprite) CenterX() float32 {
-	return s.Width / 2.
-}
-
-func (s *ImageSprite) CenterY() float32 {
-	return s.Height / 2.
 }

@@ -1,44 +1,49 @@
+
+
+"""
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.8"
 # dependencies = [
-#     "taichi>=1.7.0",
+#     "taichi>=1.7.4",
 # ]
 # ///
-"""
+
+
 TCM 生成器 - 使用 Compute Graph 方式
 
 编译 Taichi kernel 为 AOT 模块（TCM 文件）
 支持架构：CPU (x64/ARM64)、CUDA、Vulkan
 
 使用方法:
-    uv run ./render/tcm/generate_tcm.py
+    uv run ./ti/kernel/generate_tcm.py
 """
 
 import sys
 from pathlib import Path
+import taichi
 
 # 添加根目录到 Python 路径
 parent_dir = Path(__file__).parent.parent.parent
 if str(parent_dir) not in sys.path:
     sys.path.insert(0, str(parent_dir))
 
-import taichi as ti
-from render.kernel.layer import render_layer_no_mask, render_layer_with_mask
-from render.kernel.image import cv_image_to_ti
+from ti.kernel.layer import render_layer_no_mask, render_layer_with_mask
+from ti.kernel.image import cv_image_to_ti, fill_texture
 
 # 要导出的 kernel 列表
 kernels = [
     render_layer_no_mask,
     render_layer_with_mask,
     cv_image_to_ti,
+    fill_texture,
 ]
 
 # 架构名称映射
 architectures = {
-    ti.cpu: "cpu",
-    ti.cuda: "cuda",
-    ti.vulkan: "vulkan",
+    taichi.cpu: "cpu",
+    taichi.cuda: "cuda",
+    taichi.vulkan: "vulkan",
 }
 
 
@@ -53,9 +58,9 @@ def create_tcm_module(arch, output_file: Path):
 
     try:
         # 重置并初始化 Taichi
-        ti.reset()
-        ti.init(arch=arch)
-        m = ti.aot.Module(arch)
+        taichi.reset()
+        taichi.init(arch=arch)
+        m = taichi.aot.Module(arch)
 
         for kernel in kernels:
             print(f" - {kernel.__name__}")
@@ -74,10 +79,10 @@ def create_tcm_module(arch, output_file: Path):
 
 def main():
     """主函数"""
-    print(f"Taichi {ti.__version__} TCM 生成器")
+    print(f"Taichi {taichi.__version__} TCM 生成器")
 
     # 输出目录
-    output_dir = Path(__file__).parent
+    output_dir = Path(__file__).parent.parent / "tcm"
     print(f"输出目录: {output_dir}")
 
 
