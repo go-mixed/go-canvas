@@ -11,11 +11,12 @@ import (
 	_ "image/png"  // 注册 PNG 解码器
 )
 
-type CvImage = taichi.NdArray // ndarray[h, w, [b, g, r]]
-type TiImage = taichi.NdArray // ndarray[w, h, [r, g, b, a]]
-
 func NewTiImage(runtime *taichi.Runtime, width, height uint32) (*TiImage, error) {
 	return taichi.NewNdArray2DWithElemShape(runtime, width, height, taichi.Shape(4), taichi.DataTypeF32)
+}
+
+func NewTiGrid(runtime *taichi.Runtime, width, height uint32) (*TiGrid, error) {
+	return taichi.NewNdArray2D(runtime, width, height, taichi.DataTypeF32)
 }
 
 // LoadImageToTiImage 将图片加载到 Taichi.NdArray(w, h, (r, g, b, a))
@@ -44,8 +45,8 @@ func LoadImageToTiImage(rt *taichi.Runtime, filePath string) (*TiImage, error) {
 		yEnd := height
 		for y := yStart; y < yEnd; y++ {
 			for x := 0; x < width; x++ {
-				r, g, b, a := Color2TiColor(img.At(x, y))
-				idx := (y*width + x) * 4
+				r, g, b, a := ExpandFColor(img.At(x, y))
+				idx := (x*height + y) * 4
 				data[idx] = r
 				data[idx+1] = g
 				data[idx+2] = b
@@ -55,6 +56,7 @@ func LoadImageToTiImage(rt *taichi.Runtime, filePath string) (*TiImage, error) {
 		//})
 		return nil
 	})
+
 	if err != nil {
 		texture.Release()
 		return nil, errors.Wrapf(err, "Cannot upload image to taichi texture")
@@ -75,7 +77,7 @@ func SaveTiImageToFile(texture *TiImage, filePath string) error {
 
 		for y := yStart; y < yEnd; y++ {
 			for x := 0; x < width; x++ {
-				idx := (y*width + x) * 4
+				idx := (x*height + y) * 4
 				c := TiColor2Color(data[idx], data[idx+1], data[idx+2], data[idx+3])
 				img.Set(x, y, c)
 			}

@@ -48,9 +48,19 @@ func LoadAotModule(runtime *taichi.Runtime) (*AotModule, error) {
 	// 获取对应的 kernels
 	var modules = []string{
 		"fill_texture",
+		"resize_nearest", "resize_bilinear", "resize_bicubic", "resize_lanczos",
 		"cv_image_to_ti",
 		"render_layer_no_mask",
 		"render_layer_with_mask",
+		"compute_normalized_coords",
+		"compute_circle",
+		"compute_diamond",
+		"compute_rect",
+		"compute_directional",
+		"compute_triangle",
+		"compute_star",
+		"compute_heart",
+		"compute_cross",
 	}
 
 	cache := make(map[string]*taichi.Kernel)
@@ -78,9 +88,8 @@ func (m *AotModule) getCache(name string) *taichi.Kernel {
 // FillTexture 填充纹理
 func (m *AotModule) FillTexture(texture *TiImage, c color.Color) {
 	kernel := m.getCache("fill_texture")
-	r, g, b, a := Color2TiColor(c)
 
-	kernel.Launch().ArgNdArray(texture).ArgFloat32(r).ArgFloat32(g).ArgFloat32(b).ArgFloat32(a).Run()
+	kernel.Launch().ArgNdArray(texture).ArgVectorFloat32(Color2TiColor(c)...).Run()
 }
 
 // CvToTiImage 将 CvImage (h, w, [b, g, r]) 转换为 TiImage (w, h, [r, g, b, a])

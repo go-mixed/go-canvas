@@ -52,33 +52,35 @@ func (s *Stage) Children() iter.Seq[ISprite] {
 }
 
 func (s *Stage) Render() {
-	s.screen.FillTexture(ti.RGBA(0xffffffff))
+	s.screen.FillTexture(ti.ColorWhite)
 
-	//for child := range s.Children() {
-	//
-	//	options := ti.RenderLayerOptions{
-	//		X:        child.X(),
-	//		Y:        child.Y(),
-	//		Width:    child.Width(),
-	//		Height:   child.Height(),
-	//		Cx:       child.CenterX(),
-	//		Cy:       child.CenterY(),
-	//		Scale:    child.Scale(),
-	//		Rotation: child.Rotation(),
-	//		Alpha:    child.Alpha(),
-	//		MinX:     0,
-	//		MaxX:     int32(s.screen.Width()),
-	//		MinY:     0,
-	//		MaxY:     int32(s.screen.Height()),
-	//	}
-	//
-	//	s.renderer.module.RenderLayerNoMask(
-	//		child.Texture(),
-	//		s.screen.Texture(),
-	//		options,
-	//	)
-	//
-	//}
+	for child := range s.Children() {
+
+		bbox := child.BoundingBox(s.screen.Width(), s.screen.Height())
+
+		options := ti.RenderLayerOptions{
+			X:        child.X(),
+			Y:        child.Y(),
+			Width:    child.Width(),
+			Height:   child.Height(),
+			Cx:       child.CenterX(),
+			Cy:       child.CenterY(),
+			Scale:    child.Scale(),
+			Rotation: child.Rotation(),
+			Alpha:    child.Alpha(),
+			MinX:     int32(bbox.Min.X),
+			MaxX:     int32(bbox.Max.X),
+			MinY:     int32(bbox.Min.Y),
+			MaxY:     int32(bbox.Max.Y),
+		}
+
+		s.renderer.module.RenderLayerNoMask(
+			child.Texture(),
+			s.screen.Texture(),
+			options,
+		)
+
+	}
 }
 
 func (s *Stage) Texture() *ti.TiImage {

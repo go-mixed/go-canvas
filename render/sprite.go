@@ -3,6 +3,7 @@ package render
 import (
 	"image/color"
 	"math"
+	"slideshow/misc"
 	"slideshow/ti"
 )
 
@@ -16,7 +17,7 @@ type Sprite struct {
 	renderer *Renderer
 }
 
-type ISprite interface {
+type ISpriteOperator interface {
 	X() float32
 	Y() float32
 	Width() float32
@@ -33,10 +34,23 @@ type ISprite interface {
 	SetX(x float32) ISprite
 	SetY(y float32) ISprite
 	SetScale(scale float32) ISprite
+	// 缩放到指定尺寸
+	SetScaleTo(width, height float32) ISprite
 	SetRotation(rotation float32) ISprite
 	SetAlpha(alpha float32) ISprite
+}
+
+type ISprite interface {
+	ISpriteOperator
+
+	// 替换纹理（之前的纹理会释放）
 	SetTexture(texture *ti.TiImage) ISprite
+	// 所有像素填充同一个颜色
 	FillTexture(rgba color.Color)
+	// 通过父级的宽高获取包围盒
+	BoundingBox(parentWidth, parentHeight float32) ti.Rectangle[float32]
+	// ResizeTo 重置尺寸，会替换纹理
+	ResizeTo(width, height uint32) ISprite
 
 	// Release 释放资源（必须调用，不然GPU显存泄漏）
 	Release()
@@ -151,8 +165,37 @@ func (s *Sprite) Release() {
 	}
 }
 
+// SetScaleTo 缩放到指定尺寸
+func (s *Sprite) SetScaleTo(width, height float32) ISprite {
+	s.SetScale(min(width/s.Width(), height/s.Height()))
+	return s
+}
+
+func (s *Sprite) ResizeTo(width, height uint32) ISprite {
+	if misc.NumberEqual(s.Width(), width, misc.Epsilon) && misc.NumberEqual(s.Height(), height, misc.Epsilon) {
+		return s
+	}
+	s.rect = ti.Rect[float32](0, 0, float32(width), float32(height))
+	newTexture, err := ti.NewTiImage(s.renderer.runtime, width, height)
+	if err != nil {
+		return s
+	}
+
+	if s.texture == nil {
+		return s
+	}
+
+	s.renderer.module.Resize(s.texture, newTexture, ti.ResizeOptions{
+		FillMode:  ti.FillModeFit,
+		ScaleMode: ti.ScaleModeLanczos,
+	})
+	s.SetTexture(newTexture)
+	return s
+}
+
 // BoundingBox 计算旋转+缩放后的精灵包围盒
 //   - parentWidth, parentHeight: 父级显示区域尺寸
+//     请查看examples/bounding_box_visualize.png以了解原理
 //
 // 返回：包围盒在屏幕坐标系中的范围
 func (s *Sprite) BoundingBox(parentWidth, parentHeight float32) ti.Rectangle[float32] {
@@ -160,7 +203,17 @@ func (s *Sprite) BoundingBox(parentWidth, parentHeight float32) ti.Rectangle[flo
 	// 精灵中心在屏幕上的位置
 	centerX, centerY := s.X()+cx, s.Y()+cy
 
-	// 纹理四个角点（相对于纹理中心）
+	// 纹理四个角点（相对于纹理左上角）
+	// 假设纹理左上角为(0,0)，中心点为(cx, cy)：
+	// (0, 0)           ●────────● (width, 0)
+	//                  │        │
+	//                  │   ●    │  ← 中心点 (cx, cy)
+	//                  │        │
+	// (0, height)      ●────────● (width, height)
+	//
+	// corners存储角点相对于中心点的偏移量：
+	// 左上: (-cx, -cy)，右上: (width-cx, -cy)
+	// 右下: (width-cx, height-cy)，左下: (-cx, height-cy)
 	corners := [][2]float32{
 		{0 - cx, 0 - cy},                  // 左上
 		{s.Width() - cx, 0 - cy},          // 右上

@@ -1,0 +1,108 @@
+package ti
+
+import "math"
+
+// FillMode 缩放填充模式
+type FillMode int32
+
+const (
+	FillModeStretch FillMode = 0 // 拉伸（不保持宽高比）
+	FillModeFit     FillMode = 1 // 等比适应（可能有黑边）
+	FillModeFill    FillMode = 2 // 等比填充（可能裁剪）
+)
+
+// ScaleMode 缩放算法模式
+type ScaleMode int32
+
+const (
+	ScaleModeNearest ScaleMode = 0 // 最近邻
+	ScaleModeLinear  ScaleMode = 1 // 双线性
+	ScaleModeCubic   ScaleMode = 2 // 双三次
+	ScaleModeLanczos ScaleMode = 3 // Lanczos4（质量最高）
+)
+
+type ResizeOptions struct {
+	FillMode  FillMode  // fit, fill
+	ScaleMode ScaleMode // nearest, linear, cubic
+}
+
+// resizeParams 缩放参数
+type resizeParams struct {
+	scaleX  float32
+	scaleY  float32
+	offsetX float32
+	offsetY float32
+}
+
+// computeResizeScaleAndOffset 计算缩放比例和偏移量
+func computeResizeScaleAndOffset(srcWidth, srcHeight, dstWidth, dstHeight float32, fillMode FillMode) resizeParams {
+	scaleX := dstWidth / srcWidth
+	scaleY := dstHeight / srcHeight
+
+	var offsetX, offsetY float32
+
+	switch fillMode {
+	case FillModeStretch:
+		// 直接拉伸，scaleX/scaleY 不变
+		offsetX = 0
+		offsetY = 0
+	case FillModeFit:
+		// 等比适应，可能有黑边
+		scale := math.Min(float64(scaleX), float64(scaleY))
+		scaleX = float32(scale)
+		scaleY = float32(scale)
+		offsetX = (dstWidth - srcWidth*scaleX) * 0.5
+		offsetY = (dstHeight - srcHeight*scaleY) * 0.5
+	case FillModeFill:
+		// 等比填充，可能裁剪
+		scale := math.Max(float64(scaleX), float64(scaleY))
+		scaleX = float32(scale)
+		scaleY = float32(scale)
+		offsetX = (dstWidth - srcWidth*scaleX) * 0.5
+		offsetY = (dstHeight - srcHeight*scaleY) * 0.5
+	}
+
+	return resizeParams{
+		scaleX:  scaleX,
+		scaleY:  scaleY,
+		offsetX: offsetX,
+		offsetY: offsetY,
+	}
+}
+
+// Resize 缩放纹理
+func (m *AotModule) Resize(input *TiImage, output *TiImage, opts ResizeOptions) {
+	// 获取源和目标的尺寸
+	srcShape := input.Shape()
+	dstShape := output.Shape()
+	srcWidth := float32(srcShape[0])
+	srcHeight := float32(srcShape[1])
+	dstWidth := float32(dstShape[0])
+	dstHeight := float32(dstShape[1])
+
+	// 计算缩放参数
+	params := computeResizeScaleAndOffset(srcWidth, srcHeight, dstWidth, dstHeight, opts.FillMode)
+
+	// 根据 ScaleMode 调用对应的 kernel
+	var kernelName string
+	switch opts.ScaleMode {
+	case ScaleModeNearest:
+		kernelName = "resize_nearest"
+	case ScaleModeLinear:
+		kernelName = "resize_bilinear"
+	case ScaleModeCubic:
+		kernelName = "resize_bicubic"
+	case ScaleModeLanczos:
+		kernelName = "resize_lanczos"
+	}
+
+	kernel := m.getCache(kernelName)
+	kernel.Launch().
+		ArgNdArray(input).
+		ArgNdArray(output).
+		ArgFloat32(srcWidth).ArgFloat32(srcHeight).
+		ArgFloat32(dstWidth).ArgFloat32(dstHeight).
+		ArgFloat32(params.scaleX).ArgFloat32(params.scaleY).
+		ArgFloat32(params.offsetX).ArgFloat32(params.offsetY).
+		Run()
+}

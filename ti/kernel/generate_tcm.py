@@ -30,6 +30,18 @@ if str(parent_dir) not in sys.path:
 
 from ti.kernel.layer import render_layer_no_mask, render_layer_with_mask
 from ti.kernel.image import cv_image_to_ti, fill_texture
+from ti.kernel.resize import resize_lanczos, resize_bicubic, resize_bilinear, resize_nearest
+from ti.kernel.sdf import (
+    compute_normalized_coords,
+    compute_circle,
+    compute_diamond,
+    compute_rect,
+    compute_directional,
+    compute_triangle,
+    compute_star,
+    compute_heart,
+    compute_cross,
+)
 
 # 要导出的 kernel 列表
 kernels = [
@@ -37,6 +49,19 @@ kernels = [
     render_layer_with_mask,
     cv_image_to_ti,
     fill_texture,
+    resize_lanczos,
+    resize_bicubic,
+    resize_bilinear,
+    resize_nearest,
+    compute_normalized_coords,
+    compute_circle,
+    compute_diamond,
+    compute_rect,
+    compute_directional,
+    compute_triangle,
+    compute_star,
+    compute_heart,
+    compute_cross,
 ]
 
 # 架构名称映射
