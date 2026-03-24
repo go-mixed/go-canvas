@@ -74,7 +74,7 @@ func (s *Stage) Render() {
 			MaxY:     int32(bbox.Max.Y),
 		}
 
-		s.renderer.module.RenderLayerNoMask(
+		s.renderer.Module().RenderLayerNoMask(
 			child.Texture(),
 			s.screen.Texture(),
 			options,

@@ -35,3 +35,11 @@ func (sr *Renderer) Release() {
 		sr.module = nil
 	}
 }
+
+func (sr *Renderer) Runtime() *taichi.Runtime {
+	return sr.runtime
+}
+
+func (sr *Renderer) Module() *ti.AotModule {
+	return sr.module
+}

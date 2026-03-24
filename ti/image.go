@@ -19,6 +19,10 @@ func NewTiGrid(runtime *taichi.Runtime, width, height uint32) (*TiGrid, error) {
 	return taichi.NewNdArray2D(runtime, width, height, taichi.DataTypeF32)
 }
 
+func NewTiMask(runtime *taichi.Runtime, width, height uint32) (*TiMask, error) {
+	return NewTiGrid(runtime, width, height)
+}
+
 // LoadImageToTiImage 将图片加载到 Taichi.NdArray(w, h, (r, g, b, a))
 func LoadImageToTiImage(rt *taichi.Runtime, filePath string) (*TiImage, error) {
 	img, err := misc.LoadImage(filePath)

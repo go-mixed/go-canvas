@@ -83,3 +83,13 @@ func WithShapeColor(color color.Color) func(*ShapeOptions) {
 		opts.Color = color
 	}
 }
+
+// FeatherMode 羽化模式
+type FeatherMode int
+
+const (
+	FeatherModeLinear     FeatherMode = 0
+	FeatherModeConic      FeatherMode = 1
+	FeatherModeSmoothstep FeatherMode = 2
+	FeatherModeSigmoid    FeatherMode = 3
+)

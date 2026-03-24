@@ -14,7 +14,7 @@ var _ ISprite = (*ImageSprite)(nil)
 
 // NewImageSprite 从图片文件创建图片精灵
 func NewImageSprite(renderer *Renderer, filePath string) (ISprite, error) {
-	texture, err := ti.LoadImageToTiImage(renderer.runtime, filePath)
+	texture, err := ti.LoadImageToTiImage(renderer.Runtime(), filePath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Cannot load image to taichi")
 	}

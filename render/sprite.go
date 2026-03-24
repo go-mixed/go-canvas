@@ -52,6 +52,9 @@ type ISprite interface {
 	// ResizeTo 重置尺寸，会替换纹理
 	ResizeTo(width, height uint32) ISprite
 
+	// 获取渲染器
+	Renderer() *Renderer
+
 	// Release 释放资源（必须调用，不然GPU显存泄漏）
 	Release()
 }
@@ -72,7 +75,7 @@ func NewSprite(renderer *Renderer, texture *ti.TiImage) ISprite {
 
 // NewBlockSprite 创建纯色块精灵，颜色为透明的
 func NewBlockSprite(renderer *Renderer, width, height uint32) (ISprite, error) {
-	texture, err := ti.NewTiImage(renderer.runtime, width, height)
+	texture, err := ti.NewTiImage(renderer.Runtime(), width, height)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +155,7 @@ func (s *Sprite) SetTexture(texture *ti.TiImage) ISprite {
 
 // FillTexture 填充纯色
 func (s *Sprite) FillTexture(color color.Color) {
-	s.renderer.module.FillTexture(s.texture, color)
+	s.renderer.Module().FillTexture(s.texture, color)
 }
 
 func (s *Sprite) Texture() *ti.TiImage {
@@ -176,7 +179,7 @@ func (s *Sprite) ResizeTo(width, height uint32) ISprite {
 		return s
 	}
 	s.rect = ti.Rect[float32](0, 0, float32(width), float32(height))
-	newTexture, err := ti.NewTiImage(s.renderer.runtime, width, height)
+	newTexture, err := ti.NewTiImage(s.renderer.Runtime(), width, height)
 	if err != nil {
 		return s
 	}
@@ -185,7 +188,7 @@ func (s *Sprite) ResizeTo(width, height uint32) ISprite {
 		return s
 	}
 
-	s.renderer.module.Resize(s.texture, newTexture, ti.ResizeOptions{
+	s.renderer.Module().Resize(s.texture, newTexture, ti.ResizeOptions{
 		FillMode:  ti.FillModeFit,
 		ScaleMode: ti.ScaleModeLanczos,
 	})
@@ -258,4 +261,9 @@ func (s *Sprite) BoundingBox(parentWidth, parentHeight float32) ti.Rectangle[flo
 	bbox := ti.Rect(max(0, minX), max(0, minY), min(parentWidth-1, maxX), min(parentHeight-1, maxY))
 
 	return bbox
+}
+
+// Renderer 获取渲染器
+func (s *Sprite) Renderer() *Renderer {
+	return s.renderer
 }

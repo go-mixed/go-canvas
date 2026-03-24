@@ -18,13 +18,13 @@ type ShapeSprite struct {
 	centerX, centerY float32
 }
 
-func NewShapeSprite(renderer *Renderer, width, height uint32, cx, cy float32) (ISprite, error) {
+func NewShapeSprite(renderer *Renderer, width, height uint32, cx, cy uint32) (ISprite, error) {
 	sprite, err := NewBlockSprite(renderer, width, height)
 	if err != nil {
 		return nil, err
 	}
 
-	dx, err := ti.NewTiGrid(renderer.runtime, width, height)
+	dx, err := ti.NewTiGrid(renderer.Runtime(), width, height)
 	if err != nil {
 		return nil, err
 	}
@@ -34,15 +34,15 @@ func NewShapeSprite(renderer *Renderer, width, height uint32, cx, cy float32) (I
 		return nil, err
 	}
 
-	renderer.module.ComputeNormalizedCoords(dx, dy, cx, cy)
+	renderer.Module().ComputeNormalizedCoords(dx, dy, float32(cx), float32(cy))
 
 	return &ShapeSprite{
 		ISprite:  sprite,
 		renderer: renderer,
 		dx:       dx,
 		dy:       dy,
-		centerX:  cx,
-		centerY:  cy,
+		centerX:  float32(cx),
+		centerY:  float32(cy),
 	}, nil
 }
 
@@ -70,7 +70,7 @@ func (s *ShapeSprite) DrawShape(shapeType ti.ShapeType, tVal float32, fns ...fun
 	}
 
 	data := s.Texture()
-	s.renderer.module.ComputeShape(data, s.dx, s.dy, shapeType, tVal, options.Direction, options.Color)
+	s.renderer.Module().ComputeShape(data, s.dx, s.dy, shapeType, tVal, options.Direction, options.Color)
 
 	return s
 }
