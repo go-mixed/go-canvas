@@ -58,6 +58,8 @@ func (s *Stage) Render() {
 
 		bbox := child.BoundingBox(s.screen.Width(), s.screen.Height())
 
+		mask := child.Mask()
+
 		options := ti.RenderLayerOptions{
 			X:        child.X(),
 			Y:        child.Y(),
@@ -74,12 +76,20 @@ func (s *Stage) Render() {
 			MaxY:     int32(bbox.Max.Y),
 		}
 
-		s.renderer.Module().RenderLayerNoMask(
-			child.Texture(),
-			s.screen.Texture(),
-			options,
-		)
-
+		if mask != nil {
+			s.renderer.Module().RenderLayerWithMask(
+				child.Texture(),
+				mask.Texture(),
+				s.screen.Texture(),
+				options,
+			)
+		} else {
+			s.renderer.Module().RenderLayerNoMask(
+				child.Texture(),
+				s.screen.Texture(),
+				options,
+			)
+		}
 	}
 }
 

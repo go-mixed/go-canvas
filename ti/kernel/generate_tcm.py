@@ -42,6 +42,14 @@ from ti.kernel.sdf import (
     compute_heart,
     compute_cross,
 )
+from ti.kernel.mask import (
+    image_to_mask,
+    compute_distance_field,
+    feather_linear,
+    feather_conic,
+    feather_smoothstep,
+    feather_sigmoid,
+)
 
 # 要导出的 kernel 列表
 kernels = [
@@ -62,6 +70,13 @@ kernels = [
     compute_star,
     compute_heart,
     compute_cross,
+
+    image_to_mask,
+    compute_distance_field,
+    feather_linear,
+    feather_conic,
+    feather_smoothstep,
+    feather_sigmoid,
 ]
 
 # 架构名称映射

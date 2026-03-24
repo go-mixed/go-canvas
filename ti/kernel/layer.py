@@ -26,7 +26,7 @@ def build_inverse_affine_matrix(
     # [0      0       1                           ]
 
     tx = -(x + cx) * cos_r * inv_scale - (y + cy) * sin_r * inv_scale + cx
-    ty = (x + cx) * sin_r * inv_scale - (y + cy) * cos_r * inv_scale + cy
+    ty = -(x + cx) * sin_r * inv_scale - (y + cy) * cos_r * inv_scale + cy
 
     return ti.math.mat3(
         cos_r * inv_scale, sin_r * inv_scale, tx,
@@ -185,5 +185,4 @@ def render_layer_with_mask(
             )
             if new_color.w > 0:
                 screen[x_screen, y_screen] = new_color
-
 

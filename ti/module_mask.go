@@ -6,16 +6,10 @@ func (m *AotModule) ImageToMask(input *TiImage, out *TiMask) {
 	kernel.Launch().ArgNdArray(input).ArgNdArray(out).Run()
 }
 
-// ComputeDistanceFieldEuclidean 计算距离场（欧几里得距离）
-func (m *AotModule) ComputeDistanceFieldEuclidean(mask *TiMask, dist *TiGrid) {
-	kernel := m.getCache("compute_distance_field_euclidean")
+// ComputeDistanceField 计算距离场（欧几里得距离）
+func (m *AotModule) ComputeDistanceField(mask *TiMask, dist *TiGrid) {
+	kernel := m.getCache("compute_distance_field")
 	kernel.Launch().ArgNdArray(mask).ArgNdArray(dist).Run()
-}
-
-// ComputeDistanceFieldManhattan 计算距离场（曼哈顿距离）
-func (m *AotModule) ComputeDistanceFieldManhattan(mask *TiMask, dist *TiGrid, maxDist float32) {
-	kernel := m.getCache("compute_distance_field_manhattan")
-	kernel.Launch().ArgNdArray(mask).ArgNdArray(dist).ArgFloat32(maxDist).Run()
 }
 
 // ComputeFeather 应用羽化效果

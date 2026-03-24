@@ -59,6 +59,23 @@ func main() {
 
 	stage.Add(img)
 
+	shape, err := render.NewShapeSprite(renderer, 720, 1280, 720*0.5, 1280*0.5)
+	if err != nil {
+		panic(err)
+	}
+	defer shape.Release()
+
+	shape.(*render.ShapeSprite).DrawShape(ti.ShapeTypeCircle, 0.5)
+
+	mask, err := render.NewMask(renderer, 720, 1280)
+	if err != nil {
+		panic(err)
+	}
+	defer mask.Release()
+	img.SetMask(mask)
+
+	mask.FillWithTexture(shape.Texture())
+
 	t = time.Now()
 	stage.Render()
 	screen := stage.Texture()
