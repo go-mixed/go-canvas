@@ -1,6 +1,9 @@
 package ti
 
-import "image/color"
+import (
+	"image/color"
+	"slices"
+)
 
 type ShapeType string
 
@@ -21,6 +24,18 @@ const (
 	// 矩形（切比雪夫距离）
 	ShapeTypeRectangle ShapeType = "rectangle"
 )
+
+// ShapeTypeFromString 从字符串获取形状类型
+func ShapeTypeFromString(s string) ShapeType {
+	if slices.Contains([]ShapeType{
+		ShapeTypeTriangle, ShapeTypeStar5, ShapeTypeHeart, ShapeTypeCross,
+		ShapeTypeLinear, ShapeTypeCircle, ShapeTypeDiamond, ShapeTypeRectangle,
+	}, ShapeType(s)) {
+		return ShapeType(s)
+	}
+
+	return ShapeTypeLinear // Default to linear if no match found
+}
 
 // shapeConfig 形状配置，用于 compute_directional kernel
 type shapeConfig struct {

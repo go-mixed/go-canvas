@@ -16,31 +16,18 @@ type TiColor = []float32      // [4]
 type Direction int
 
 const (
-	DirectionTop      Direction = 0
-	DirectionBottom   Direction = 1
-	DirectionLeft     Direction = 2
-	DirectionRight    Direction = 3
-	DirectionTopLeft  Direction = 4
-	DirectionTopRight Direction = 5
-	DirectionBotLeft  Direction = 6
-	DirectionBotRight Direction = 7
-	DirectionCenter   Direction = 8
+	DirectionTop         Direction = 0
+	DirectionBottom      Direction = 1
+	DirectionLeft        Direction = 2
+	DirectionRight       Direction = 3
+	DirectionTopLeft     Direction = 4
+	DirectionTopRight    Direction = 5
+	DirectionBottomLeft  Direction = 6
+	DirectionBottomRight Direction = 7
+	DirectionCenter      Direction = 8
 )
 
 const Sqrt2Inv = 0.7071067811865476 // 1 / √2
-
-// DirectionVectors 方向向量映射（已归一化对角线方向）
-var DirectionVectors = map[Direction][2]float32{
-	DirectionTop:      {0.0, -1.0},
-	DirectionBottom:   {0.0, 1.0},
-	DirectionLeft:     {-1.0, 0.0},
-	DirectionRight:    {1.0, 0.0},
-	DirectionTopLeft:  {-Sqrt2Inv, -Sqrt2Inv},
-	DirectionTopRight: {Sqrt2Inv, -Sqrt2Inv},
-	DirectionBotLeft:  {-Sqrt2Inv, Sqrt2Inv},
-	DirectionBotRight: {Sqrt2Inv, Sqrt2Inv},
-	DirectionCenter:   {0.0, 0.0},
-}
 
 // DirectionFromString 将字符串转换为 Direction
 //
@@ -60,9 +47,9 @@ func DirectionFromString(s string) Direction {
 	case "top_right", "topright", "tr":
 		return DirectionTopRight
 	case "bottom_left", "bottomleft", "bl":
-		return DirectionBotLeft
+		return DirectionBottomLeft
 	case "bottom_right", "bottomright", "br":
-		return DirectionBotRight
+		return DirectionBottomRight
 	case "center", "c":
 		return DirectionCenter
 	default:

@@ -1,6 +1,9 @@
 package misc
 
-import "sync"
+import (
+	"strconv"
+	"sync"
+)
 
 // ParallelForeach 并行处理 value 分段任务
 // value: 总数值
@@ -38,4 +41,60 @@ func ParallelForeach(value, segments int, fn func(start, end int)) {
 		}(i)
 	}
 	wg.Wait()
+}
+
+func MapGetFloat(m map[string]string, key string) (float64, bool) {
+	if m == nil {
+		return 0, false
+	}
+
+	val, ok := m[key]
+	valFloat, err := strconv.ParseFloat(val, 64)
+	return valFloat, ok && err == nil
+}
+
+func MapGetInt(m map[string]string, key string) (int64, bool) {
+	if m == nil {
+		return 0, false
+	}
+
+	val, ok := m[key]
+	valInt, err := strconv.ParseInt(val, 10, 64)
+	return valInt, ok && err == nil
+}
+
+func MapMultiGetFloat(m map[string]string, keys ...string) ([]float64, bool) {
+	if len(keys) == 0 {
+		return nil, false
+	}
+
+	var vals []float64
+	var ok bool = true
+	for _, key := range keys {
+		val, ok1 := MapGetFloat(m, key)
+		vals = append(vals, val)
+		if !ok1 {
+			ok = false
+		}
+	}
+
+	return vals, ok
+}
+
+func MapMultiGetInt(m map[string]string, keys ...string) ([]int64, bool) {
+	if len(keys) == 0 {
+		return nil, false
+	}
+
+	var vals []int64
+	var ok bool = true
+	for _, key := range keys {
+		val, ok1 := MapGetInt(m, key)
+		vals = append(vals, val)
+		if !ok1 {
+			ok = false
+		}
+	}
+
+	return vals, ok
 }

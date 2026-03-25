@@ -61,6 +61,11 @@ func (s *Sprite) Y() float32 {
 	return s.rect.Y()
 }
 
+func (s *Sprite) MoveTo(x float32, y float32) ISprite {
+	s.rect = s.rect.MoveTo(x, y)
+	return s
+}
+
 func (s *Sprite) Width() float32 {
 	return s.rect.Dx()
 }

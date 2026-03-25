@@ -21,6 +21,8 @@ type ISpriteOperator interface {
 
 	SetX(x float32) ISprite
 	SetY(y float32) ISprite
+	MoveTo(x float32, y float32) ISprite
+
 	SetScale(scale float32) ISprite
 	// 缩放到指定尺寸
 	SetScaleTo(width, height float32) ISprite

@@ -15,22 +15,22 @@ func linear(x float32) float32 {
 
 // ease 等同于 cubic-bezier(0.25, 0.1, 0.25, 1.0)
 func ease(x float32) float32 {
-	return CubicBezier(0.25, 0.1, 0.25, 1.0)(x)
+	return cubicBezier(0.25, 0.1, 0.25, 1.0)(x)
 }
 
 // ease-in 等同于 cubic-bezier(0.42, 0, 1.0, 1.0)
 func easeIn(x float32) float32 {
-	return CubicBezier(0.42, 0, 1.0, 1.0)(x)
+	return cubicBezier(0.42, 0, 1.0, 1.0)(x)
 }
 
 // ease-out 等同于 cubic-bezier(0, 0, 0.58, 1.0)
 func easeOut(x float32) float32 {
-	return CubicBezier(0, 0, 0.58, 1.0)(x)
+	return cubicBezier(0, 0, 0.58, 1.0)(x)
 }
 
 // ease-in-out 等同于 cubic-bezier(0.42, 0, 0.58, 1.0)
 func easeInOut(x float32) float32 {
-	return CubicBezier(0.42, 0, 0.58, 1.0)(x)
+	return cubicBezier(0.42, 0, 0.58, 1.0)(x)
 }
 
 // cubicBezier 创建三次贝塞尔曲线缓动函数
@@ -39,9 +39,9 @@ func easeInOut(x float32) float32 {
 //
 // Example:
 //
-//	bounce := CubicBezier(0.68, -0.55, 0.265, 1.55)
+//	bounce := cubicBezier(0.68, -0.55, 0.265, 1.55)
 //	value := bounce(0.5)
-func CubicBezier(p1x, p1y, p2x, p2y float32) EasingFunction {
+func cubicBezier(p1x, p1y, p2x, p2y float32) EasingFunction {
 	return newCubicBezier(p1x, p1y, p2x, p2y)
 }
 

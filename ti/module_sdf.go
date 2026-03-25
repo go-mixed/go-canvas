@@ -119,6 +119,19 @@ func (m *AotModule) ComputeCross(data *TiImage, dx, dy *TiGrid, tVal float32, co
 		Run()
 }
 
+// sdfDirectionVectors SDF形状扩展方向向量映射（已归一化对角线方向）
+var sdfDirectionVectors = map[Direction][2]float32{
+	DirectionTop:         {0.0, -1.0},
+	DirectionBottom:      {0.0, 1.0},
+	DirectionLeft:        {-1.0, 0.0},
+	DirectionRight:       {1.0, 0.0},
+	DirectionTopLeft:     {-Sqrt2Inv, -Sqrt2Inv},
+	DirectionTopRight:    {Sqrt2Inv, -Sqrt2Inv},
+	DirectionBottomLeft:  {-Sqrt2Inv, Sqrt2Inv},
+	DirectionBottomRight: {Sqrt2Inv, Sqrt2Inv},
+	DirectionCenter:      {0.0, 0.0},
+}
+
 // ComputeShape 统一的形状计算方法
 // 根据 shapeType 自动选择合适的 kernel 和参数
 // dir 参数仅对线性方向性形状有效
@@ -138,9 +151,9 @@ func (m *AotModule) ComputeShape(data *TiImage, dx, dy *TiGrid, shapeType ShapeT
 		if !ok {
 			return
 		}
-		vec, ok := DirectionVectors[dir]
+		vec, ok := sdfDirectionVectors[dir]
 		if !ok {
-			vec = DirectionVectors[DirectionCenter]
+			vec = sdfDirectionVectors[DirectionCenter]
 		}
 		m.ComputeDirectional(data, dx, dy, tVal, vec[0], vec[1], cfg.useRadial, cfg.manhattanWeight, cfg.chebyshevWeight, color)
 	}

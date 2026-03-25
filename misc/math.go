@@ -16,14 +16,24 @@ func NumberEqual[A, B constraints.Integer | constraints.Float](a A, b B, epsilon
 }
 
 // Clamp 返回值在 [0, 1] 范围内
-func Clamp[V ~float32 | ~float64](v V) V {
+func Clamp[V constraints.Float](v V) V {
 	return max(min(v, 1.0), 0.0)
 }
 
 // Abs 返回 v 的绝对值
-func Abs[V ~float32 | ~float64 | ~int | ~int8 | ~int16 | ~int32 | ~int64](x V) V {
+func Abs[V constraints.Float | constraints.Signed](x V) V {
 	if x < 0 {
 		return -x
 	}
 	return x
+}
+
+// Deg2Rad 将角度转换为弧度
+func Deg2Rad[V constraints.Float](deg V) V {
+	return deg * math.Pi / 180.0
+}
+
+// Rad2Deg 将弧度转换为角度
+func Rad2Deg[V constraints.Float](rad V) V {
+	return rad * 180.0 / math.Pi
 }
