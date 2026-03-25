@@ -5,6 +5,7 @@ import (
 	"slideshow/ti"
 )
 
+// ISpriteOperator 精灵操作接口，主要是Set/Get，没有复杂操作
 type ISpriteOperator interface {
 	X() float32
 	Y() float32
@@ -28,14 +29,14 @@ type ISpriteOperator interface {
 	SetScaleTo(width, height float32) ISprite
 	SetRotation(rotation float32) ISprite
 	SetAlpha(alpha float32) ISprite
-
-	SetMask(mask IMask) ISprite
-	Mask() IMask
 }
 
+// ISprite 精灵接口，包含操作接口，以及复杂的操作
 type ISprite interface {
 	ISpriteOperator
 
+	SetMask(mask IMask) ISprite
+	Mask() IMask
 	// 替换纹理（之前的纹理会释放）
 	SetTexture(texture *ti.TiImage) ISprite
 	// 所有像素填充同一个颜色

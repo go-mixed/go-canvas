@@ -52,7 +52,7 @@ func NewKenBurnsEffect(effectInOut EffectInOut, opts ...optionFn) IEffect {
 // Apply 应用 Ken Burns 效果
 //
 // 实现 IEffect 接口
-func (e *KenBurnsEffect) Apply(sprite render.ISprite, progress float32) {
+func (e *KenBurnsEffect) Apply(sprite render.ISpriteOperator, progress float32) {
 	eased := e.getEaseProgress(progress)
 
 	// 计算缩放
@@ -96,7 +96,7 @@ func NewFadeEffect(inOut EffectInOut, opts ...optionFn) IEffect {
 	}
 }
 
-func (e *FadeEffect) Apply(sprite render.ISprite, progress float32) {
+func (e *FadeEffect) Apply(sprite render.ISpriteOperator, progress float32) {
 	alpha := e.getEaseProgress(progress)
 	sprite.SetAlpha(alpha)
 }
@@ -124,7 +124,7 @@ func NewRotateEffect(inOut EffectInOut, opts ...optionFn) IEffect {
 	}
 }
 
-func (e *RotateEffect) Apply(sprite render.ISprite, progress float32) {
+func (e *RotateEffect) Apply(sprite render.ISpriteOperator, progress float32) {
 	eased := e.getEaseProgress(progress)
 
 	// 计算旋转角度
@@ -162,7 +162,7 @@ func NewSlideEffect(inOut EffectInOut, opts ...optionFn) IEffect {
 	}
 }
 
-func (e *SlideEffect) Apply(sprite render.ISprite, progress float32) {
+func (e *SlideEffect) Apply(sprite render.ISpriteOperator, progress float32) {
 	eased := e.getEaseProgress(progress)
 
 	h := sprite.Height()
@@ -219,7 +219,7 @@ func NewZoomEffect(inOut EffectInOut, opts ...optionFn) IEffect {
 		Effect: newEffect(inOut, toOptions(options, opts...)),
 	}
 }
-func (e *ZoomEffect) Apply(sprite render.ISprite, progress float32) {
+func (e *ZoomEffect) Apply(sprite render.ISpriteOperator, progress float32) {
 	eased := e.getEaseProgress(progress)
 
 	if e.direction == EffectOut {
@@ -260,8 +260,9 @@ func NewWipeEffect(inOut EffectInOut, opts ...optionFn) IEffect {
 	}
 }
 
-func (e *WipeEffect) Apply(sprite render.ISprite, progress float32) {
-	if e.options.wipeOptions.ShapeSprite == nil {
+func (e *WipeEffect) Apply(sprite render.ISpriteOperator, progress float32) {
+	shapeSprite, ok := sprite.(*render.ShapeSprite)
+	if !ok {
 		return
 	}
 
@@ -272,7 +273,7 @@ func (e *WipeEffect) Apply(sprite render.ISprite, progress float32) {
 	tVal := t * 2.0
 
 	// 绘制形状（ShapeSprite 同时也是 Mask）
-	e.options.wipeOptions.ShapeSprite.DrawShape(e.options.wipeOptions.ShapeType, tVal)
+	shapeSprite.DrawShape(e.options.wipeOptions.ShapeType, tVal)
 }
 
 func buildPanFn(direction ti.Direction) EffectFn {

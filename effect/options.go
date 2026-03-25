@@ -2,7 +2,6 @@ package effect
 
 import (
 	"slideshow/misc"
-	"slideshow/render"
 	"slideshow/ti"
 )
 
@@ -25,8 +24,7 @@ type rotateOptions struct {
 
 // wipeOptions 擦除效果配置
 type wipeOptions struct {
-	ShapeSprite *render.ShapeSprite
-	ShapeType   ti.ShapeType
+	ShapeType ti.ShapeType
 }
 
 type zoomOptions struct {
@@ -153,12 +151,5 @@ func WithShapeTypeStr(shapeType string) func(*effectOptions) {
 func WithShapeType(shapeType ti.ShapeType) func(*effectOptions) {
 	return func(opt *effectOptions) {
 		opt.wipeOptions.ShapeType = shapeType
-	}
-}
-
-// WithWipeShapeSprite 设置擦除效果的 ShapeSprite
-func WithWipeShapeSprite(shapeSprite *render.ShapeSprite) func(*effectOptions) {
-	return func(opt *effectOptions) {
-		opt.wipeOptions.ShapeSprite = shapeSprite
 	}
 }
