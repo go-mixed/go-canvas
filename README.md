@@ -1,6 +1,7 @@
 # go-canvas
 
-A GPU-accelerated multimedia rendering engine built on [go-taichi](https://github.com/go-mixed/go-taichi).
+A GPU-accelerated multimedia **Rendering Library** built on [go-taichi](https://github.com/go-mixed/go-taichi).
+
 
 ## Features
 
@@ -31,7 +32,10 @@ A GPU-accelerated multimedia rendering engine built on [go-taichi](https://githu
 
 ## Quick start
 
-- Go 1.25+
+
+```shell
+go get github.com/go-mixed/go-canvas
+```
 
 
 ### 1. Download Runtime

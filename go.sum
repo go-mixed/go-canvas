@@ -1,6 +1,6 @@
 github.com/ebitengine/purego v0.10.0 h1:QIw4xfpWT6GWTzaW5XEKy3HXoqrJGx1ijYHzTF0/ISU=
 github.com/ebitengine/purego v0.10.0/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
-github.com/go-mixed/go-taichi v0.0.0-20260324131752-8bf86f5df611 h1:XuJRr7009Xg3cVjtvmaXXog2J3+isZpy7IH7h95mmqg=
-github.com/go-mixed/go-taichi v0.0.0-20260324131752-8bf86f5df611/go.mod h1:44UwViYCKZHRpAb7qsWYMqtu+rZkACMTL9aZhQX97zU=
+github.com/go-mixed/go-taichi v0.0.0-20260325114249-d21725b9b1fe h1:VH7yg3H3VMT/YcK/6HudOAMqJaubsfxywfsqiamB/WA=
+github.com/go-mixed/go-taichi v0.0.0-20260325114249-d21725b9b1fe/go.mod h1:44UwViYCKZHRpAb7qsWYMqtu+rZkACMTL9aZhQX97zU=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
