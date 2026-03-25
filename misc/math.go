@@ -2,26 +2,24 @@ package misc
 
 import (
 	"math"
-
-	"golang.org/x/exp/constraints"
 )
 
 const Epsilon = 1e-6
 
 // NumberEqual 判断两个数字是否相等，考虑浮点数精度问题
-func NumberEqual[A, B constraints.Integer | constraints.Float](a A, b B, epsilon float32) bool {
+func NumberEqual[A, B Integer | Float](a A, b B, epsilon float32) bool {
 	af := float64(a)
 	bf := float64(b)
 	return af == bf || math.Abs(af-bf) <= float64(epsilon)
 }
 
 // Clamp 返回值在 [0, 1] 范围内
-func Clamp[V constraints.Float](v V) V {
+func Clamp[V Float](v V) V {
 	return max(min(v, 1.0), 0.0)
 }
 
 // Abs 返回 v 的绝对值
-func Abs[V constraints.Float | constraints.Signed](x V) V {
+func Abs[V Float | Signed](x V) V {
 	if x < 0 {
 		return -x
 	}
@@ -29,11 +27,11 @@ func Abs[V constraints.Float | constraints.Signed](x V) V {
 }
 
 // Deg2Rad 将角度转换为弧度
-func Deg2Rad[V constraints.Float](deg V) V {
+func Deg2Rad[V Float](deg V) V {
 	return deg * math.Pi / 180.0
 }
 
 // Rad2Deg 将弧度转换为角度
-func Rad2Deg[V constraints.Float](rad V) V {
+func Rad2Deg[V Float](rad V) V {
 	return rad * 180.0 / math.Pi
 }

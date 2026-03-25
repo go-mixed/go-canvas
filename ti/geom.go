@@ -3,23 +3,16 @@ package ti
 import (
 	"image/color"
 	"math"
-
-	"github.com/spf13/cast"
-	"golang.org/x/exp/constraints"
+	"slideshow/misc"
 )
 
-type Point[T constraints.Integer | constraints.Float] struct {
+type Point[T misc.Integer | misc.Float] struct {
 	X, Y T
 }
 
 // Pt is shorthand for [Point]{X, Y}.
-func Pt[T constraints.Integer | constraints.Float](X, Y T) Point[T] {
+func Pt[T misc.Integer | misc.Float](X, Y T) Point[T] {
 	return Point[T]{X, Y}
-}
-
-// String returns a string representation of p like "(3,4)".
-func (p Point[T]) String() string {
-	return "(" + cast.ToString(p.X) + "," + cast.ToString(p.Y) + ")"
 }
 
 // Add returns the vector p+q.
@@ -69,14 +62,14 @@ func (p Point[T]) Eq(q Point[T]) bool {
 	return p == q
 }
 
-type Rectangle[T constraints.Integer | constraints.Float] struct {
+type Rectangle[T misc.Integer | misc.Float] struct {
 	Min, Max Point[T]
 }
 
 // Rect is shorthand for [Rectangle]{Pt(x0, y0), [Pt](x1, y1)}. The returned
 // rectangle has minimum and maximum coordinates swapped if necessary so that
 // it is well-formed.
-func Rect[T constraints.Integer | constraints.Float](x0, y0, x1, y1 T) Rectangle[T] {
+func Rect[T misc.Integer | misc.Float](x0, y0, x1, y1 T) Rectangle[T] {
 	if x0 > x1 {
 		x0, x1 = x1, x0
 	}
