@@ -1,8 +1,7 @@
 package render
 
 import (
-	"slideshow/ti"
-
+	"github.com/go-mixed/go-canvas/ti"
 	"github.com/go-mixed/go-taichi/taichi"
 )
 

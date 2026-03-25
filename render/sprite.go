@@ -1,10 +1,10 @@
 package render
 
 import (
+	"github.com/go-mixed/go-canvas/misc"
+	"github.com/go-mixed/go-canvas/ti"
 	"image/color"
 	"math"
-	"slideshow/misc"
-	"slideshow/ti"
 )
 
 type Sprite struct {

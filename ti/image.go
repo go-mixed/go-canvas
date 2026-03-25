@@ -2,7 +2,8 @@ package ti
 
 import (
 	"image"
-	"slideshow/misc"
+
+	"github.com/go-mixed/go-canvas/misc"
 
 	"github.com/go-mixed/go-taichi/taichi"
 	"github.com/pkg/errors"

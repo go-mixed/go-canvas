@@ -1,9 +1,9 @@
 package effect
 
 import (
-	"slideshow/misc"
-	"slideshow/render"
-	"slideshow/ti"
+	"github.com/go-mixed/go-canvas/misc"
+	"github.com/go-mixed/go-canvas/render"
+	"github.com/go-mixed/go-canvas/ti"
 )
 
 // kenBurnsDirections Ken Burns 效果方向映射

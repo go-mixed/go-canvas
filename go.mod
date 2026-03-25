@@ -1,4 +1,4 @@
-module slideshow
+module github.com/go-mixed/go-canvas
 
 go 1.25.7
 

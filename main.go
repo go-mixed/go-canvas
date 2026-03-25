@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 	"path/filepath"
-	"slideshow/misc"
-	"slideshow/render"
-	"slideshow/ti"
 	"time"
 
+	"github.com/go-mixed/go-canvas/misc"
+	"github.com/go-mixed/go-canvas/render"
+	"github.com/go-mixed/go-canvas/ti"
 	"github.com/go-mixed/go-taichi/taichi"
 )
 

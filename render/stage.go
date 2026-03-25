@@ -1,9 +1,9 @@
 package render
 
 import (
+	"github.com/go-mixed/go-canvas/ti"
 	"iter"
 	"slices"
-	"slideshow/ti"
 	"sync"
 )
 

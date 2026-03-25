@@ -2,7 +2,8 @@ package render
 
 import (
 	"image/color"
-	"slideshow/ti"
+
+	"github.com/go-mixed/go-canvas/ti"
 )
 
 // ISpriteOperator 精灵操作接口，主要是Set/Get，没有复杂操作

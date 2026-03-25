@@ -1,9 +1,9 @@
 package ti
 
 import (
+	"github.com/go-mixed/go-canvas/misc"
 	"image/color"
 	"math"
-	"slideshow/misc"
 )
 
 type Point[T misc.Integer | misc.Float] struct {

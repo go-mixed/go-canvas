@@ -1,8 +1,8 @@
 package effect
 
 import (
-	"slideshow/misc"
-	"slideshow/render"
+	"github.com/go-mixed/go-canvas/misc"
+	"github.com/go-mixed/go-canvas/render"
 )
 
 type IEffect interface {
