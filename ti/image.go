@@ -51,7 +51,7 @@ func LoadImageToTiImage(rt *taichi.Runtime, filePath string) (*TiImage, error) {
 		for y := yStart; y < yEnd; y++ {
 			for x := 0; x < width; x++ {
 				r, g, b, a := ExpandFColor(img.At(x, y))
-				idx := (x*height + y) * 4
+				idx, _ := texture.GetOffset(x, y)
 				data[idx] = r
 				data[idx+1] = g
 				data[idx+2] = b
@@ -82,7 +82,7 @@ func SaveTiImageToFile(texture *TiImage, filePath string) error {
 
 		for y := yStart; y < yEnd; y++ {
 			for x := 0; x < width; x++ {
-				idx := (x*height + y) * 4
+				idx, _ := texture.GetOffset(x, y)
 				c := TiColor2Color(data[idx], data[idx+1], data[idx+2], data[idx+3])
 				img.Set(x, y, c)
 			}

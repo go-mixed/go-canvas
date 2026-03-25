@@ -1,6 +1,8 @@
 package render
 
 import (
+	"image/color"
+
 	"github.com/go-mixed/go-canvas/ti"
 
 	"github.com/go-mixed/go-taichi/taichi"
@@ -46,11 +48,11 @@ func NewShapeSprite(renderer *Renderer, width, height uint32, cx, cy uint32) (IS
 	}, nil
 }
 
-func (s *ShapeSprite) CenterX() float32 {
+func (s *ShapeSprite) Cx() float32 {
 	return s.centerX
 }
 
-func (s *ShapeSprite) CenterY() float32 {
+func (s *ShapeSprite) Cy() float32 {
 	return s.centerY
 }
 
@@ -59,10 +61,10 @@ func (s *ShapeSprite) CenterY() float32 {
 // size: 大小参数 0.0-2.0，1.0 表示填充整个屏幕
 // fns: 可选参数，如 ti.WithShapeDirection, ti.WithShapeColor
 func (s *ShapeSprite) DrawShape(shapeType ti.ShapeType, tVal float32, fns ...func(option *ti.ShapeOptions)) ISprite {
-	s.FillTexture(ti.ColorTransparent)
+	s.FillTexture(color.Transparent)
 	options := &ti.ShapeOptions{
 		Direction: ti.DirectionCenter,
-		Color:     ti.ColorBlack,
+		Color:     color.Black,
 	}
 
 	for _, fn := range fns {

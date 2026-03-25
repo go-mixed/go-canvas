@@ -7,30 +7,31 @@ from ti.kernel.sample import *
 def build_inverse_affine_matrix(
         x: ti.f32, y: ti.f32,
         cx: ti.f32, cy: ti.f32,
-        scale: ti.f32,
+        scale_x: ti.f32, scale_y: ti.f32,
         rotation: ti.f32
 ) -> ti.types.matrix(3, 3, ti.f32):
     """
     构建逆仿射变换矩阵（屏幕坐标 → 纹理坐标）
 
-    变换顺序：平移 → 旋转 → 缩放
+    正变换顺序：平移 → 旋转 → 缩放
     逆变换顺序：逆缩放 → 逆旋转 → 逆平移
     """
     cos_r = ti.cos(rotation)
     sin_r = ti.sin(rotation)
-    inv_scale = 1.0 / scale
+    inv_scale_x = 1.0 / scale_x
+    inv_scale_y = 1.0 / scale_y
 
-    # 逆仿射矩阵 = 逆缩放 × 逆旋转 × 逆平移
-    # [cos/s  sin/s  -(x+cx)*cos/s - (y+cy)*sin/s]
-    # [-sin/s cos/s   (x+cx)*sin/s - (y+cy)*cos/s]
-    # [0      0       1                           ]
+    # 逆仿射矩阵
+    # [ cos/sx   sin/sx  -(x+cx)*cos/sx - (y+cy)*sin/sx + cx ]
+    # [ -sin/sy  cos/sy   (x+cx)*sin/sy - (y+cy)*cos/sy + cy ]
+    # [   0       0                    1                     ]
 
-    tx = -(x + cx) * cos_r * inv_scale - (y + cy) * sin_r * inv_scale + cx
-    ty = -(x + cx) * sin_r * inv_scale - (y + cy) * cos_r * inv_scale + cy
+    tx = -(x + cx) * cos_r * inv_scale_x - (y + cy) * sin_r * inv_scale_x + cx
+    ty = -(x + cx) * sin_r * inv_scale_y - (y + cy) * cos_r * inv_scale_y + cy
 
     return ti.math.mat3(
-        cos_r * inv_scale, sin_r * inv_scale, tx,
-        -sin_r * inv_scale, cos_r * inv_scale, ty,
+        cos_r * inv_scale_x,  sin_r * inv_scale_x, tx,
+       -sin_r * inv_scale_y, cos_r * inv_scale_y, ty,
         0.0, 0.0, 1.0
     )
 
@@ -88,7 +89,7 @@ def render_layer_no_mask(
         texture: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),
         x: ti.f32, y: ti.f32,
         cx: ti.f32, cy: ti.f32,
-        scale: ti.f32,
+        scale_x: ti.f32, scale_y: ti.f32,
         rotation: ti.f32,
         alpha: ti.f32,
         width: ti.f32, height: ti.f32,
@@ -104,7 +105,8 @@ def render_layer_no_mask(
     :param y: 前景相对screen的y偏移值，如果y为0，表示从左上角开始绘制
     :param cx: 纹理中心x坐标
     :param cy: 纹理中心y坐标
-    :param scale: 缩放，（单位：倍数）, 默认为1.0, 表示不缩放
+    :param scale_x: x轴缩放，（单位：倍数）, 默认为1.0, 表示不缩放
+    :param scale_y: y轴缩放，（单位：倍数）, 默认为1.0, 表示不缩放
     :param rotation: 旋转，（单位：弧度）, 默认为0.0, 表示不旋转
     :param alpha: 透明度，（单位：0.0-1.0）, 默认为1.0, 表示不透明
     :param width: 纹理宽度
@@ -114,8 +116,8 @@ def render_layer_no_mask(
     :param min_y: 纹理和屏幕的包围盒的左上角y坐标
     :param max_y: 纹理和屏幕的包围盒的右下角y坐标
     """
-    use_scale = 1 if ti.abs(scale - 1.0) > 1e-6 else 0
-    inv_matrix = build_inverse_affine_matrix(x, y, cx, cy, scale, rotation)
+    use_scale = 1 if ti.abs(scale_x - 1.0) > 1e-6 or ti.abs(scale_y - 1.0) > 1e-6 else 0
+    inv_matrix = build_inverse_affine_matrix(x, y, cx, cy, scale_x, scale_y, rotation)
 
     for x_screen, y_screen in ti.ndrange((min_x, max_x + 1), (min_y, max_y + 1)):
         # 屏幕坐标 → 纹理坐标
@@ -137,7 +139,7 @@ def render_layer_with_mask(
         texture: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),
         x: ti.f32, y: ti.f32,
         cx: ti.f32, cy: ti.f32,
-        scale: ti.f32,
+        scale_x: ti.f32, scale_y: ti.f32,
         rotation: ti.f32,
         alpha: ti.f32,
         width: ti.f32, height: ti.f32,
@@ -154,7 +156,8 @@ def render_layer_with_mask(
     :param y: 前景相对screen的y偏移值，如果y为0，表示从左上角开始绘制
     :param cx: 纹理中心x坐标
     :param cy: 纹理中心y坐标
-    :param scale: 缩放，（单位：倍数）, 默认为1.0, 表示不缩放
+    :param scale_x: x轴缩放，（单位：倍数）, 默认为1.0, 表示不缩放
+    :param scale_y: y轴缩放，（单位：倍数）, 默认为1.0, 表示不缩放
     :param rotation: 旋转，（单位：弧度）, 默认为0.0, 表示不旋转
     :param alpha: 透明度，（单位：0.0-1.0）, 默认为1.0, 表示不透明
     :param width: 纹理宽度
@@ -165,8 +168,8 @@ def render_layer_with_mask(
     :param max_y: 纹理和屏幕的包围盒的右下角y坐标
     :param mask: 遮罩，结构为[w, h] = alpha f32
     """
-    use_scale = 1 if ti.abs(scale - 1.0) > 1e-6 else 0
-    inv_matrix = build_inverse_affine_matrix(x, y, cx, cy, scale, rotation)
+    use_scale = 1 if ti.abs(scale_x - 1.0) > 1e-6 or ti.abs(scale_y - 1.0) > 1e-6 else 0
+    inv_matrix = build_inverse_affine_matrix(x, y, cx, cy, scale_x, scale_y, rotation)
 
     for x_screen, y_screen in ti.ndrange((min_x, max_x + 1), (min_y, max_y + 1)):
         # 屏幕坐标 → 纹理坐标

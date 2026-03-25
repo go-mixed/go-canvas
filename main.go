@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"image/color"
 	"path/filepath"
 	"time"
 
@@ -33,7 +34,7 @@ func main() {
 
 	t = time.Now()
 	// 创建舞台
-	stage, err := render.NewStage(renderer, 720, 1280)
+	stage, err := render.NewContainerSprite(renderer, 720, 1280)
 	if err != nil {
 		panic(err)
 	}
@@ -52,11 +53,21 @@ func main() {
 	fmt.Printf("init image: %v\n", time.Since(t))
 
 	t = time.Now()
-
 	img.ResizeTo(720, 1280)
-
 	fmt.Printf("resize image: %v\n", time.Since(t))
 
+	img.SetX(-200)
+
+	t = time.Now()
+	background, err := render.NewBlockSprite(renderer, 720, 1280)
+	if err != nil {
+		panic(err)
+	}
+	defer background.Release()
+	background.FillTexture(color.White)
+	fmt.Printf("init background: %v\n", time.Since(t))
+
+	stage.Add(background)
 	stage.Add(img)
 
 	t = time.Now()
@@ -75,12 +86,11 @@ func main() {
 
 	t = time.Now()
 	stage.Render()
-	screen := stage.Texture()
 
 	fmt.Printf("render: %v\n", time.Since(t))
 	t = time.Now()
 
-	err = ti.SaveTiImageToFile(screen, filepath.Join(misc.GetCurrentDir(), "out.png"))
+	err = ti.SaveTiImageToFile(stage.Texture(), filepath.Join(misc.GetCurrentDir(), "out.png"))
 	if err != nil {
 		panic(err)
 	}

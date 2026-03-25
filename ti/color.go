@@ -78,14 +78,3 @@ func Color2TiColor(color color.Color) TiColor {
 	r, g, b, a := ExpandFColor(color)
 	return TiColor{r, g, b, a}
 }
-
-const ColorWhite = RGBA(0xffffffff)
-const ColorBlack = RGBA(0x000000ff)
-const ColorRed = RGBA(0xff0000ff)
-const ColorGreen = RGBA(0x00ff00ff)
-const ColorBlue = RGBA(0x0000ffff)
-const ColorYellow = RGBA(0xffff00ff)
-const ColorMagenta = RGBA(0xff00ffff)
-const ColorCyan = RGBA(0x00ffffff)
-const ColorGray = RGBA(0x808080ff)
-const ColorTransparent = RGBA(0x00000000)
