@@ -122,7 +122,7 @@ func (m *AotModule) ComputeCross(data *TiImage, dx, dy *TiGrid, tVal float32, co
 // ComputeShape 统一的形状计算方法
 // 根据 shapeType 自动选择合适的 kernel 和参数
 // dir 参数仅对线性方向性形状有效
-func (m *AotModule) ComputeShape(data *TiImage, dx, dy *TiGrid, shapeType ShapeType, tVal float32, dir ShapeDirection, color color.Color) {
+func (m *AotModule) ComputeShape(data *TiImage, dx, dy *TiGrid, shapeType ShapeType, tVal float32, dir Direction, color color.Color) {
 	switch shapeType {
 	case ShapeTypeTriangle:
 		m.ComputeTriangle(data, dx, dy, tVal, color)
@@ -138,9 +138,9 @@ func (m *AotModule) ComputeShape(data *TiImage, dx, dy *TiGrid, shapeType ShapeT
 		if !ok {
 			return
 		}
-		vec, ok := directionVectors[dir]
+		vec, ok := DirectionVectors[dir]
 		if !ok {
-			vec = directionVectors[ShapeDirectionCenter]
+			vec = DirectionVectors[DirectionCenter]
 		}
 		m.ComputeDirectional(data, dx, dy, tVal, vec[0], vec[1], cfg.useRadial, cfg.manhattanWeight, cfg.chebyshevWeight, color)
 	}

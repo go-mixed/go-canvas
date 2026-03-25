@@ -61,7 +61,7 @@ func (s *ShapeSprite) CenterY() float32 {
 func (s *ShapeSprite) DrawShape(shapeType ti.ShapeType, tVal float32, fns ...func(option *ti.ShapeOptions)) ISprite {
 	s.FillTexture(ti.ColorTransparent)
 	options := &ti.ShapeOptions{
-		Direction: ti.ShapeDirectionCenter,
+		Direction: ti.DirectionCenter,
 		Color:     ti.ColorBlack,
 	}
 

@@ -22,21 +22,6 @@ const (
 	ShapeTypeRectangle ShapeType = "rectangle"
 )
 
-// ShapeDirection 形状的扩展方向
-type ShapeDirection int
-
-const (
-	ShapeDirectionTop      ShapeDirection = 0
-	ShapeDirectionBottom   ShapeDirection = 1
-	ShapeDirectionLeft     ShapeDirection = 2
-	ShapeDirectionRight    ShapeDirection = 3
-	ShapeDirectionTopLeft  ShapeDirection = 4
-	ShapeDirectionTopRight ShapeDirection = 5
-	ShapeDirectionBotLeft  ShapeDirection = 6
-	ShapeDirectionBotRight ShapeDirection = 7
-	ShapeDirectionCenter   ShapeDirection = 8
-)
-
 // shapeConfig 形状配置，用于 compute_directional kernel
 type shapeConfig struct {
 	useRadial       float32
@@ -52,27 +37,12 @@ var shapeConfigs = map[ShapeType]shapeConfig{
 	ShapeTypeRectangle: {useRadial: 1.0, manhattanWeight: 0.0, chebyshevWeight: 1.0},
 }
 
-const sqrt2Inv = 0.7071067811865476 // 1 / sqrt(2)
-
-// directionVectors 方向向量映射
-var directionVectors = map[ShapeDirection][2]float32{
-	ShapeDirectionTop:      {0.0, -1.0},
-	ShapeDirectionBottom:   {0.0, 1.0},
-	ShapeDirectionLeft:     {-1.0, 0.0},
-	ShapeDirectionRight:    {1.0, 0.0},
-	ShapeDirectionTopLeft:  {-sqrt2Inv, -sqrt2Inv},
-	ShapeDirectionTopRight: {sqrt2Inv, -sqrt2Inv},
-	ShapeDirectionBotLeft:  {-sqrt2Inv, sqrt2Inv},
-	ShapeDirectionBotRight: {sqrt2Inv, sqrt2Inv},
-	ShapeDirectionCenter:   {0.0, 0.0},
-}
-
 type ShapeOptions struct {
-	Direction ShapeDirection
+	Direction Direction
 	Color     color.Color
 }
 
-func WithShapeDirection(direction ShapeDirection) func(*ShapeOptions) {
+func WithShapeDirection(direction Direction) func(*ShapeOptions) {
 	return func(opts *ShapeOptions) {
 		opts.Direction = direction
 	}
