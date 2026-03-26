@@ -52,7 +52,7 @@ func NewKenBurnsEffect(effectInOut EffectInOut, opts ...optionFn) IEffect {
 // Apply 应用 Ken Burns 效果
 //
 // 实现 IEffect 接口
-func (e *KenBurnsEffect) Apply(sprite render.ISpriteOperator, progress float32) {
+func (e *KenBurnsEffect) Apply(sprite render.IElement, progress float32) {
 	eased := e.getEaseProgress(progress)
 
 	// 计算缩放
@@ -62,7 +62,7 @@ func (e *KenBurnsEffect) Apply(sprite render.ISpriteOperator, progress float32) 
 	panX, panY := e.calculatePan(sprite.Width(), sprite.Height(), eased)
 
 	// 应用到 sprite
-	sprite.SetScale(scale)
+	sprite.SetScale(scale, scale)
 	sprite.SetX(panX)
 	sprite.SetY(panY)
 	sprite.SetAlpha(1.0)
@@ -96,7 +96,7 @@ func NewFadeEffect(inOut EffectInOut, opts ...optionFn) IEffect {
 	}
 }
 
-func (e *FadeEffect) Apply(sprite render.ISpriteOperator, progress float32) {
+func (e *FadeEffect) Apply(sprite render.IElement, progress float32) {
 	alpha := e.getEaseProgress(progress)
 	sprite.SetAlpha(alpha)
 }
@@ -124,7 +124,7 @@ func NewRotateEffect(inOut EffectInOut, opts ...optionFn) IEffect {
 	}
 }
 
-func (e *RotateEffect) Apply(sprite render.ISpriteOperator, progress float32) {
+func (e *RotateEffect) Apply(sprite render.IElement, progress float32) {
 	eased := e.getEaseProgress(progress)
 
 	// 计算旋转角度
@@ -135,7 +135,7 @@ func (e *RotateEffect) Apply(sprite render.ISpriteOperator, progress float32) {
 	scale := e.options.rotateOptions.ScaleStart + (e.options.rotateOptions.ScaleEnd-e.options.rotateOptions.ScaleStart)*eased
 
 	sprite.SetRotation(angleRad)
-	sprite.SetScale(scale)
+	sprite.SetScale(scale, scale)
 
 	// 当缩放过小时隐藏，避免透视问题
 	if scale < 0.01 {
@@ -162,7 +162,7 @@ func NewSlideEffect(inOut EffectInOut, opts ...optionFn) IEffect {
 	}
 }
 
-func (e *SlideEffect) Apply(sprite render.ISpriteOperator, progress float32) {
+func (e *SlideEffect) Apply(sprite render.IElement, progress float32) {
 	eased := e.getEaseProgress(progress)
 
 	h := sprite.Height()
@@ -219,7 +219,7 @@ func NewZoomEffect(inOut EffectInOut, opts ...optionFn) IEffect {
 		Effect: newEffect(inOut, toOptions(options, opts...)),
 	}
 }
-func (e *ZoomEffect) Apply(sprite render.ISpriteOperator, progress float32) {
+func (e *ZoomEffect) Apply(sprite render.IElement, progress float32) {
 	eased := e.getEaseProgress(progress)
 
 	if e.direction == EffectOut {
@@ -229,7 +229,7 @@ func (e *ZoomEffect) Apply(sprite render.ISpriteOperator, progress float32) {
 	// 计算缩放比例
 	scale := e.options.zoomOptions.ZoomStart + (e.options.zoomOptions.ZoomEnd-e.options.zoomOptions.ZoomStart)*eased
 
-	sprite.SetScale(scale)
+	sprite.SetScale(scale, scale)
 
 	// 当缩放过小时隐藏
 	if scale < 0.01 {
@@ -260,7 +260,7 @@ func NewWipeEffect(inOut EffectInOut, opts ...optionFn) IEffect {
 	}
 }
 
-func (e *WipeEffect) Apply(sprite render.ISpriteOperator, progress float32) {
+func (e *WipeEffect) Apply(sprite render.IElement, progress float32) {
 	shapeSprite, ok := sprite.(*render.ShapeSprite)
 	if !ok {
 		return

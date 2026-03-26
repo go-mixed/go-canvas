@@ -33,30 +33,30 @@ func NewMask(renderer *Renderer, width, height uint32) (*Mask, error) {
 }
 
 // FillWithTexture 将纹理填充到 Mask
-func (s *Mask) FillWithTexture(texture *ti.TiImage) {
+func (m *Mask) FillWithTexture(texture *ti.TiImage) {
 	//  将图像转换为遮罩（提取 alpha 通道）
-	s.renderer.Module().ImageToMask(texture, s.texture)
+	m.renderer.Module().ImageToMask(texture, m.texture)
 }
 
-func (s *Mask) ApplyFeather(featherRadius uint32, featherMode ti.FeatherMode) {
+func (m *Mask) ApplyFeather(featherRadius uint32, featherMode ti.FeatherMode) {
 	// 计算距离场（使用复用的 distField）
-	s.renderer.Module().ComputeDistanceField(s.texture, s.distField)
+	m.renderer.Module().ComputeDistanceField(m.texture, m.distField)
 
 	// 应用羽化
-	s.renderer.Module().ComputeFeather(s.distField, s.texture, float32(featherRadius), featherMode)
+	m.renderer.Module().ComputeFeather(m.distField, m.texture, float32(featherRadius), featherMode)
 }
 
-func (s *Mask) Release() {
-	if s.texture != nil {
-		s.texture.Release()
+func (m *Mask) Release() {
+	if m.texture != nil {
+		m.texture.Release()
 	}
-	if s.distField != nil {
-		s.distField.Release()
+	if m.distField != nil {
+		m.distField.Release()
 	}
 }
 
-func (s *Mask) Texture() *taichi.NdArray {
-	return s.texture
+func (m *Mask) Texture() *taichi.NdArray {
+	return m.texture
 }
 
 type ShapeMask struct {
@@ -68,7 +68,7 @@ type ShapeMask struct {
 }
 
 var _ IMask = (*ShapeMask)(nil)
-var _ ISpriteOperator = (*ShapeMask)(nil)
+var _ IElement = (*ShapeMask)(nil)
 
 func NewShapeMask(renderer *Renderer, width, height uint32, cx, cy uint32) (*ShapeMask, error) {
 	mask, err := NewMask(renderer, width, height)

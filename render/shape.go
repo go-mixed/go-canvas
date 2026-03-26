@@ -15,9 +15,6 @@ type ShapeSprite struct {
 
 	// 归一化的SDF坐标网格
 	dx, dy *taichi.NdArray
-
-	// 中心坐标（归一化 0.0-1.0）
-	centerX, centerY float32
 }
 
 func NewShapeSprite(renderer *Renderer, width, height uint32, cx, cy uint32) (ISprite, error) {
@@ -38,22 +35,15 @@ func NewShapeSprite(renderer *Renderer, width, height uint32, cx, cy uint32) (IS
 
 	renderer.Module().ComputeNormalizedCoords(dx, dy, float32(cx), float32(cy))
 
+	sprite.SetCx(float32(cx))
+	sprite.SetCy(float32(cy))
+
 	return &ShapeSprite{
 		ISprite:  sprite,
 		renderer: renderer,
 		dx:       dx,
 		dy:       dy,
-		centerX:  float32(cx),
-		centerY:  float32(cy),
 	}, nil
-}
-
-func (s *ShapeSprite) Cx() float32 {
-	return s.centerX
-}
-
-func (s *ShapeSprite) Cy() float32 {
-	return s.centerY
 }
 
 // DrawShape 绘制形状

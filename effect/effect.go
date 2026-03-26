@@ -6,7 +6,7 @@ import (
 )
 
 type IEffect interface {
-	Apply(sprite render.ISpriteOperator, progress float32)
+	Apply(sprite render.IElement, progress float32)
 }
 
 type Effect struct {

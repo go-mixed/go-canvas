@@ -34,7 +34,7 @@ func main() {
 
 	t = time.Now()
 	// 创建舞台
-	stage, err := render.NewContainerSprite(renderer, 720, 1280)
+	stage, err := render.NewContainer(renderer, 720, 1280)
 	if err != nil {
 		panic(err)
 	}

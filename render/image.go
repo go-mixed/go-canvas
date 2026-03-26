@@ -18,7 +18,7 @@ func NewImageSprite(renderer *Renderer, filePath string) (ISprite, error) {
 		return nil, errors.Wrapf(err, "Cannot load image to taichi")
 	}
 
-	s := NewNonContainerSprite(renderer, texture)
+	s := NewSprite(renderer, texture)
 
 	return &ImageSprite{
 		ISprite: s,
