@@ -24,7 +24,7 @@ func NewContainer(renderer *Renderer, width, height uint32) (IContainer, error) 
 	}
 
 	return &Container{
-		Sprite: NewSprite(renderer, texture).(*Sprite),
+		Sprite: NewSprite(renderer, texture),
 	}, nil
 }
 

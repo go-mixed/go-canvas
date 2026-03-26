@@ -44,11 +44,24 @@ func LoadImageToTiImage(rt *taichi.Runtime, filePath string) (*TiImage, error) {
 		return nil, errors.Wrapf(err, "Cannot create taichi texture")
 	}
 
-	err = texture.MapFloat32(func(data []float32) error {
-		//misc.ParallelForeach(height, 1, func(yStart, yEnd int) {
-		yStart := 0
-		yEnd := height
-		for y := yStart; y < yEnd; y++ {
+	err = UploadImageToTexture(texture, img)
+
+	if err != nil {
+		texture.Release()
+		return nil, errors.Wrapf(err, "Cannot upload image to taichi texture")
+	}
+
+	return texture, nil
+}
+
+// UploadImageToTexture 将 image.Image 上传到 TiImage
+func UploadImageToTexture(texture *TiImage, img image.Image) error {
+	bounds := img.Bounds()
+	width := bounds.Dx()
+	height := bounds.Dy()
+
+	err := texture.MapFloat32(func(data []float32) error {
+		for y := 0; y < height; y++ {
 			for x := 0; x < width; x++ {
 				r, g, b, a := ExpandFColor(img.At(x, y))
 				idx, _ := texture.GetOffset(x, y)
@@ -58,19 +71,22 @@ func LoadImageToTiImage(rt *taichi.Runtime, filePath string) (*TiImage, error) {
 				data[idx+3] = a
 			}
 		}
-		//})
 		return nil
 	})
-
-	if err != nil {
-		texture.Release()
-		return nil, errors.Wrapf(err, "Cannot upload image to taichi texture")
-	}
-	return texture, nil
+	return errors.Wrapf(err, "Cannot upload image to taichi texture")
 }
 
 // SaveTiImageToFile 将 Taichi.NdArray(w, h, (r, g, b, a)) 保存到图片文件
 func SaveTiImageToFile(texture *TiImage, filePath string) error {
+	img, err := DownloadTextureToImage(texture)
+
+	if err != nil {
+		return errors.Wrapf(err, "Cannot download taichi texture to image")
+	}
+	return misc.SaveImage(img, filePath)
+}
+
+func DownloadTextureToImage(texture *TiImage) (image.Image, error) {
 	shape := texture.Shape()
 	width, height := int(shape[0]), int(shape[1])
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
@@ -90,8 +106,6 @@ func SaveTiImageToFile(texture *TiImage, filePath string) error {
 		//})
 		return nil
 	})
-	if err != nil {
-		return errors.Wrapf(err, "Cannot download taichi texture to image")
-	}
-	return misc.SaveImage(img, filePath)
+
+	return img, errors.Wrapf(err, "Cannot download taichi texture to image")
 }

@@ -12,7 +12,7 @@ type Sprite struct {
 var _ ISprite = (*Sprite)(nil)
 
 // NewSprite 创建非容器的精灵，需要传入纹理
-func NewSprite(renderer *Renderer, texture *ti.TiImage) ISprite {
+func NewSprite(renderer *Renderer, texture *ti.TiImage) *Sprite {
 	shape := texture.Shape()
 	w, h := shape[0], shape[1]
 
