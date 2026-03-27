@@ -6,6 +6,7 @@ import (
 	"github.com/go-mixed/go-canvas/misc"
 	"github.com/go-mixed/go-canvas/ti"
 	"github.com/go-mixed/go-taichi/taichi"
+	"github.com/pkg/errors"
 )
 
 type Stage struct {
@@ -23,9 +24,16 @@ func NewStage(arch taichi.Arch, width, height uint32) (*Stage, error) {
 		return nil, err
 	}
 
-	return NewStageWithRenderer(renderer, width, height)
+	stage, err := NewStageWithRenderer(renderer, width, height)
+	if err != nil {
+		renderer.Release()
+		return nil, errors.Wrapf(err, "create stage failed")
+	}
+
+	return stage, nil
 }
 
+// NewStageWithRenderer 创建舞台，注意：返回错误时，不会释放renderer
 func NewStageWithRenderer(renderer *Renderer, width, height uint32) (*Stage, error) {
 	s := &Stage{
 		renderer: renderer,
@@ -34,8 +42,7 @@ func NewStageWithRenderer(renderer *Renderer, width, height uint32) (*Stage, err
 
 	container, err := NewContainer(SelfRelease(renderer), width, height)
 	if err != nil {
-		s.Release()
-		return nil, err
+		return nil, errors.Wrapf(err, "create container of stage failed")
 	}
 	s.container = container
 
