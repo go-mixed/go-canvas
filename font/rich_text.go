@@ -21,6 +21,7 @@ type TextSegment struct {
 	FontFamily string
 	Width      int
 	Height     int
+	metrics    font.Metrics
 }
 
 func (t *TextSegment) CopyWithText(text string) *TextSegment {
@@ -45,20 +46,34 @@ func (t *TextSegment) MeasureString(face font.Face) (int, int) {
 	defer face.Close()
 
 	t.Width = segWidth
-	t.Height = face.Metrics().Height.Ceil()
+	// 使用 ascent + |descent| 作为高度，确保能完整渲染
+	t.metrics = face.Metrics()
+	t.Height = (t.metrics.Ascent + t.metrics.Descent).Ceil()
 	return segWidth, t.Height
 }
 
 type TextSegments []*TextSegment
 
+// Height 返回该行最大字号的高度（Metrics.Height）
 func (s TextSegments) Height() int {
 	var maxHeight int
 	for _, seg := range s {
-		if maxHeight < seg.FontSize {
-			maxHeight = seg.FontSize
+		if maxHeight < seg.Height {
+			maxHeight = seg.Height
 		}
 	}
 	return maxHeight
+}
+
+// MaxMetrics 返回该行最大字号的 Metrics
+func (s TextSegments) MaxMetrics() font.Metrics {
+	var maxMetrics font.Metrics
+	for _, seg := range s {
+		if (maxMetrics.Ascent + maxMetrics.Descent).Ceil() < seg.Height {
+			maxMetrics = seg.metrics
+		}
+	}
+	return maxMetrics
 }
 
 // Width 总长度
