@@ -66,6 +66,10 @@ func LoadAotModule(runtime *taichi.Runtime) (*AotModule, error) {
 		"feather_conic",
 		"feather_smoothstep",
 		"feather_sigmoid",
+
+		"blur_box",
+		"blur_gaussian",
+		"blur_mosaic",
 	}
 
 	cache := make(map[string]*taichi.Kernel)

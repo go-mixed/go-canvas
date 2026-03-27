@@ -7,6 +7,13 @@ import (
 	"github.com/go-mixed/go-canvas/ti"
 )
 
+type IElementOperation interface {
+	// ResizeTo 重置尺寸，会替换纹理
+	ResizeTo(width, height uint32) error
+	// Blur 模糊纹理（马赛克/高斯/普通），原地修改
+	Blur(mode ti.BlurMode, radius int32) error
+}
+
 // IElement 精灵操作接口，主要是Set/Get，没有复杂操作
 type IElement interface {
 	X() float32
@@ -36,8 +43,6 @@ type IElement interface {
 	SetRotation(rotation float32)
 	SetAlpha(alpha float32)
 
-	// ResizeTo 重置尺寸，会替换纹理
-	ResizeTo(width, height uint32) error
 	// ClientRect 获取元素自身旋转+缩放后的边界（不与父级求交集）
 	ClientRect() ti.Rectangle[float32]
 	// ClippedRect 获取与父级区域裁剪后的可视区域（请在 Container.Render 中使用）
@@ -51,6 +56,8 @@ type IElement interface {
 	Release()
 
 	Renderer() *Renderer
+
+	IElementOperation
 }
 
 // ISprite 精灵接口，包含操作接口，以及复杂的操作

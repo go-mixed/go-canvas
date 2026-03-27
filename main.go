@@ -41,6 +41,7 @@ func main() {
 
 	t = time.Now()
 	img.ResizeTo(720, 1280)
+	img.Blur(ti.BlurModeGaussian, 20)
 	fmt.Printf("resize image: %v\n", time.Since(t))
 
 	img.SetX(-200)

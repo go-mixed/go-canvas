@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-mixed/go-canvas/misc"
 	"github.com/go-mixed/go-canvas/ti"
+	"github.com/pkg/errors"
 )
 
 type tiElement struct {
@@ -230,15 +231,45 @@ func (e *tiElement) ResizeTo(width, height uint32) error {
 			FillMode:  ti.FillModeFit,
 			ScaleMode: ti.ScaleModeLanczos,
 		})
-		if e.texture != nil {
-			e.texture.Release()
-		}
+
+		e.texture.Release()
 		e.texture = newTexture
 	}, func() bool {
 		return misc.NumberEqual(e.width(), width, misc.Epsilon) && misc.NumberEqual(e.height(), height, misc.Epsilon)
 	})
 
-	return err
+	if err != nil {
+		return errors.Wrap(err, "resize texture failed")
+	}
+	return nil
+}
+
+// Blur 模糊纹理（马赛克/高斯/普通），原地修改
+func (e *tiElement) Blur(mode ti.BlurMode, radius int32) error {
+	var err error
+
+	e.LockForUpdate(func() {
+		if e.texture == nil {
+			return
+		}
+
+		var newTexture *ti.TiImage
+		shape := e.texture.Shape()
+		width, height := shape[0], shape[1]
+		newTexture, err = ti.NewTiImage(e.Renderer().Runtime(), width, height)
+		if err != nil {
+			return
+		}
+
+		e.Renderer().Module().Blur(e.texture, newTexture, mode, radius)
+		e.texture.Release()
+		e.texture = newTexture
+	}, func() bool { return true })
+
+	if err != nil {
+		return errors.Wrap(err, "blur texture failed")
+	}
+	return nil
 }
 
 // ClientRect 获取元素自身旋转+缩放后的边界框
