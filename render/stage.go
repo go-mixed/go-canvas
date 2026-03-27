@@ -23,6 +23,10 @@ func NewStage(arch taichi.Arch, width, height uint32) (*Stage, error) {
 		return nil, err
 	}
 
+	return NewStageWithRenderer(renderer, width, height)
+}
+
+func NewStageWithRenderer(renderer *Renderer, width, height uint32) (*Stage, error) {
 	s := &Stage{
 		renderer: renderer,
 		mutex:    &sync.RWMutex{},
