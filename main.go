@@ -15,41 +15,28 @@ import (
 func main() {
 	t := time.Now()
 	cd := misc.GetCurrentDir()
-	runtime, err := taichi.NewRuntime(taichi.ArchCuda, taichi.WithCacheTcm(true))
+
+	stage, err := render.NewStage(taichi.ArchCuda, 720, 1280)
 	if err != nil {
 		panic(err)
 	}
-	defer runtime.Release() // 必须释放
-
-	fmt.Printf("init taichi runtime: %v\n", time.Since(t))
-
-	t = time.Now()
-	renderer, err := render.NewRenderer(runtime)
-	if err != nil {
-		panic(err)
-	}
-	defer renderer.Release() // 必须释放
-
-	fmt.Printf("init renderer: %v\n", time.Since(t))
-
-	t = time.Now()
-	// 创建舞台
-	stage, err := render.NewContainer(renderer, 720, 1280)
-	if err != nil {
-		panic(err)
-	}
-
-	defer stage.Release()
+	defer stage.Release() // 必须释放
 
 	fmt.Printf("init stage: %v\n", time.Since(t))
 
 	t = time.Now()
-	//
-	img, err := render.NewImageSprite(renderer, filepath.Join(cd, "examples", "1.jpg"))
+	background, err := render.NewBlockSprite(stage, 720, 1280)
 	if err != nil {
 		panic(err)
 	}
-	defer img.Release()
+	background.FillTexture(color.White)
+	fmt.Printf("init background: %v\n", time.Since(t))
+
+	t = time.Now()
+	img, err := render.NewImageSprite(stage, filepath.Join(cd, "examples", "1.jpg"))
+	if err != nil {
+		panic(err)
+	}
 	fmt.Printf("init image: %v\n", time.Since(t))
 
 	t = time.Now()
@@ -59,34 +46,18 @@ func main() {
 	img.SetX(-200)
 
 	t = time.Now()
-	background, err := render.NewBlockSprite(renderer, 720, 1280)
+	mask, err := render.NewShapeMask(img, 720, 1280, 720*0.5, 1280*0.5)
 	if err != nil {
 		panic(err)
 	}
-	defer background.Release()
-	background.FillTexture(color.White)
-	fmt.Printf("init background: %v\n", time.Since(t))
-
-	stage.Add(background)
-	stage.Add(img)
-
-	t = time.Now()
-
-	mask, err := render.NewShapeMask(renderer, 720, 1280, 720*0.5, 1280*0.5)
-	if err != nil {
-		panic(err)
-	}
-	defer mask.Release()
-
 	mask.DrawShape(ti.ShapeTypeCircle, 0.5)
 
-	img.SetMask(mask)
+	_, err = render.NewTextSprite(stage, "<text font-size='50'>Hello</text>\n <text font-size='60' color='#ff0000'>World</text>!", 720, 1280, ti.Align{HAlign: ti.HAlignCenter, VAlign: ti.VAlignMiddle})
+	if err != nil {
+		panic(err)
+	}
 
-	fmt.Printf("init mask: %v\n", time.Since(t))
-
-	t = time.Now()
 	stage.Render()
-
 	fmt.Printf("render: %v\n", time.Since(t))
 	t = time.Now()
 

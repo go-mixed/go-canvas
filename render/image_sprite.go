@@ -6,21 +6,21 @@ import (
 )
 
 type ImageSprite struct {
-	ISprite
+	*Sprite
 }
 
 var _ ISprite = (*ImageSprite)(nil)
 
 // NewImageSprite 从图片文件创建图片精灵
-func NewImageSprite(renderer *Renderer, filePath string) (ISprite, error) {
-	texture, err := ti.LoadImageToTiImage(renderer.Runtime(), filePath)
+func NewImageSprite(parent IParent, filePath string) (*ImageSprite, error) {
+	texture, err := ti.LoadImageToTiImage(parent.Renderer().Runtime(), filePath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Cannot load image to taichi")
 	}
 
-	s := NewSprite(renderer, texture)
-
-	return &ImageSprite{
-		ISprite: s,
-	}, nil
+	return BuildSprite(parent, texture, func(s *Sprite) (*ImageSprite, error) {
+		return &ImageSprite{
+			Sprite: s,
+		}, nil
+	})
 }

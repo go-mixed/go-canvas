@@ -14,10 +14,16 @@ type Renderer struct {
 
 // NewRenderer 创建简化精灵渲染器
 // 使用 examples/aot_module 中已有的基础 kernels
-func NewRenderer(runtime *taichi.Runtime) (*Renderer, error) {
+func NewRenderer(arch taichi.Arch) (*Renderer, error) {
+	runtime, err := taichi.NewRuntime(arch, taichi.WithCacheTcm(true))
+	if err != nil {
+		panic(err)
+	}
+
 	// 加载对应的 AOT 模块
 	module, err := ti.LoadAotModule(runtime)
 	if err != nil {
+		runtime.Release()
 		return nil, errors.Wrapf(err, "Load TCM Module failed.")
 	}
 
@@ -32,6 +38,11 @@ func (sr *Renderer) Release() {
 	if sr.module != nil {
 		sr.module.Release()
 		sr.module = nil
+	}
+
+	if sr.runtime != nil {
+		sr.runtime.Release()
+		sr.runtime = nil
 	}
 }
 

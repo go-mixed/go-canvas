@@ -1,64 +1,122 @@
 package render
 
 import (
+	"github.com/go-mixed/go-canvas/misc"
 	"github.com/go-mixed/go-canvas/ti"
 )
 
 type Sprite struct {
-	*Element
-	mask IMask
+	*tiElement
+
+	parent IParent
+	// 真实的Sprite的实例，
+	instance ISprite
+
+	masks *misc.List[IMask]
 }
 
 var _ ISprite = (*Sprite)(nil)
+var _ IMaskParent = (*Sprite)(nil)
 
-// NewSprite 创建非容器的精灵，需要传入纹理
-func NewSprite(renderer *Renderer, texture *ti.TiImage) *Sprite {
+// BuildSprite 创建非容器的精灵，需要传入纹理
+func BuildSprite[T ISprite](parent IParent, texture *ti.TiImage, instanceCreator func(s *Sprite) (T, error)) (T, error) {
 	shape := texture.Shape()
 	w, h := shape[0], shape[1]
 
-	element := &Element{
-		rect:     ti.Rect(0, 0, float32(w), float32(h)),
-		alpha:    1.0,
-		texture:  texture,
-		scaleX:   1.0,
-		scaleY:   1.0,
-		deltaCx:  float32(w / 2),
-		deltaCy:  float32(h / 2),
-		renderer: renderer,
+	element := &tiElement{
+		rect:    ti.Rect(0, 0, float32(w), float32(h)),
+		alpha:   1.0,
+		texture: texture,
+		scaleX:  1.0,
+		scaleY:  1.0,
+		deltaCx: float32(w / 2),
+		deltaCy: float32(h / 2),
 	}
-	return &Sprite{
-		Element: element.initial(renderer),
-		mask:    nil,
+	s := &Sprite{
+		tiElement: element.initial(parent.Renderer()),
+		parent:    parent,
+		masks:     misc.NewList[IMask](),
 	}
+
+	instance, err := instanceCreator(s)
+	if err != nil {
+		var nilT T
+		return nilT, err
+	}
+	// 添加到父级
+	s.parent.AddChild(instance)
+	s.instance = instance
+
+	return instance, nil
+}
+
+func (s *Sprite) AddMask(mask IMask) {
+	s.LockForUpdate(func() {
+		if s.masks.Index(func(child IMask) bool {
+			return child == mask
+		}) >= 0 {
+			return
+		}
+		s.masks.PushBack(mask)
+	}, func() bool {
+		return true
+	})
+}
+
+func (s *Sprite) RemoveMask(mask IMask) {
+	s.LockForUpdate(func() {
+		s.masks.RemoveAll(func(child IMask) bool {
+			return child == mask
+		})
+
+		// 递归删除
+		mask.Release()
+	}, func() bool {
+		return true
+	})
+}
+
+func (s *Sprite) Masks() *misc.List[IMask] {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.masks
 }
 
 // NewBlockSprite 创建纯色块精灵，颜色为透明的
-func NewBlockSprite(renderer *Renderer, width, height uint32) (ISprite, error) {
-	texture, err := ti.NewTiImage(renderer.Runtime(), width, height)
+func NewBlockSprite(parent IParent, width, height uint32) (*Sprite, error) {
+	texture, err := ti.NewTiImage(parent.Renderer().Runtime(), width, height)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewSprite(renderer, texture), nil
-}
-
-func (s *Sprite) SetMask(mask IMask) {
-	s.lockForUpdate(func() {
-		s.mask = mask
-	}, func() bool {
-		return s.mask != mask
+	return BuildSprite(parent, texture, func(s *Sprite) (*Sprite, error) {
+		return s, nil
 	})
-}
-
-func (s *Sprite) Mask() IMask {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-	return s.mask
 }
 
 func (s *Sprite) Render() {
 	defer func() {
 		s.SetDirty(false)
 	}()
+}
+
+// RemoveFromParent 从父级移除精灵
+func (s *Sprite) RemoveFromParent() {
+	s.parent.RemoveChild(s.instance)
+}
+
+func (s *Sprite) Release() {
+	if s.texture != nil {
+		s.texture.Release()
+	}
+
+	for _, mask := range s.masks.Range() {
+		mask.Release()
+	}
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.texture = nil
+	s.masks.Clear()
 
 }

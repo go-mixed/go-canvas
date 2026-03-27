@@ -13,35 +13,65 @@ type TextSprite struct {
 	align    ti.Align
 }
 
+func (s *TextSprite) RemoveMask(mask IMask) {
+	//TODO implement me
+	panic("implement me")
+}
+
 // NewTextSprite 创建文字精灵
-func NewTextSprite(renderer *Renderer, text string, w, h uint32, align ti.Align) (ISprite, error) {
+func NewTextSprite(parent IParent, text string, width, height uint32, align ti.Align) (ISprite, error) {
 	rt := font.BuildRichTextLines(text)
-	ts := &TextSprite{
-		richText: rt,
-		align:    align,
+
+	img := rt.RenderText(align)
+	imgW, imgH := uint32(img.Bounds().Dx()), uint32(img.Bounds().Dy())
+	if width == 0 {
+		width = imgW
+	}
+	if height == 0 {
+		height = imgH
 	}
 
-	img, imgW, imgH := rt.RenderText(w, h, align)
-
-	texture, err := ti.NewTiImage(renderer.runtime, uint32(imgW), uint32(imgH))
+	texture, err := ti.NewTiImage(parent.Renderer().Runtime(), width, height)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = ti.UploadImageToTexture(texture, img); err != nil {
+	// 加上裁切代码
+	var imgOffset ti.Point[int]
+	switch align.HAlign {
+	case ti.HAlignCenter:
+		imgOffset.X = (int(width) - int(imgW)) / 2
+	case ti.HAlignRight:
+		imgOffset.X = int(width) - int(imgW)
+	default:
+	}
+
+	switch align.VAlign {
+	case ti.VAlignMiddle:
+		imgOffset.Y = (int(height) - int(imgH)) / 2
+	case ti.VAlignBottom:
+		imgOffset.Y = int(height) - int(imgH)
+	default:
+	}
+
+	if err = ti.UploadImageToTexture(texture, img, imgOffset); err != nil {
 		texture.Release()
 		return nil, err
 	}
 
-	sprite := NewSprite(renderer, texture)
-	ts.Sprite = sprite
-
-	return ts, nil
+	return BuildSprite(parent, texture, func(s *Sprite) (*TextSprite, error) {
+		ts := &TextSprite{
+			Sprite:   s,
+			richText: rt,
+			align:    align,
+		}
+		return ts, nil
+	})
 }
 
 // SetText 设置文字内容并重新渲染
 func (s *TextSprite) SetText(text string) {
-	s.lockForUpdate(func() {
+	s.LockForUpdate(func() {
 		s.richText = font.BuildRichTextLines(text)
 	}, func() bool {
 		return s.richText.Equal(text)

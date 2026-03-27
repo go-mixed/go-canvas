@@ -36,14 +36,13 @@ func (t *TextSegment) CopyWithText(text string) *TextSegment {
 func (t *TextSegment) CreateFace() font.Face {
 	return truetype.NewFace(t.Font.Font, &truetype.Options{
 		Size:    float64(t.FontSize),
-		DPI:     72,
+		DPI:     120,
 		Hinting: font.HintingFull,
 	})
 }
 
 func (t *TextSegment) MeasureString(face font.Face) (int, int) {
 	segWidth := font.MeasureString(face, t.Text).Ceil()
-	defer face.Close()
 
 	t.Width = segWidth
 	// 使用 ascent + |descent| 作为高度，确保能完整渲染

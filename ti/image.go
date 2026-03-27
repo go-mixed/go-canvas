@@ -44,7 +44,7 @@ func LoadImageToTiImage(rt *taichi.Runtime, filePath string) (*TiImage, error) {
 		return nil, errors.Wrapf(err, "Cannot create taichi texture")
 	}
 
-	err = UploadImageToTexture(texture, img)
+	err = UploadImageToTexture(texture, img, Point[int]{})
 
 	if err != nil {
 		texture.Release()
@@ -55,15 +55,23 @@ func LoadImageToTiImage(rt *taichi.Runtime, filePath string) (*TiImage, error) {
 }
 
 // UploadImageToTexture 将 image.Image 上传到 TiImage
-func UploadImageToTexture(texture *TiImage, img image.Image) error {
+func UploadImageToTexture(texture *TiImage, img image.Image, imgOffset Point[int]) error {
 	bounds := img.Bounds()
-	width := bounds.Dx()
-	height := bounds.Dy()
+	imgWidth := bounds.Dx()
+	imgHeight := bounds.Dy()
+	shape := texture.Shape()
+	shapeWidth, shapeHeight := int(shape[0]), int(shape[1])
 
 	err := texture.MapFloat32(func(data []float32) error {
-		for y := 0; y < height; y++ {
-			for x := 0; x < width; x++ {
-				r, g, b, a := ExpandFColor(img.At(x, y))
+		for y := 0; y < shapeHeight; y++ {
+			for x := 0; x < shapeWidth; x++ {
+
+				imgX, imgY := x-imgOffset.X, y-imgOffset.Y
+				if imgX < 0 || imgX >= imgWidth || imgY < 0 || imgY >= imgHeight {
+					continue
+				}
+
+				r, g, b, a := ExpandFColor(img.At(imgX, imgY))
 				idx, _ := texture.GetOffset(x, y)
 				data[idx] = r
 				data[idx+1] = g

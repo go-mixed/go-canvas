@@ -9,41 +9,41 @@ import (
 )
 
 type ShapeSprite struct {
-	ISprite
-
-	renderer *Renderer
+	*Sprite
 
 	// 归一化的SDF坐标网格
 	dx, dy *taichi.NdArray
 }
 
-func NewShapeSprite(renderer *Renderer, width, height uint32, cx, cy uint32) (ISprite, error) {
-	sprite, err := NewBlockSprite(renderer, width, height)
+func NewShapeSprite(parent IParent, width, height uint32, cx, cy uint32) (*ShapeSprite, error) {
+
+	texture, err := ti.NewTiImage(parent.Renderer().Runtime(), width, height)
 	if err != nil {
 		return nil, err
 	}
 
-	dx, err := ti.NewTiGrid(renderer.Runtime(), width, height)
-	if err != nil {
-		return nil, err
-	}
+	return BuildSprite[*ShapeSprite](parent, texture, func(sprite *Sprite) (*ShapeSprite, error) {
+		dx, err := ti.NewTiGrid(parent.Renderer().Runtime(), width, height)
+		if err != nil {
+			return nil, err
+		}
 
-	dy, err := ti.NewTiGrid(renderer.runtime, width, height)
-	if err != nil {
-		return nil, err
-	}
+		dy, err := ti.NewTiGrid(parent.Renderer().Runtime(), width, height)
+		if err != nil {
+			dx.Release()
+			return nil, err
+		}
 
-	renderer.Module().ComputeNormalizedCoords(dx, dy, float32(cx), float32(cy))
+		parent.Renderer().Module().ComputeNormalizedCoords(dx, dy, float32(cx), float32(cy))
+		sprite.SetCx(float32(cx))
+		sprite.SetCy(float32(cy))
 
-	sprite.SetCx(float32(cx))
-	sprite.SetCy(float32(cy))
-
-	return &ShapeSprite{
-		ISprite:  sprite,
-		renderer: renderer,
-		dx:       dx,
-		dy:       dy,
-	}, nil
+		return &ShapeSprite{
+			Sprite: sprite,
+			dx:     dx,
+			dy:     dy,
+		}, nil
+	})
 }
 
 // DrawShape 绘制形状
@@ -62,7 +62,7 @@ func (s *ShapeSprite) DrawShape(shapeType ti.ShapeType, tVal float32, fns ...fun
 	}
 
 	data := s.Texture()
-	s.renderer.Module().ComputeShape(data, s.dx, s.dy, shapeType, tVal, options.Direction, options.Color)
+	s.Renderer().Module().ComputeShape(data, s.dx, s.dy, shapeType, tVal, options.Direction, options.Color)
 
 	return s
 }

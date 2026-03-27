@@ -1,6 +1,8 @@
 package misc
 
-import "iter"
+import (
+	"iter"
+)
 
 // Copyright 2009 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
@@ -69,18 +71,6 @@ func NewList[T any](values ...T) *List[T] {
 // Len returns the number of elements of list l.
 // The complexity is O(1).
 func (l *List[T]) Len() int { return l.len }
-
-func (l *List[T]) Range() iter.Seq2[int, T] {
-	return func(yield func(int, T) bool) {
-		var i int
-		for it := l.Front(); it != nil; it = it.Next() {
-			if !yield(i, it.Value) {
-				return
-			}
-			i++
-		}
-	}
-}
 
 // Front returns the first element of list l or nil if the list is empty.
 func (l *List[T]) Front() *Element[T] {
@@ -171,7 +161,7 @@ func (l *List[T]) move(e, at *Element[T]) {
 func (l *List[T]) Remove(e *Element[T]) T {
 	if e.list == l {
 		// if e.list == l, l must have been initialized when e was inserted
-		// in l or l == nil (e is a zero Element) and l.remove will crash
+		// in l or l == nil (e is a zero tiElement) and l.remove will crash
 		l.remove(e)
 	}
 	return e.Value
@@ -313,4 +303,182 @@ func (l *List[T]) PushFrontValues(values ...T) *List[T] {
 	}
 
 	return l
+}
+
+// Range returns a range.
+func (l *List[T]) Range() iter.Seq2[int, T] {
+	return func(yield func(int, T) bool) {
+		var i int
+		for it := l.Front(); it != nil; it = it.Next() {
+			if !yield(i, it.Value) {
+				return
+			}
+			i++
+		}
+	}
+}
+
+// RevRange returns a reverse range.
+func (l *List[T]) RevRange() iter.Seq2[int, T] {
+	return func(yield func(int, T) bool) {
+		var i int
+		for it := l.Back(); it != nil; it = it.Prev() {
+			if !yield(i, it.Value) {
+				return
+			}
+			i++
+		}
+	}
+}
+
+// RangeElements returns a range of elements.
+func (l *List[T]) RangeElements() iter.Seq2[int, *Element[T]] {
+	return func(yield func(int, *Element[T]) bool) {
+		var i int
+		lastIndex := l.Len() - 1
+		for it := l.Front(); it != nil; it = it.Next() {
+			if !yield(lastIndex-i, it) {
+				return
+			}
+			i++
+		}
+	}
+}
+
+// RevRangeElements returns a reverse range of elements.
+func (l *List[T]) RevRangeElements() iter.Seq2[int, *Element[T]] {
+	return func(yield func(int, *Element[T]) bool) {
+		var i int
+		lastIndex := l.Len() - 1
+		for it := l.Back(); it != nil; it = it.Prev() {
+			if !yield(lastIndex-i, it) {
+				return
+			}
+			i++
+		}
+	}
+}
+
+// Index returns the index of the first element that matches the specified condition.
+func (l *List[T]) Index(cmp func(item T) bool) int {
+	if l.Len() == 0 {
+		return -1
+	}
+
+	for i, item := range l.Range() {
+		if cmp(item) {
+			return i
+		}
+	}
+	return -1
+}
+
+// LastIndex returns the last index of the element that matches the specified condition.
+func (l *List[T]) LastIndex(cmp func(item T) bool) int {
+	if l.Len() == 0 {
+		return -1
+	}
+
+	for i, item := range l.RevRange() {
+		if cmp(item) {
+			return i
+		}
+	}
+
+	return -1
+}
+
+// Find finds all elements that match the specified condition.
+func (l *List[T]) Find(cmp func(item T) bool) []T {
+	var result []T
+	for _, item := range l.Range() {
+		if cmp(item) {
+			result = append(result, item)
+		}
+	}
+	return result
+}
+
+// FindElements finds all elements that match the specified condition.
+func (l *List[T]) FindElements(cmp func(item *Element[T]) bool) []*Element[T] {
+	var result []*Element[T]
+	for _, element := range l.RangeElements() {
+		if cmp(element) {
+			result = append(result, element)
+		}
+	}
+	return result
+}
+
+// RemoveAt removes the element at the specified index.
+func (l *List[T]) RemoveAt(index int) {
+	l.RemoveRange(index, 1)
+}
+
+// RemoveRange removes the elements in the specified range: [index, index+length)
+func (l *List[T]) RemoveRange(index int, length int) {
+	if l.Len() == 0 {
+		return
+	}
+	for i, element := range l.RangeElements() {
+		if i >= index && i < index+length {
+			l.Remove(element)
+		}
+	}
+}
+
+// RemoveOne removes the first element that matches the specified condition.
+func (l *List[T]) RemoveOne(cmp func(item T) bool) {
+	if l.Len() == 0 {
+		return
+	}
+	for _, element := range l.RangeElements() {
+		if cmp(element.Value) {
+			l.Remove(element)
+			break
+		}
+	}
+}
+
+// RemoveAll removes all elements that match the specified condition.
+func (l *List[T]) RemoveAll(cmp func(item T) bool) {
+	if l.Len() == 0 {
+		return
+	}
+
+	for _, element := range l.RangeElements() {
+		if cmp(element.Value) {
+			l.Remove(element)
+		}
+	}
+}
+
+// At returns the element at the specified index.
+func (l *List[T]) At(index int) T {
+	var zero T
+	if l.Len() == 0 {
+		return zero
+	}
+
+	for i, item := range l.Range() {
+		if index == i {
+			return item
+		}
+	}
+	return zero
+}
+
+// ElementAt returns the element at the specified index.
+func (l *List[T]) ElementAt(index int) *Element[T] {
+	for i, item := range l.RangeElements() {
+		if index == i {
+			return item
+		}
+	}
+	return nil
+}
+
+// Clear removes all elements from the list.
+func (l *List[T]) Clear() {
+	l.Init()
 }

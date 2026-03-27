@@ -2,47 +2,69 @@ package render
 
 import (
 	"image/color"
-	"slices"
 
+	"github.com/go-mixed/go-canvas/misc"
 	"github.com/go-mixed/go-canvas/ti"
 )
 
 type Container struct {
 	*Sprite
 
-	children []ISprite
+	children *misc.List[ISprite]
 }
 
 var _ IContainer = (*Container)(nil)
+var _ IParent = (*Container)(nil)
+var _ IMaskParent = (*Container)(nil)
 
 // NewContainer 创建容器，只能添加子精灵
-// 容器中的texture只将子精灵、容器渲染在上面
-func NewContainer(renderer *Renderer, width, height uint32) (IContainer, error) {
-	texture, err := ti.NewTiImage(renderer.Runtime(), width, height)
+// 容器中的texture为空白，当Render时，会将子精灵、容器渲染在上面
+func NewContainer(parent IParent, width, height uint32) (IContainer, error) {
+	texture, err := ti.NewTiImage(parent.Renderer().Runtime(), width, height)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Container{
-		Sprite: NewSprite(renderer, texture),
-	}, nil
+	return BuildSprite(parent, texture, func(s *Sprite) (*Container, error) {
+		return &Container{
+			Sprite:   s,
+			children: misc.NewList[ISprite](),
+		}, nil
+	})
 }
 
-func (c *Container) Add(sprite ISprite) {
-	c.lockForUpdate(func() {
-		c.children = append(c.children, sprite)
+func (c *Container) AddChild(sprite ISprite) {
+	c.LockForUpdate(func() {
+
+		if c.children.Index(func(item ISprite) bool {
+			return item == sprite
+		}) > 0 {
+			return
+		}
+
+		c.children.PushBack(sprite)
 	}, func() bool { return true })
 }
 
-func (c *Container) Remove(sprite ISprite) {
-	c.lockForUpdate(func() {
-		c.children = slices.DeleteFunc(c.children, func(child ISprite) bool {
+func (c *Container) RemoveChild(sprite ISprite) {
+	c.LockForUpdate(func() {
+
+		c.children.RemoveAll(func(child ISprite) bool {
 			return child == sprite
 		})
+
+		// 递归释放
+		sprite.Release()
 	}, func() bool { return true })
 }
 
-func (c *Container) Children() []ISprite {
+func (c *Container) RemoveFromParent() {
+	if c.parent != nil {
+		c.parent.RemoveChild(c)
+	}
+}
+
+func (c *Container) Children() *misc.List[ISprite] {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 	return c.children
@@ -52,20 +74,18 @@ func (c *Container) IsDirty() bool {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
-	for _, child := range c.children {
+	for _, child := range c.children.Range() {
 		if child.IsDirty() {
 			return true
 		}
 	}
 
-	// 如果只是修改容器的x,y等，无需重新渲染当前容器的texture，
-	// 因为当前Render()是将子精灵渲染到c.texture上，而修改x,y等参数之后，会在父节点中处理
-	return false
+	return c.Sprite.IsDirty()
 }
 
 func (c *Container) ClientRect() ti.Rectangle[float32] {
 	rect := c.Sprite.ClientRect()
-	for _, child := range c.children {
+	for _, child := range c.children.Range() {
 		bbox := child.ClientRect()
 		rect = rect.Union(bbox)
 	}
@@ -82,7 +102,7 @@ func (c *Container) Render() {
 	}
 
 	// 置空为透明
-	c.renderer.Module().FillTexture(c.texture, color.Transparent)
+	c.parent.Renderer().Module().FillTexture(c.texture, color.Transparent)
 
 	c.mutex.Lock()
 	children := c.children
@@ -90,14 +110,22 @@ func (c *Container) Render() {
 
 	w, h := c.Width(), c.Height()
 
-	for _, child := range children {
+	for _, child := range children.Range() {
 		// 渲染子级
 		child.Render()
 		childTexture := child.Texture()
 
 		bbox := child.ClippedRect(w, h)
+		if bbox.Dx() == 0 || bbox.Dy() == 0 {
+			continue
+		}
 
-		mask := child.Mask()
+		// 暂时只支持第一个mask
+		masks := child.Masks()
+		var mask IMask
+		if masks.Len() > 0 {
+			mask = masks.At(0)
+		}
 
 		options := ti.RenderLayerOptions{
 			X:        child.X(),
@@ -117,18 +145,33 @@ func (c *Container) Render() {
 		}
 
 		if mask != nil {
-			c.renderer.Module().RenderLayerWithMask(
+			c.parent.Renderer().Module().RenderLayerWithMask(
 				childTexture,
 				mask.Texture(),
 				c.texture,
 				options,
 			)
 		} else {
-			c.renderer.Module().RenderLayerNoMask(
+			c.parent.Renderer().Module().RenderLayerNoMask(
 				childTexture,
 				c.texture,
 				options,
 			)
 		}
 	}
+}
+
+func (c *Container) Release() {
+	if c.Sprite != nil {
+		c.Sprite.Release()
+	}
+
+	for _, child := range c.children.Range() {
+		child.Release()
+	}
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.Sprite = nil
+	c.children.Clear()
 }

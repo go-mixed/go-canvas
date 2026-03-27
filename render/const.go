@@ -3,6 +3,7 @@ package render
 import (
 	"image/color"
 
+	"github.com/go-mixed/go-canvas/misc"
 	"github.com/go-mixed/go-canvas/ti"
 )
 
@@ -42,37 +43,31 @@ type IElement interface {
 	// ClippedRect 获取与父级区域裁剪后的可视区域（请在 Container.Render 中使用）
 	ClippedRect(parentWidth, parentHeight float32) ti.Rectangle[float32]
 
+	IsDirty() bool
+	SetDirty(val bool)
+	//LockForUpdate(updateFn func(), triggerDirty func() bool)
+
 	// Release 释放资源（必须调用，不然GPU显存泄漏）
 	Release()
 
-	IsDirty() bool
-	SetDirty(val bool)
-	//lockForUpdate(updateFn func(), triggerDirty func() bool)
-}
-
-type IRender interface {
-	Render()
+	Renderer() *Renderer
 }
 
 // ISprite 精灵接口，包含操作接口，以及复杂的操作
 type ISprite interface {
 	IElement
 
-	SetMask(mask IMask)
-	Mask() IMask
+	IMaskParent
 
-	IRender
+	RemoveFromParent()
+	Render()
 }
 
 // IContainer 容器接口
 type IContainer interface {
 	ISprite
 
-	Add(sprite ISprite)
-	Remove(sprite ISprite)
-	Children() []ISprite
-
-	ClientRect() ti.Rectangle[float32]
+	IParent
 }
 
 type IMask interface {
@@ -80,4 +75,57 @@ type IMask interface {
 	ApplyFeather(featherRadius uint32, featherMode ti.FeatherMode)
 	Release()
 	Texture() *ti.TiMask
+}
+
+type IParent interface {
+	AddChild(sprite ISprite)
+	RemoveChild(sprite ISprite)
+	Children() *misc.List[ISprite]
+
+	Renderer() *Renderer
+}
+
+type IMaskParent interface {
+	AddMask(mask IMask)
+	RemoveMask(mask IMask)
+	Masks() *misc.List[IMask]
+
+	Renderer() *Renderer
+}
+
+type selfRelease struct {
+	renderer *Renderer
+
+	children *misc.List[ISprite]
+	masks    *misc.List[IMask]
+}
+
+var _ IParent = (*selfRelease)(nil)
+var _ IMaskParent = (*selfRelease)(nil)
+
+func SelfRelease(renderer *Renderer) *selfRelease {
+	return &selfRelease{
+		renderer: renderer,
+		children: misc.NewList[ISprite](),
+		masks:    misc.NewList[IMask](),
+	}
+}
+
+func (s *selfRelease) Renderer() *Renderer {
+	return s.renderer
+}
+
+func (s *selfRelease) AddChild(sprite ISprite) {}
+
+func (s *selfRelease) RemoveChild(sprite ISprite) {}
+
+func (s *selfRelease) Children() *misc.List[ISprite] {
+	return s.children
+}
+
+func (s *selfRelease) AddMask(mask IMask) {}
+
+func (s *selfRelease) RemoveMask(mask IMask) {}
+func (s *selfRelease) Masks() *misc.List[IMask] {
+	return s.masks
 }
