@@ -46,19 +46,39 @@ func (r *RichText) RenderText(align ti.Align) image.Image {
 			// 默认左对齐
 		}
 
+		// 获取该行最大字号的 Metrics
+		maxMetrics := segments.MaxMetrics()
+		maxTopPadding := (maxMetrics.Ascent - maxMetrics.Height).Ceil()
+
 		// 渲染该行的每个 segment
 		for _, seg := range segments {
 			face := r.GetFace(seg.FontFamily, seg.FontSize)
+			if face == nil {
+				continue
+			}
 
-			// 计算垂直偏移（小字号往下偏移以实现垂直居中）
+			segMetrics := seg.metrics
+			segTopPadding := (segMetrics.Ascent - segMetrics.Height).Ceil()
+
+			// 计算垂直偏移
 			offsetYSeg := offsetY
 			switch align.VAlign {
+			case ti.VAlignTop:
+				// 顶部对齐：所有字号的顶部对齐
+				offsetYSeg = offsetY + maxTopPadding - segTopPadding
 			case ti.VAlignMiddle:
-				offsetYSeg = offsetY + (lineHeight-seg.Height)/2
+				// 垂直居中：所有字号的垂直中心对齐
+				// 中心 = baseline - topPadding + height/2
+				// 要让 seg 的中心与 max 的中心对齐：
+				// offsetY - maxTopPadding + maxHeight/2 = offsetYSeg - segTopPadding + seg.Height/2
+				// offsetYSeg = offsetY + maxTopPadding - segTopPadding + (maxHeight - seg.Height)/2
+				maxHeight := (maxMetrics.Ascent + maxMetrics.Descent).Ceil()
+				offsetYSeg = offsetY + maxTopPadding - segTopPadding + (maxHeight-seg.Height)/2
 			case ti.VAlignBottom:
-				offsetYSeg = offsetY + lineHeight - seg.Height
+				fallthrough
 			default:
-				// 默认顶部对齐
+				// 底部对齐：所有字号的底部对齐
+				offsetYSeg = offsetY + (maxMetrics.Ascent).Ceil() - segMetrics.Ascent.Ceil()
 			}
 
 			// 绘制文字
