@@ -17,7 +17,13 @@ func main() {
 	t := time.Now()
 	cd := misc.GetCurrentDir()
 
-	stage, err := render.NewStage(taichi.ArchCuda, 720, 1280)
+	renderer, err := render.NewRenderer(taichi.ArchCuda)
+	if err != nil {
+		panic(err)
+	}
+	defer renderer.Release() // 必须释放
+
+	stage, err := render.NewStage(renderer, 720, 1280)
 	if err != nil {
 		panic(err)
 	}

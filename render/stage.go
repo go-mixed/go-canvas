@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-mixed/go-canvas/misc"
 	"github.com/go-mixed/go-canvas/ti"
-	"github.com/go-mixed/go-taichi/taichi"
 	"github.com/pkg/errors"
 )
 
@@ -18,23 +17,8 @@ type Stage struct {
 
 var _ IParent = (*Stage)(nil)
 
-func NewStage(arch taichi.Arch, width, height uint32) (*Stage, error) {
-	renderer, err := NewRenderer(arch)
-	if err != nil {
-		return nil, err
-	}
-
-	stage, err := NewStageWithRenderer(renderer, width, height)
-	if err != nil {
-		renderer.Release()
-		return nil, errors.Wrapf(err, "create stage failed")
-	}
-
-	return stage, nil
-}
-
-// NewStageWithRenderer 创建舞台，注意：返回错误时，不会释放renderer
-func NewStageWithRenderer(renderer *Renderer, width, height uint32) (*Stage, error) {
+// NewStage 创建舞台，注意：调用 Stage.Release 时，不会释放 Renderer
+func NewStage(renderer *Renderer, width, height uint32) (*Stage, error) {
 	s := &Stage{
 		renderer: renderer,
 		mutex:    &sync.RWMutex{},
@@ -75,12 +59,7 @@ func (s *Stage) Children() *misc.List[ISprite] {
 }
 
 func (s *Stage) Release() {
-
 	if s.container != nil {
 		s.container.Release()
-	}
-
-	if s.renderer != nil {
-		s.renderer.Release()
 	}
 }

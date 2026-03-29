@@ -13,24 +13,12 @@ type Renderer struct {
 }
 
 // NewRenderer 创建渲染器
-// 使用 examples/aot_module 中已有的基础 kernels
 func NewRenderer(arch taichi.Arch) (*Renderer, error) {
 	runtime, err := taichi.NewRuntime(arch, taichi.WithCacheTcm(true))
 	if err != nil {
-		panic(err)
+		return nil, errors.Wrapf(err, "Create Taichi Runtime failed.")
 	}
 
-	renderer, err := NewRendererWithRuntime(runtime)
-	if err != nil {
-		runtime.Release()
-		return nil, errors.Wrapf(err, "create renderer failed")
-	}
-
-	return renderer, nil
-}
-
-// NewRendererWithRuntime 创建渲染器，注意：返回失败时不会释放 runtime
-func NewRendererWithRuntime(runtime *taichi.Runtime) (*Renderer, error) {
 	// 加载对应的 AOT 模块
 	module, err := ti.LoadAotModule(runtime)
 	if err != nil {
