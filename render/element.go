@@ -327,7 +327,8 @@ func (e *tiElement) ClientRect() ti.Rectangle[float32] {
 		}
 	}
 
-	return ti.Rect(minX, minY, maxX, maxY)
+	bbox := ti.Rect(minX, minY, maxX, maxY)
+	return bbox.MoveTo(e.rect.X(), e.rect.Y())
 }
 
 // ClippedRect 获取与父级区域裁剪后的可视区域
