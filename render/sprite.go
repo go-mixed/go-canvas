@@ -106,9 +106,11 @@ func (s *Sprite) RemoveFromParent() {
 }
 
 func (s *Sprite) Release() {
+	s.mutex.RLock()
 	if s.texture != nil {
 		s.texture.Release()
 	}
+	s.mutex.RUnlock()
 
 	for _, mask := range s.masks.Range() {
 		mask.Release()

@@ -196,8 +196,8 @@ func (e *tiElement) SetCy(cy float32) {
 //	return s
 //}
 
-// FillTexture 填充纯色
-func (e *tiElement) FillTexture(color color.Color) {
+// Fill 填充纯色
+func (e *tiElement) Fill(color color.Color) {
 	e.LockForUpdate(func() {
 		e.Renderer().Module().FillTexture(e.texture, color)
 	}, func() bool { return false })
@@ -209,7 +209,7 @@ func (e *tiElement) Texture() *ti.TiImage {
 	return e.texture
 }
 
-func (e *tiElement) ResizeTo(width, height uint32) error {
+func (e *tiElement) Resize(width, height uint32) error {
 	var err error
 	e.LockForUpdate(func() {
 		if misc.NumberEqual(e.width(), width, misc.Epsilon) && misc.NumberEqual(e.height(), height, misc.Epsilon) {

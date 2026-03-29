@@ -8,10 +8,12 @@ import (
 )
 
 type IElementOperation interface {
-	// ResizeTo 重置尺寸，会替换纹理
-	ResizeTo(width, height uint32) error
-	// Blur 模糊纹理（马赛克/高斯/普通），原地修改
+	// Resize 设置尺寸
+	Resize(width, height uint32) error
+	// Blur 模糊纹理（马赛克/高斯/普通）
 	Blur(mode ti.BlurMode, radius int32) error
+	// Fill 所有像素填充同一个颜色
+	Fill(rgba color.Color)
 }
 
 // IElement 精灵操作接口，主要是Set/Get，没有复杂操作
@@ -27,10 +29,6 @@ type IElement interface {
 	Cx() float32
 	Cy() float32
 
-	//// 替换纹理（之前的纹理会释放）
-	//SetTexture(texture *ti.TiImage) ISprite
-	// 所有像素填充同一个颜色
-	FillTexture(rgba color.Color)
 	Texture() *ti.TiImage
 
 	SetX(x float32)

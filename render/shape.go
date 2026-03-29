@@ -51,7 +51,7 @@ func NewShapeSprite(parent IParent, width, height uint32, cx, cy uint32) (*Shape
 // size: 大小参数 0.0-2.0，1.0 表示填充整个屏幕
 // fns: 可选参数，如 ti.WithShapeDirection, ti.WithShapeColor
 func (s *ShapeSprite) DrawShape(shapeType ti.ShapeType, tVal float32, fns ...func(option *ti.ShapeOptions)) ISprite {
-	s.FillTexture(color.Transparent)
+	s.Fill(color.Transparent)
 	options := &ti.ShapeOptions{
 		Direction: ti.DirectionCenter,
 		Color:     color.Black,

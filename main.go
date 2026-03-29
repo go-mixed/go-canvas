@@ -30,7 +30,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	background.FillTexture(color.White)
+	background.Fill(color.White)
 	fmt.Printf("init background: %v\n", time.Since(t))
 
 	t = time.Now()
@@ -41,7 +41,7 @@ func main() {
 	fmt.Printf("init image: %v\n", time.Since(t))
 
 	t = time.Now()
-	img.ResizeTo(720, 1280)
+	img.Resize(720, 1280)
 	img.Blur(ti.BlurModeMosaic, 20)
 	fmt.Printf("resize image: %v\n", time.Since(t))
 
