@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/go-mixed/go-canvas/font"
 	"github.com/go-mixed/go-canvas/misc"
 	"github.com/go-mixed/go-canvas/render"
 	"github.com/go-mixed/go-canvas/ti"
@@ -41,7 +42,7 @@ func main() {
 
 	t = time.Now()
 	img.ResizeTo(720, 1280)
-	img.Blur(ti.BlurModeGaussian, 20)
+	img.Blur(ti.BlurModeMosaic, 20)
 	fmt.Printf("resize image: %v\n", time.Since(t))
 
 	img.SetX(-200)
@@ -53,7 +54,9 @@ func main() {
 	}
 	mask.DrawShape(ti.ShapeTypeCircle, 0.5)
 
-	_, err = render.NewTextSprite(stage, "<text font-size='50'>Hello</text>\n <text font-size='60' color='#ff0000'>World</text>!", 720, 1280, ti.Align{HAlign: ti.HAlignCenter, VAlign: ti.VAlignMiddle})
+	fontLibrary := font.NewFontLibrary()
+
+	_, err = render.NewTextSprite(stage, fontLibrary, "<text font-size='50'>Hello</text>\n <text font-size='60' color='#ff0000'>World</text>!", 720, 1280, font.WithAlign(ti.HAlignCenter, ti.VAlignMiddle))
 	if err != nil {
 		panic(err)
 	}

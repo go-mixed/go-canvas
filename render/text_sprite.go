@@ -10,19 +10,15 @@ var _ ISprite = (*TextSprite)(nil)
 type TextSprite struct {
 	*Sprite
 	richText *font.RichText
-	align    ti.Align
-}
-
-func (s *TextSprite) RemoveMask(mask IMask) {
-	//TODO implement me
-	panic("implement me")
 }
 
 // NewTextSprite 创建文字精灵
-func NewTextSprite(parent IParent, text string, width, height uint32, align ti.Align) (ISprite, error) {
-	rt := font.BuildRichTextLines(text)
+func NewTextSprite(parent IParent, fontLibrary *font.FontLibrary, text string, width, height uint32, opts ...font.RichTextOptionFn) (ISprite, error) {
 
-	img := rt.RenderText(align)
+	rt := font.BuildRichTextLines(fontLibrary, opts...)
+	rt.SetText(text)
+
+	img := rt.RenderText()
 	imgW, imgH := uint32(img.Bounds().Dx()), uint32(img.Bounds().Dy())
 	if width == 0 {
 		width = imgW
@@ -38,7 +34,7 @@ func NewTextSprite(parent IParent, text string, width, height uint32, align ti.A
 
 	// 加上裁切代码
 	var imgOffset ti.Point[int]
-	switch align.HAlign {
+	switch rt.Align().HAlign {
 	case ti.HAlignCenter:
 		imgOffset.X = (int(width) - int(imgW)) / 2
 	case ti.HAlignRight:
@@ -46,7 +42,7 @@ func NewTextSprite(parent IParent, text string, width, height uint32, align ti.A
 	default:
 	}
 
-	switch align.VAlign {
+	switch rt.Align().VAlign {
 	case ti.VAlignMiddle:
 		imgOffset.Y = (int(height) - int(imgH)) / 2
 	case ti.VAlignBottom:
@@ -63,7 +59,6 @@ func NewTextSprite(parent IParent, text string, width, height uint32, align ti.A
 		ts := &TextSprite{
 			Sprite:   s,
 			richText: rt,
-			align:    align,
 		}
 		return ts, nil
 	})
@@ -72,7 +67,7 @@ func NewTextSprite(parent IParent, text string, width, height uint32, align ti.A
 // SetText 设置文字内容并重新渲染
 func (s *TextSprite) SetText(text string) {
 	s.LockForUpdate(func() {
-		s.richText = font.BuildRichTextLines(text)
+		s.richText.SetText(text)
 	}, func() bool {
 		return s.richText.Equal(text)
 	})

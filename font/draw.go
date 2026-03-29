@@ -11,7 +11,7 @@ import (
 )
 
 // RenderText 渲染文字为图像（支持水平和垂直居中）
-func (r *RichText) RenderText(align ti.Align) image.Image {
+func (r *RichText) RenderText() image.Image {
 	var emptyImg = image.NewRGBA(image.Rect(0, 0, 0, 0))
 	if r.IsEmpty() {
 		return emptyImg
@@ -37,7 +37,7 @@ func (r *RichText) RenderText(align ti.Align) image.Image {
 
 		// 计算水平起始偏移
 		offsetX := 0
-		switch align.HAlign {
+		switch r.opts.align.HAlign {
 		case ti.HAlignCenter:
 			offsetX = (maxWidth - lineWidth) / 2
 		case ti.HAlignRight:
@@ -62,7 +62,7 @@ func (r *RichText) RenderText(align ti.Align) image.Image {
 
 			// 计算垂直偏移
 			offsetYSeg := offsetY
-			switch align.VAlign {
+			switch r.opts.align.VAlign {
 			case ti.VAlignTop:
 				// 顶部对齐：所有字号的顶部对齐
 				offsetYSeg = offsetY + maxTopPadding - segTopPadding

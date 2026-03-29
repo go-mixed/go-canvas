@@ -98,3 +98,19 @@ func MapMultiGetInt(m map[string]string, keys ...string) ([]int64, bool) {
 
 	return vals, ok
 }
+
+func ToBool(i any) bool {
+	switch v := i.(type) {
+	case bool:
+		return v
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return v != 0
+	case float32, float64:
+		return v != 0
+	case string:
+		if v == "true" || v == "1" || v == "on" {
+			return true
+		}
+	}
+	return false
+}

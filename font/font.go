@@ -1,55 +1,113 @@
 package font
 
 import (
+	"cmp"
 	"os"
+	"slices"
+	"strings"
 
+	"github.com/go-mixed/go-canvas/misc"
 	"github.com/golang/freetype/truetype"
 )
 
-// FontInfo represents a system font.
 type FontInfo struct {
-	// Family contains name of the font family.
-	Family string
+	Bold              FontWeight
+	Italic            bool
+	Family, SubFamily string
+	FontPath          string
 
-	// Name contains the full name of the font.
-	Name string
-
-	// Filename contains the path of the font file.
-	Filename string
+	TruetypeFont *truetype.Font
 }
 
-type TrueTypeFont struct {
-	*truetype.Font
-	fontInfo *FontInfo
+type FontLibrary struct {
+	fonts map[string][]*FontInfo
 }
 
-func (f *TrueTypeFont) Initial() error {
-	if f.Font != nil {
-		return nil
+func NewFontLibrary(paths ...string) *FontLibrary {
+	list := LoadFonts(paths...)
+
+	return &FontLibrary{
+		fonts: list,
+	}
+}
+
+// MatchOrFeedback 从字体列表中匹配最合适的字体
+// weight: 粗细数值 (100-900)，italic: 是否斜体
+func (fs *FontLibrary) MatchOrFeedback(fontFamily string, weight FontWeight, italic bool) *FontInfo {
+	if fontFamily == "" {
+		return fallbackFontInfo(fontFamily, weight, italic)
 	}
 
-	path, err := Find(f.fontInfo.Filename)
+	type fontScore struct {
+		f           *FontInfo
+		familyScore float32
+		weightScore float32
+		italicScore float32
+	}
+	var matches []fontScore
+
+	var familySimilarity, weightSimilarity, italicSimilarity float32
+	// font family 完全匹配 10
+	for family, fonts := range fs.fonts {
+		if familySimilarity = FontFamilySimilarity(family, fontFamily); familySimilarity > 0.5 {
+			for _, font := range fonts {
+				weightSimilarity = 1. - float32(misc.Abs(font.Bold-weight))/1000.
+				italicSimilarity = 0
+				if italic == font.Italic {
+					italicSimilarity = 1
+				}
+
+				matches = append(matches, fontScore{
+					f:           font,
+					familyScore: familySimilarity,
+					weightScore: weightSimilarity,
+					italicScore: italicSimilarity,
+				})
+			}
+		}
+	}
+
+	if len(matches) == 0 {
+		return fallbackFontInfo(fontFamily, weight, italic)
+	}
+
+	// 多字段排序（family DESC, weight DESC, italic DESC）
+	slices.SortFunc(matches, func(a, b fontScore) int {
+		family := cmp.Compare(a.familyScore, b.familyScore)
+		if family != 0 {
+			return -family
+		}
+		weight := cmp.Compare(a.weightScore, b.weightScore)
+		if weight != 0 {
+			return -weight
+		}
+		return -cmp.Compare(a.italicScore, b.italicScore)
+	})
+
+	if len(matches) > 0 {
+		return matches[0].f
+	}
+
+	return fallbackFontInfo(fontFamily, weight, italic)
+}
+
+func (f *FontInfo) GetTrueTypeFont() (*truetype.Font, error) {
+	if f.TruetypeFont != nil {
+		return f.TruetypeFont, nil
+	}
+
+	data, err := os.ReadFile(f.FontPath)
 	if err != nil {
-		return err
-	}
-	f.fontInfo.Filename = path
-	data, err := os.ReadFile(f.fontInfo.Filename)
-	if err != nil {
-		return err
+		return nil, err
 	}
 
-	f.Font, err = truetype.Parse(data)
-	return err
+	return truetype.Parse(data)
 }
 
-func TryFindFont(fontName string, bold, italic bool) *TrueTypeFont {
-	f := &TrueTypeFont{
-		fontInfo: &FontInfo{
-			Family:   fontName,
-			Name:     fontName,
-			Filename: "msyh.ttf",
-		},
+func FontFamilySimilarity(family1, family2 string) float32 {
+	if strings.EqualFold(family1, family2) {
+		return 1
 	}
-	f.Initial()
-	return f
+
+	return 0
 }

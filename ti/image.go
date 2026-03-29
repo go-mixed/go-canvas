@@ -2,6 +2,7 @@ package ti
 
 import (
 	"image"
+	"image/color"
 
 	"github.com/go-mixed/go-canvas/misc"
 
@@ -86,7 +87,10 @@ func UploadImageToTexture(texture *TiImage, img image.Image, imgOffset Point[int
 
 // SaveTiImageToFile 将 Taichi.NdArray(w, h, (r, g, b, a)) 保存到图片文件
 func SaveTiImageToFile(texture *TiImage, filePath string) error {
-	img, err := DownloadTextureToImage(texture)
+	shape := texture.Shape()
+	width, height := int(shape[0]), int(shape[1])
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	err := DownloadTextureToImage(texture, img)
 
 	if err != nil {
 		return errors.Wrapf(err, "Cannot download taichi texture to image")
@@ -94,17 +98,12 @@ func SaveTiImageToFile(texture *TiImage, filePath string) error {
 	return misc.SaveImage(img, filePath)
 }
 
-func DownloadTextureToImage(texture *TiImage) (image.Image, error) {
+func DownloadTextureToImage(texture *TiImage, img ImageWriter) error {
 	shape := texture.Shape()
 	width, height := int(shape[0]), int(shape[1])
-	img := image.NewRGBA(image.Rect(0, 0, width, height))
 
 	err := texture.MapFloat32(func(data []float32) error {
-		//misc.ParallelForeach(height, 16, func(yStart, yEnd int) {
-		yStart := 0
-		yEnd := height
-
-		for y := yStart; y < yEnd; y++ {
+		for y := 0; y < height; y++ {
 			for x := 0; x < width; x++ {
 				idx, _ := texture.GetOffset(x, y)
 				c := TiColor2Color(data[idx], data[idx+1], data[idx+2], data[idx+3])
@@ -115,5 +114,49 @@ func DownloadTextureToImage(texture *TiImage) (image.Image, error) {
 		return nil
 	})
 
-	return img, errors.Wrapf(err, "Cannot download taichi texture to image")
+	return errors.Wrapf(err, "Cannot download taichi texture to image")
+}
+
+type RawImage struct {
+	Data          []byte
+	Width, Height int
+}
+
+type BGRAImage RawImage
+type BGRImage RawImage
+
+var _ ImageWriter = (*BGRAImage)(nil)
+var _ ImageWriter = (*BGRImage)(nil)
+
+func NewBGRAImage(width, height int) *BGRAImage {
+	return &BGRAImage{
+		Data:   make([]byte, width*height*4),
+		Width:  width,
+		Height: height,
+	}
+}
+
+func (r *BGRAImage) Set(x, y int, c color.Color) {
+	ir, g, b, a := ExpandUColor(c)
+	offset := (y*r.Width + x) * 4
+	r.Data[offset] = uint8(b)    // B
+	r.Data[offset+1] = uint8(g)  // G
+	r.Data[offset+2] = uint8(ir) // R
+	r.Data[offset+3] = uint8(a)  // A
+}
+
+func NewBGRImage(width, height int) *BGRImage {
+	return &BGRImage{
+		Data:   make([]byte, width*height*3),
+		Width:  width,
+		Height: height,
+	}
+}
+
+func (r *BGRImage) Set(x, y int, c color.Color) {
+	ir, g, b, _ := ExpandUColor(c)
+	offset := (y*r.Width + x) * 3
+	r.Data[offset] = uint8(b)    // B
+	r.Data[offset+1] = uint8(g)  // G
+	r.Data[offset+2] = uint8(ir) // R
 }

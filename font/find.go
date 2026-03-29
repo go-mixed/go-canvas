@@ -19,7 +19,7 @@ var fontPathCache map[string]string = make(map[string]string)
 // Find tries to locate the specified font file in the current directory as
 // well as in platform specific user and system font directories; if there is
 // no exact match, Find tries substring matching - files with the standard font suffixes (.ttf, .ttc, .otf) are considered.
-func Find(fileName string) (filePath string, err error) {
+func FindFont(fileName string) (filePath string, err error) {
 	var ok bool
 	if filePath, ok = fontPathCache[fileName]; ok {
 		return filePath, nil
@@ -45,14 +45,14 @@ func FindWithSuffixes(fileName string, suffixes []string) (filePath string, err 
 	return find(filepath.Base(fileName), suffixes)
 }
 
-// List returns a list of all font files (determined by standard suffixes: .ttf, .ttc, .otf) found on the system.
-func List() (filePaths []string) {
-	return ListWithSuffixes(defaultSuffixes())
+// ListFont returns a list of all font files (determined by standard suffixes: .ttf, .ttc, .otf) found on the system.
+func ListFont(dirs []string) (filePaths []string) {
+	return ListFontWithSuffixes(dirs, defaultSuffixes())
 }
 
-// ListWithSuffixes returns a list of all font files (determined by given file suffixes) found on the system.
-func ListWithSuffixes(suffixes []string) (filePaths []string) {
-	pathList := []string{}
+// ListFontWithSuffixes returns a list of all font files (determined by given file suffixes) found on the system.
+func ListFontWithSuffixes(dirs []string, suffixes []string) (filePaths []string) {
+	var pathList []string
 
 	walkF := func(path string, info os.FileInfo, err error) error {
 		if err == nil {
@@ -62,7 +62,8 @@ func ListWithSuffixes(suffixes []string) (filePaths []string) {
 		}
 		return nil
 	}
-	for _, dir := range getFontDirectories() {
+
+	for _, dir := range dirs {
 		filepath.Walk(dir, walkF)
 	}
 
@@ -128,7 +129,7 @@ func find(needle string, suffixes []string) (filePath string, err error) {
 		return nil
 	}
 
-	for _, dir := range getFontDirectories() {
+	for _, dir := range GetSystemFontDirectories() {
 		filepath.Walk(dir, walkF)
 		if match != "" {
 			return match, nil

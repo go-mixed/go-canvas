@@ -8,7 +8,7 @@ import (
 	"runtime"
 )
 
-func getFontDirectories() (paths []string) {
+func GetSystemFontDirectories() (paths []string) {
 	switch runtime.GOOS {
 	case "android":
 		return []string{"/system/fonts"}

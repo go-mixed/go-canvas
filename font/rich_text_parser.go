@@ -6,26 +6,24 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/go-mixed/go-canvas/misc"
 )
 
-// parseOptions 解析标签属性
-type parseOptions struct {
-	bold       bool
-	italic     bool
-	color      color.Color
-	fontSize   int
-	fontFamily string
+// RichTextFontStyle 富文本的样式
+type RichTextFontStyle struct {
+	Bold       bool
+	Italic     bool
+	Color      color.Color
+	FontSize   int
+	FontFamily string
 }
 
-func parseText(input string) TextSegments {
+func (r *RichText) parseText(input string) TextSegments {
 	var segments TextSegments
 	var text strings.Builder
-	currentOpts := parseOptions{
-		color:      color.Black,
-		fontSize:   16,
-		fontFamily: "Default",
-	}
-	optsStack := []parseOptions{currentOpts}
+	currentStyle := r.opts.fontStyle
+	styleStack := []RichTextFontStyle{currentStyle}
 
 	i := 0
 	for i < len(input) {
@@ -45,7 +43,7 @@ func parseText(input string) TextSegments {
 
 			// 先保存当前累积的文字（保留换行和制表符）
 			if text.Len() > 0 {
-				seg := createSegment(text.String(), currentOpts)
+				seg := r.createSegment(text.String(), currentStyle)
 				segments = append(segments, seg)
 				text.Reset()
 			}
@@ -53,9 +51,9 @@ func parseText(input string) TextSegments {
 			// 检查是开标签还是闭标签
 			if isCloseTag {
 				// 闭标签，恢复之前的状态
-				if len(optsStack) > 1 {
-					optsStack = optsStack[:len(optsStack)-1]
-					currentOpts = optsStack[len(optsStack)-1]
+				if len(styleStack) > 1 {
+					styleStack = styleStack[:len(styleStack)-1]
+					currentStyle = styleStack[len(styleStack)-1]
 				}
 				i += len("</text>")
 				continue
@@ -70,16 +68,16 @@ func parseText(input string) TextSegments {
 
 			tagContent := strings.TrimPrefix(input[i+1:i+endIdx], "text")
 			tagContent = strings.TrimLeft(tagContent, " \t")
-			newOpts := parseOptions{
-				color:      currentOpts.color,
-				fontSize:   currentOpts.fontSize,
-				fontFamily: currentOpts.fontFamily,
-				bold:       currentOpts.bold,
-				italic:     currentOpts.italic,
+			newStyle := RichTextFontStyle{
+				Color:      currentStyle.Color,
+				FontSize:   currentStyle.FontSize,
+				FontFamily: currentStyle.FontFamily,
+				Bold:       currentStyle.Bold,
+				Italic:     currentStyle.Italic,
 			}
-			parseAttributes(tagContent, &newOpts)
-			optsStack = append(optsStack, newOpts)
-			currentOpts = newOpts
+			r.parseAttributes(tagContent, &newStyle)
+			styleStack = append(styleStack, newStyle)
+			currentStyle = newStyle
 			i += endIdx + 1
 			continue
 
@@ -92,7 +90,7 @@ func parseText(input string) TextSegments {
 
 	// 最后剩余的文字
 	if text.Len() > 0 {
-		seg := createSegment(text.String(), currentOpts)
+		seg := r.createSegment(text.String(), currentStyle)
 		segments = append(segments, seg)
 	}
 
@@ -103,15 +101,7 @@ func parseText(input string) TextSegments {
 var attrRegex = regexp.MustCompile(`([\w-]+)(?:=(?:"([^"]*)"|'([^']*)'|([^"\s>]+)))?`)
 
 // parseAttributes 解析标签属性
-func parseAttributes(tag string, opts *parseOptions) {
-	// 只在属性存在时设置为 true，避免覆盖继承的值
-	if strings.Contains(tag, "bold") {
-		opts.bold = true
-	}
-	if strings.Contains(tag, "italic") {
-		opts.italic = true
-	}
-
+func (r *RichText) parseAttributes(tag string, opts *RichTextFontStyle) {
 	// 解析其他属性
 	attrs := attrRegex.FindAllStringSubmatch(tag, -1)
 	for _, match := range attrs {
@@ -126,16 +116,20 @@ func parseAttributes(tag string, opts *parseOptions) {
 		}
 
 		switch key {
+		case "bold":
+			opts.Bold = value == "" || misc.ToBool(value)
+		case "italic":
+			opts.Italic = value == "" || misc.ToBool(value)
 		case "color":
 			if c, err := parseColor(value); err == nil {
-				opts.color = c
+				opts.Color = c
 			}
 		case "font-size":
 			if size, err := strconv.ParseInt(value, 10, 64); err == nil {
-				opts.fontSize = int(size)
+				opts.FontSize = int(size)
 			}
 		case "font-family":
-			opts.fontFamily = value
+			opts.FontFamily = value
 		}
 	}
 }
@@ -159,16 +153,20 @@ func parseColor(s string) (color.Color, error) {
 }
 
 // createSegment 根据当前选项创建文本片段
-func createSegment(text string, opts parseOptions) *TextSegment {
-	font := TryFindFont(opts.fontFamily, opts.bold, opts.italic)
+func (r *RichText) createSegment(text string, opts RichTextFontStyle) *TextSegment {
+	weight := FontWeightRegular
+	if opts.Bold {
+		weight = FontWeightBold
+	}
+	font := r.fontLibrary.MatchOrFeedback(opts.FontFamily, weight, opts.Italic)
 	return &TextSegment{
 		Text:       text,
 		Font:       font,
-		FontSize:   opts.fontSize,
-		Color:      opts.color,
-		Bold:       opts.bold,
-		Italic:     opts.italic,
-		FontFamily: opts.fontFamily,
+		FontSize:   opts.FontSize,
+		Color:      opts.Color,
+		Bold:       weight,
+		Italic:     opts.Italic,
+		FontFamily: opts.FontFamily,
 	}
 }
 

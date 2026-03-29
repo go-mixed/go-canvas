@@ -2,7 +2,7 @@
 
 package font
 
-func getFontDirectories() (paths []string) {
+func GetSystemFontDirectories() (paths []string) {
 	return []string{
 		expandUser("~/Library/Fonts/"),
 		"/Library/Fonts/",

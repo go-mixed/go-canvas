@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-mixed/go-canvas/misc"
+	"github.com/go-mixed/go-canvas/ti"
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font"
 )
@@ -13,10 +14,10 @@ import (
 // TextSegment 单个文本片段
 type TextSegment struct {
 	Text       string
-	Font       *TrueTypeFont
+	Font       *FontInfo
 	FontSize   int
 	Color      color.Color
-	Bold       bool
+	Bold       FontWeight
 	Italic     bool
 	FontFamily string
 	Width      int
@@ -34,7 +35,8 @@ func (t *TextSegment) CopyWithText(text string) *TextSegment {
 
 // CreateFace 创建字体Face
 func (t *TextSegment) CreateFace() font.Face {
-	return truetype.NewFace(t.Font.Font, &truetype.Options{
+	tf, _ := t.Font.GetTrueTypeFont()
+	return truetype.NewFace(tf, &truetype.Options{
 		Size:    float64(t.FontSize),
 		DPI:     120,
 		Hinting: font.HintingFull,
@@ -85,35 +87,59 @@ func (s TextSegments) Width() int {
 }
 
 type RichText struct {
-	original  string
-	lines     *misc.List[TextSegments]
-	faceCache map[string]font.Face
+	fontLibrary *FontLibrary
+	original    string
+	lines       *misc.List[TextSegments]
+	faceCache   map[string]font.Face
+
+	opts *richTextOptions
 
 	width, height int // 缓存宽度和高度，避免重复计算
 }
 
 // BuildRichTextLines 解析带标签的文字，返回文本片段列表
 // 标签格式：<text bold italic color="#RRGGBBAA" font-size="15" font-family="Noto Sans CJK SC">文字</text>
-func BuildRichTextLines(input string) *RichText {
-
-	segments := parseText(input)
-
-	richText := &RichText{
-		original:  input,
-		lines:     misc.NewList[TextSegments](),
-		faceCache: make(map[string]font.Face),
-		width:     -1,
-		height:    -1,
+func BuildRichTextLines(fs *FontLibrary, opts ...RichTextOptionFn) *RichText {
+	options := &richTextOptions{
+		align: ti.Align{
+			HAlign: ti.HAlignCenter,
+			VAlign: ti.VAlignMiddle,
+		},
+		fontStyle: RichTextFontStyle{
+			FontFamily: "sans-serif",
+			FontSize:   16,
+			Color:      color.Black,
+			Bold:       false,
+		},
 	}
 
+	for _, opt := range opts {
+		opt(options)
+	}
+
+	return &RichText{
+		fontLibrary: fs,
+		lines:       misc.NewList[TextSegments](),
+		faceCache:   make(map[string]font.Face),
+		width:       -1,
+		height:      -1,
+		opts:        options,
+	}
+}
+
+func (r *RichText) SetText(input string) {
+	r.lines.Clear()
+	r.original = input
+
+	segments := r.parseText(input)
 	if len(segments) == 0 {
-		return richText
+		return
 	}
 
 	var lastSegments TextSegments
 	for _, seg := range segments {
 		// 创建字体Face
-		richText.createFaceOrNot(seg.FontFamily, seg.FontSize, seg)
+		r.createFaceOrNot(seg.FontFamily, seg.FontSize, seg)
 
 		parts := strings.Split(seg.Text, "\n")
 		// 没有回车
@@ -122,27 +148,26 @@ func BuildRichTextLines(input string) *RichText {
 		} else { // 有回车
 			// 保存第0条记录
 			lastSegments = append(lastSegments, seg.CopyWithText(parts[0]))
-			richText.lines.PushBack(lastSegments)
+			r.lines.PushBack(lastSegments)
 			lastSegments = nil
 
 			// 保存从 1~len(parts)-2
 			// 因为最后一条会到下一个段落
 			for i := 1; i < len(parts)-1; i++ {
 				lastSegments = append(lastSegments, seg.CopyWithText(parts[i]))
-				richText.lines.PushBack(lastSegments)
+				r.lines.PushBack(lastSegments)
 			}
 		}
 	}
 
 	// 收尾
 	if len(lastSegments) > 0 {
-		richText.lines.PushBack(lastSegments)
+		r.lines.PushBack(lastSegments)
 		lastSegments = nil
 	}
 
-	richText.Initial()
+	r.measure()
 
-	return richText
 }
 
 // Len 返回文本段落的总行数
@@ -179,11 +204,11 @@ func (r *RichText) GetFace(fontFamily string, fontSize int) font.Face {
 	return nil
 }
 
-// Initial 初始化，测量每个文本片段的宽度和高度
-func (r *RichText) Initial() {
+// measure 测量每个文本片段的宽度和高度
+func (r *RichText) measure() {
 	for el := r.lines.Front(); el != nil; el = el.Next() {
 		for i := range el.Value {
-			face := r.GetFace(el.Value[i].FontFamily, int(el.Value[i].FontSize))
+			face := r.GetFace(el.Value[i].FontFamily, el.Value[i].FontSize)
 			el.Value[i].MeasureString(face)
 		}
 	}
@@ -220,4 +245,12 @@ func (r *RichText) Height() int {
 
 func (r *RichText) IsEmpty() bool {
 	return r.lines.Len() == 0
+}
+
+func (r *RichText) Align() ti.Align {
+	return r.opts.align
+}
+
+func (r *RichText) FontStyle() RichTextFontStyle {
+	return r.opts.fontStyle
 }

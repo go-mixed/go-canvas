@@ -1,6 +1,7 @@
 package ti
 
 import (
+	"image/color"
 	"strings"
 
 	"github.com/go-mixed/go-taichi/taichi"
@@ -88,3 +89,7 @@ const (
 	BlurModeGaussian BlurMode = 1 // 高斯模糊
 	BlurModeMosaic   BlurMode = 2 // 马赛克
 )
+
+type ImageWriter interface {
+	Set(x, y int, c color.Color)
+}
