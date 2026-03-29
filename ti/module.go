@@ -46,9 +46,10 @@ func LoadAotModule(runtime *taichi.Runtime) (*AotModule, error) {
 
 	// 获取对应的 kernels
 	var modules = []string{
-		"fill_texture",
+		"fill_color",
 		"resize_nearest", "resize_bilinear", "resize_bicubic", "resize_lanczos",
-		"cv_image_to_ti",
+		"blur_box", "blur_gaussian", "blur_mosaic",
+
 		"render_layer_no_mask",
 		"render_layer_with_mask",
 		"compute_normalized_coords",
@@ -66,10 +67,6 @@ func LoadAotModule(runtime *taichi.Runtime) (*AotModule, error) {
 		"feather_conic",
 		"feather_smoothstep",
 		"feather_sigmoid",
-
-		"blur_box",
-		"blur_gaussian",
-		"blur_mosaic",
 	}
 
 	cache := make(map[string]*taichi.Kernel)

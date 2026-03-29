@@ -199,7 +199,7 @@ func (e *tiElement) SetCy(cy float32) {
 // Fill 填充纯色
 func (e *tiElement) Fill(color color.Color) {
 	e.LockForUpdate(func() {
-		e.Renderer().Module().FillTexture(e.texture, color)
+		e.Renderer().Module().FillColor(e.texture, color)
 	}, func() bool { return false })
 }
 

@@ -102,7 +102,7 @@ func (c *Container) Render() {
 	}
 
 	// 置空为透明
-	c.parent.Renderer().Module().FillTexture(c.texture, color.Transparent)
+	c.parent.Renderer().Module().FillColor(c.texture, color.Transparent)
 
 	c.mutex.Lock()
 	children := c.children

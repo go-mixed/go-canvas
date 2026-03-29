@@ -29,7 +29,12 @@ if str(parent_dir) not in sys.path:
     sys.path.insert(0, str(parent_dir))
 
 from ti.kernel.layer import render_layer_no_mask, render_layer_with_mask
-from ti.kernel.image import cv_image_to_ti, fill_texture, blur_box, blur_gaussian, blur_mosaic
+from ti.kernel.image import (
+    fill_color,
+    blur_box,
+    blur_gaussian,
+    blur_mosaic,
+)
 from ti.kernel.resize import resize_lanczos, resize_bicubic, resize_bilinear, resize_nearest
 from ti.kernel.sdf import (
     compute_normalized_coords,
@@ -55,8 +60,7 @@ from ti.kernel.mask import (
 kernels = [
     render_layer_no_mask,
     render_layer_with_mask,
-    cv_image_to_ti,
-    fill_texture,
+    fill_color,
     resize_lanczos,
     resize_bicubic,
     resize_bilinear,
