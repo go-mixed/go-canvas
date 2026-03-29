@@ -1,5 +1,23 @@
 import taichi as ti
 
+
+@ti.kernel
+def ti_image_to_bgra(
+    texture: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),
+    output: ti.types.ndarray(dtype=ti.u32, ndim=2)
+):
+    for x, y in texture:
+        rgba = texture[x, y]
+        rgba = ti.math.clamp(rgba, 0.0, 1.0)
+
+        r = ti.cast(rgba[0] * 255.0 + 0.5, ti.u32)
+        g = ti.cast(rgba[1] * 255.0 + 0.5, ti.u32)
+        b = ti.cast(rgba[2] * 255.0 + 0.5, ti.u32)
+        a = ti.cast(rgba[3] * 255.0 + 0.5, ti.u32)
+
+        # BGRA 打包（ bgra 小端内存布局）
+        output[y, x] = (a << 24) | (r << 16) | (g << 8) | b
+
 @ti.kernel
 def fill_color(
     texture: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),

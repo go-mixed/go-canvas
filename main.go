@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"image"
 	"image/color"
 	"path/filepath"
 	"time"
@@ -48,7 +49,7 @@ func main() {
 
 	t = time.Now()
 	img.Resize(720, 1280)
-	img.Blur(ti.BlurModeMosaic, 20)
+	//img.Blur(ti.BlurModeMosaic, 20)
 	fmt.Printf("resize image: %v\n", time.Since(t))
 
 	img.SetX(-200)
@@ -62,19 +63,34 @@ func main() {
 
 	fontLibrary := font.NewFontLibrary()
 
-	_, err = render.NewTextSprite(stage, fontLibrary, "<text font-size='50'>Hello</text>\n <text font-size='60' color='#ff0000'>World</text>!", 720, 1280, font.WithAlign(ti.HAlignCenter, ti.VAlignMiddle))
+	text, err := render.NewTextSprite(stage, fontLibrary, 720, 1280, font.WithAlign(ti.HAlignCenter, ti.VAlignMiddle))
 	if err != nil {
 		panic(err)
 	}
+	text.SetText("<text font-size='50'>Hello</text>\n <text font-size='60' color='#ff0000'>World</text>!")
 
 	stage.Render()
 	fmt.Printf("render: %v\n", time.Since(t))
-	t = time.Now()
 
+	t = time.Now()
 	err = ti.SaveTiImageToFile(stage.Texture(), filepath.Join(misc.GetCurrentDir(), "out.png"))
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("save: %v\n", time.Since(t))
+	fmt.Printf("save out1: %v\n", time.Since(t))
+
+	buf := make([]uint32, 720*1280)
+
+	t = time.Now()
+	stage.ToBgraImage(buf)
+	fmt.Printf("to bgra image: %v\n", time.Since(t))
+
+	img2 := image.NewRGBA(image.Rect(0, 0, 720, 1080))
+	t = time.Now()
+	for i, b := range buf {
+		img2.Set(i%720, i/720, ti.ARGB(b))
+	}
+	fmt.Printf("save out2: %v\n", time.Since(t))
+	misc.SaveImage(img2, filepath.Join(misc.GetCurrentDir(), "out2.png"))
 
 }

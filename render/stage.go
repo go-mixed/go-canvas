@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-mixed/go-canvas/misc"
 	"github.com/go-mixed/go-canvas/ti"
+	"github.com/go-mixed/go-taichi/taichi"
 	"github.com/pkg/errors"
 )
 
@@ -13,6 +14,8 @@ type Stage struct {
 
 	container IContainer
 	mutex     *sync.RWMutex
+
+	imageTexture *ti.BgraImage
 }
 
 var _ IParent = (*Stage)(nil)
@@ -30,12 +33,29 @@ func NewStage(renderer *Renderer, width, height uint32) (*Stage, error) {
 	}
 	s.container = container
 
+	imageTexture, err := taichi.NewNdArray2D(renderer.Runtime(), height, width, taichi.DataTypeU32)
+	if err != nil {
+		return nil, errors.Wrapf(err, "create image texture failed")
+	}
+
+	s.imageTexture = imageTexture
+
 	return s, nil
 }
 
 // Render 修改之后，需要触发渲染
 func (s *Stage) Render() {
 	s.container.Render()
+}
+
+func (s *Stage) ToBgraImage(buffer []uint32) error {
+	// 将 ti image 转换为 bgra image
+	s.Renderer().Module().TiImageToBgra(s.Texture(), s.imageTexture)
+
+	return s.imageTexture.MapUint32(func(data []uint32) error {
+		copy(buffer, data)
+		return nil
+	})
 }
 
 func (s *Stage) Texture() *ti.TiImage {
@@ -61,5 +81,9 @@ func (s *Stage) Children() *misc.List[ISprite] {
 func (s *Stage) Release() {
 	if s.container != nil {
 		s.container.Release()
+	}
+
+	if s.imageTexture != nil {
+		s.imageTexture.Release()
 	}
 }

@@ -2,6 +2,11 @@ package ti
 
 import "image/color"
 
+func (m *AotModule) TiImageToBgra(input *TiImage, output *BgraImage) {
+	kernel := m.getCache("ti_image_to_bgra")
+	kernel.Launch().ArgNdArray(input).ArgNdArray(output).Run()
+}
+
 // FillColor 填充纹理
 func (m *AotModule) FillColor(texture *TiImage, c color.Color) {
 	kernel := m.getCache("fill_color")

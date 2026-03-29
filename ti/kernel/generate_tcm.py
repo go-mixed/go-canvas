@@ -30,6 +30,7 @@ if str(parent_dir) not in sys.path:
 
 from ti.kernel.layer import render_layer_no_mask, render_layer_with_mask
 from ti.kernel.image import (
+    ti_image_to_bgra,
     fill_color,
     blur_box,
     blur_gaussian,
@@ -60,6 +61,7 @@ from ti.kernel.mask import (
 kernels = [
     render_layer_no_mask,
     render_layer_with_mask,
+    ti_image_to_bgra,
     fill_color,
     resize_lanczos,
     resize_bicubic,

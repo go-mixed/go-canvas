@@ -20,8 +20,12 @@ var _ IMaskParent = (*Sprite)(nil)
 
 // BuildSprite 创建非容器的精灵，需要传入纹理
 func BuildSprite[T ISprite](parent IParent, texture *ti.TiImage, instanceCreator func(s *Sprite) (T, error)) (T, error) {
-	shape := texture.Shape()
-	w, h := shape[0], shape[1]
+	var w, h uint32
+
+	if texture != nil {
+		shape := texture.Shape()
+		w, h = shape[0], shape[1]
+	}
 
 	element := &tiElement{
 		rect:    ti.Rect(0, 0, float32(w), float32(h)),
