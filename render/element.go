@@ -274,7 +274,7 @@ func (e *tiElement) Blur(mode ti.BlurMode, radius int32) error {
 // corners存储角点相对于中心点的偏移量：
 // 左上: (-cx, -cy)，右上: (width-cx, -cy)
 // 右下: (width-cx, height-cy)，左下: (-cx, height-cy)
-func (e *tiElement) ClientRect() ti.Rectangle[float32] {
+func (e *tiElement) ClientRect() ti.Rectangle[int] {
 	// 此处的运算都假设x, y = 0，所以最后需要加上x, y
 	cx, cy := float32(e.attribute.Cx()), float32(e.attribute.Cy())
 	w, h := float32(e.attribute.Width()), float32(e.attribute.Height())
@@ -314,8 +314,8 @@ func (e *tiElement) ClientRect() ti.Rectangle[float32] {
 		}
 	}
 
-	bbox := ti.RectXY(minX, minY, maxX, maxY)
-	return bbox.MoveTo(float32(e.attribute.X()), float32(e.attribute.Y()))
+	bbox := ti.RectXY(int(minX), int(minY), int(maxX), int(maxY))
+	return bbox.MoveTo(e.attribute.X(), e.attribute.Y())
 }
 
 func (e *tiElement) Renderer() *Renderer {

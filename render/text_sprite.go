@@ -80,6 +80,8 @@ func (s *TextSprite) SetText(text string) error {
 		}
 		s.texture = texture
 		s.attribute.SetWH(width, height)
+		s.attribute.SetCx(width / 2)
+		s.attribute.SetCy(height / 2)
 
 	}, func() bool {
 		return !s.richText.Equal(text)

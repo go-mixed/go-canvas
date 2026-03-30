@@ -77,18 +77,165 @@ def sample_and_blend(
     # 计算最终透明度
     final_alpha = ti.min(tex_color.w * alpha * mask_value, 1.0)
 
-    # Alpha 混合
+    # Alpha 混合 - 标准 Over 操作 (premultiplied alpha)
     new_color = tex_color
-    if final_alpha >= 0.999:
+    if tex_color.w >= 0.999:
         new_color.w = 1.0
-    elif final_alpha > 1e-6:
-        new_color = ti.math.mix(screen_color, tex_color, final_alpha)
-        new_color.w = 1.0
+    elif tex_color.w > 1e-6:
+        # Premultiplied alpha Over: out = tex + screen * (1 - tex_a)
+        new_color.x = tex_color.x + screen_color.x * (1.0 - tex_color.w)
+        new_color.y = tex_color.y + screen_color.y * (1.0 - tex_color.w)
+        new_color.z = tex_color.z + screen_color.z * (1.0 - tex_color.w)
+        new_color.w = tex_color.w + screen_color.w * (1.0 - tex_color.w)
     else:
         new_color = screen_color  # 完全透明，保持原色
 
     return new_color
 
+
+@ti.kernel
+def render_layer_no_mask1(
+        image: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),  # 纹理图像
+        x: ti.f32, y: ti.f32,  # 精灵位置
+        cx: ti.f32, cy: ti.f32,  # 纹理中心
+        scale_x: ti.f32, scale_y: ti.f32,  # 缩放
+        rotation: ti.f32,  # 旋转
+        alpha: ti.f32,  # 透明度
+        width: ti.f32, height: ti.f32,  # 纹理尺寸
+        min_x: ti.i32, max_x: ti.i32,  # 包围盒
+        min_y: ti.i32, max_y: ti.i32,
+        screen: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),
+):
+    """
+    精灵渲染 kernel
+    """
+    # 是否使用插值采样（缩放比例不是1.0）
+    use_scale = (ti.abs(scale_x - 1.0) > 1e-6 or ti.abs(scale_y - 1.0) > 1e-6)
+
+    # 预计算逆旋转矩阵（用于从屏幕坐标反推纹理坐标）
+    cos_rot = ti.cos(rotation)
+    sin_rot = ti.sin(rotation)
+    rot_matrix = ti.math.mat2(cos_rot, sin_rot, -sin_rot, cos_rot)
+
+    for x_screen, y_screen in ti.ndrange((min_x, max_x + 1), (min_y, max_y + 1)):
+        screen_color = screen[x_screen, y_screen]
+
+        # 计算屏幕像素相对于精灵中心的偏移
+        dx = x_screen - (x + cx)
+        dy = y_screen - (y + cy)
+        screen_offset = ti.math.vec2(dx, dy)
+
+        # 逆变换：屏幕偏移 → 纹理本地坐标（先缩放再旋转）
+        scaled_offset = ti.math.vec2(screen_offset.x / scale_x, screen_offset.y / scale_y)
+        tex_offset = rot_matrix @ scaled_offset
+        tex_x_f = cx + tex_offset.x
+        tex_y_f = cy + tex_offset.y
+
+        # 边界检查：纹理坐标越界则跳过
+        if not (0 <= tex_x_f < width and 0 <= tex_y_f < height):
+            continue
+
+        tex_color = screen_color
+        if not use_scale:
+            tex_color = image[ti.cast(tex_x_f, ti.i32), ti.cast(tex_y_f, ti.i32)]
+        else:
+            # 双三次插值
+            # tex_color = bicubic_sample(image, tex_x_f, tex_y_f, width, height)
+            # 线性插值
+            tex_color = bilinear_sample(image, tex_x_f, tex_y_f, width, height)  # 双线性
+            # lanczos4
+            #tex_color = lanczos4_sample(image, tex_x_f, tex_y_f, width, height)  # Lanczos4
+
+        # Alpha混合
+        final_alpha = ti.min(tex_color.w * alpha, 1.0)
+
+        # 透明度过低则跳过
+        if final_alpha <= 1e-6:
+            continue
+
+        new_color = tex_color
+        if final_alpha >= 0.999:
+            new_color.w = 1.0
+        else:
+            new_color = ti.math.mix(screen_color, tex_color, final_alpha)
+            new_color.w = 1.0
+        screen[x_screen, y_screen] = new_color
+
+
+@ti.kernel
+def render_layer_with_mask1(
+        image: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),  # 纹理图像
+        x: ti.f32, y: ti.f32,  # 精灵位置
+        cx: ti.f32, cy: ti.f32,  # 纹理中心
+        scale_x: ti.f32, scale_y: ti.f32,  # 缩放
+        rotation: ti.f32,  # 旋转
+        alpha: ti.f32,  # 透明度
+        width: ti.f32, height: ti.f32,  # 纹理尺寸
+        min_x: ti.i32, max_x: ti.i32,  # 包围盒
+        min_y: ti.i32, max_y: ti.i32,
+        mask: ti.types.ndarray(dtype=ti.f32, ndim=2),  # 遮罩（mask2d.field，标量 f32）
+        screen: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),  # 输出屏幕
+):
+    # 是否使用插值采样（缩放比例不是1.0）
+    use_scale = (ti.abs(scale_x - 1.0) > 1e-6 or ti.abs(scale_y - 1.0) > 1e-6)
+
+    # 预计算逆旋转矩阵（用于从屏幕坐标反推纹理坐标）
+    cos_rot = ti.cos(rotation)
+    sin_rot = ti.sin(rotation)
+    rot_matrix = ti.math.mat2(cos_rot, sin_rot, -sin_rot, cos_rot)
+
+    # 只遍历包围盒区域
+    for x_screen, y_screen in ti.ndrange((min_x, max_x + 1), (min_y, max_y + 1)):
+        screen_color = screen[x_screen, y_screen]
+
+        # 计算屏幕像素相对于精灵中心的偏移
+        dx = x_screen - (x + cx)
+        dy = y_screen - (y + cy)
+        screen_offset = ti.math.vec2(dx, dy)
+
+        # 逆变换：屏幕偏移 → 纹理本地坐标（先缩放再旋转）
+        scaled_offset = ti.math.vec2(screen_offset.x / scale_x, screen_offset.y / scale_y)
+        tex_offset = rot_matrix @ scaled_offset
+        tex_x_f = cx + tex_offset.x
+        tex_y_f = cy + tex_offset.y
+
+        # 边界检查：纹理坐标越界则跳过
+        if not (0 <= tex_x_f < width and 0 <= tex_y_f < height):
+            continue
+
+        tex_x_i = ti.cast(tex_x_f, ti.i32)
+        tex_y_i = ti.cast(tex_y_f, ti.i32)
+
+        tex_color = screen_color
+        if not use_scale:
+            tex_color = image[ti.cast(tex_x_f, ti.i32), ti.cast(tex_y_f, ti.i32)]
+        else:
+            # 双三次插值
+            # tex_color = bicubic_sample(image, tex_x_f, tex_y_f, width, height)
+            # 线性插值
+            tex_color = bilinear_sample(image, tex_x_f, tex_y_f, width, height)  # 双线性
+            # lanczos4
+            # tex_color = lanczos4_sample(image, tex_x_f, tex_y_f, width, height)  # Lanczos4
+
+        # Alpha混合
+        final_alpha = ti.min(tex_color.w * alpha, 1.0)
+
+        # 应用 mask（mask2d 是标量 field，直接访问）
+        mask_value = mask[tex_x_i, tex_y_i]
+        final_alpha *= mask_value
+
+        # 透明度过低则跳过
+        if final_alpha <= 1e-6:
+            continue
+
+        new_color = tex_color
+        # Alpha 混合优化：当 alpha 接近 1.0 时直接覆盖，避免混合计算
+        if final_alpha >= 0.999:
+            new_color.w = 1.0
+        else:
+            new_color = ti.math.mix(screen_color, tex_color, final_alpha)
+            new_color.w = 1.0
+        screen[x_screen, y_screen] = new_color
 
 @ti.kernel
 def render_layer_no_mask(
@@ -125,7 +272,11 @@ def render_layer_no_mask(
     use_scale = 1 if ti.abs(scale_x - 1.0) > 1e-6 or ti.abs(scale_y - 1.0) > 1e-6 else 0
     inv_matrix = build_inverse_affine_matrix(x, y, cx, cy, scale_x, scale_y, rotation)
 
-    for x_screen, y_screen in ti.ndrange((min_x, max_x + 1), (min_y, max_y + 1)):
+    screen_w, screen_h = screen.shape
+    max_x1 = ti.math.min(max_x, screen_w - 1)
+    max_y1 = ti.math.min(max_y, screen_h - 1)
+
+    for x_screen, y_screen in ti.ndrange((min_x, max_x1), (min_y, max_y1)):
         # 屏幕坐标 → 纹理坐标
         tex_pos = apply_affine_transform(inv_matrix, ti.f32(x_screen), ti.f32(y_screen))
 
@@ -177,7 +328,10 @@ def render_layer_with_mask(
     use_scale = 1 if ti.abs(scale_x - 1.0) > 1e-6 or ti.abs(scale_y - 1.0) > 1e-6 else 0
     inv_matrix = build_inverse_affine_matrix(x, y, cx, cy, scale_x, scale_y, rotation)
 
-    for x_screen, y_screen in ti.ndrange((min_x, max_x + 1), (min_y, max_y + 1)):
+    screen_w, screen_h = screen.shape
+    max_x1 = ti.math.min(max_x, screen_w - 1)
+    max_y1 = ti.math.min(max_y, screen_h - 1)
+    for x_screen, y_screen in ti.ndrange((min_x, max_x1), (min_y, max_y1)):
         # 屏幕坐标 → 纹理坐标
         tex_pos = apply_affine_transform(inv_matrix, ti.f32(x_screen), ti.f32(y_screen))
 

@@ -50,7 +50,7 @@ type IElement interface {
 	Texture() *ti.TiImage
 
 	// ClientRect 获取元素自身旋转+缩放后的边界
-	ClientRect() ti.Rectangle[float32]
+	ClientRect() ti.Rectangle[int]
 
 	IsDirty() bool
 	SetDirty(val bool)

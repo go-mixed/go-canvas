@@ -86,7 +86,7 @@ func (c *Container) IsDirty() bool {
 	return c.Sprite.IsDirty()
 }
 
-func (c *Container) ClientRect() ti.Rectangle[float32] {
+func (c *Container) ClientRect() ti.Rectangle[int] {
 	rect := c.Sprite.ClientRect()
 	for _, child := range c.children.Range() {
 		bbox := child.ClientRect()
@@ -105,14 +105,14 @@ func (c *Container) Render() {
 	}
 
 	// 置空为透明
-	c.parent.Renderer().Module().FillColor(c.texture, color.Transparent)
+	c.Renderer().Module().FillColor(c.texture, color.Transparent)
 
 	c.mutex.Lock()
 	children := c.children
 	c.mutex.Unlock()
 
 	w, h := c.attribute.Width(), c.attribute.Height()
-	relativeContainerRect := ti.RectWH(0, 0, float32(w), float32(h))
+	relativeContainerRect := ti.RectWH(0, 0, w, h)
 
 	for _, child := range children.Range() {
 		// 渲染子级
@@ -122,7 +122,7 @@ func (c *Container) Render() {
 		// 得到子项（旋转、缩放、平移）之后真实坐标
 		bbox := child.ClientRect()
 		// 添加滚动条
-		bbox = bbox.Add(ti.Pt[float32](float32(c.childOffsetX), float32(c.childOffsetY)))
+		bbox = bbox.Add(ti.Pt(c.childOffsetX, c.childOffsetY))
 		// 计算和当前容器的交集
 		bbox = bbox.Intersect(relativeContainerRect)
 
