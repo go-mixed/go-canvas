@@ -199,9 +199,11 @@ func (e *tiElement) Resize(width, height int) error {
 		if e.attribute.Width() == width && e.attribute.Width() == height {
 			return
 		}
-		e.attribute.SetWH(width, height)
+
+		nW, nH := ti.CalcResizeWH(e.attribute.Width(), e.attribute.Width(), width, height, e.attribute.ResizeOptions())
+
 		var newTexture *ti.TiImage
-		newTexture, err = ti.NewTiImage(e.Renderer().Runtime(), uint32(width), uint32(height))
+		newTexture, err = ti.NewTiImage(e.Renderer().Runtime(), uint32(nW), uint32(nH))
 		if err != nil {
 			return
 		}
@@ -215,6 +217,8 @@ func (e *tiElement) Resize(width, height int) error {
 
 		e.texture.Release()
 		e.texture = newTexture
+		e.attribute.SetWH(nW, nH)
+		e.attribute.SetCxy(width/2, height/2)
 	}, func() bool {
 		return e.attribute.Width() != width || e.attribute.Width() != height
 	})
@@ -271,10 +275,10 @@ func (e *tiElement) Blur(mode ti.BlurMode, radius int32) error {
 // 左上: (-cx, -cy)，右上: (width-cx, -cy)
 // 右下: (width-cx, height-cy)，左下: (-cx, height-cy)
 func (e *tiElement) ClientRect() ti.Rectangle[float32] {
+	// 此处的运算都假设x, y = 0，所以最后需要加上x, y
 	cx, cy := float32(e.attribute.Cx()), float32(e.attribute.Cy())
 	w, h := float32(e.attribute.Width()), float32(e.attribute.Height())
 
-	// 此处的运算都假设x, y = 0，所以最后需要加上x, y
 	corners := [][2]float32{
 		{0 - cx, 0 - cy},
 		{w - cx, 0 - cy},
@@ -312,16 +316,6 @@ func (e *tiElement) ClientRect() ti.Rectangle[float32] {
 
 	bbox := ti.RectXY(minX, minY, maxX, maxY)
 	return bbox.MoveTo(float32(e.attribute.X()), float32(e.attribute.Y()))
-}
-
-// ClippedRect 获取与父级区域裁剪后的可视区域
-//   - parentWidth, parentHeight: 父级显示区域尺寸
-//     请查看examples/bounding_box_visualize.png以了解原理
-//
-// 返回：边界框在屏幕坐标系中的范围（与父级区域求交集后的结果）
-func (e *tiElement) ClippedRect(parentWidth, parentHeight int) ti.Rectangle[float32] {
-	parentRect := ti.RectWH[float32](0, 0, float32(parentWidth), float32(parentHeight))
-	return e.ClientRect().Intersect(parentRect)
 }
 
 func (e *tiElement) Renderer() *Renderer {

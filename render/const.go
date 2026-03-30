@@ -49,10 +49,8 @@ type IElement interface {
 
 	Texture() *ti.TiImage
 
-	// ClientRect 获取元素自身旋转+缩放后的边界（不与父级求交集）
+	// ClientRect 获取元素自身旋转+缩放后的边界
 	ClientRect() ti.Rectangle[float32]
-	// ClippedRect 获取与父级区域裁剪后的可视区域（请在 Container.Render 中使用）
-	ClippedRect(parentWidth, parentHeight int) ti.Rectangle[float32]
 
 	IsDirty() bool
 	SetDirty(val bool)
@@ -81,6 +79,9 @@ type IContainer interface {
 	ISprite
 
 	IParent
+
+	ScrollTop(y int)
+	ScrollLeft(x int)
 }
 
 type IMask interface {

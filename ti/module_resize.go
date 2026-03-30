@@ -1,7 +1,5 @@
 package ti
 
-import "math"
-
 // resizeParams 缩放参数
 type resizeParams struct {
 	scaleX  float32
@@ -24,16 +22,16 @@ func computeResizeScaleAndOffset(srcWidth, srcHeight, dstWidth, dstHeight float3
 		offsetY = 0
 	case FillModeFit:
 		// 等比适应，可能有黑边
-		scale := math.Min(float64(scaleX), float64(scaleY))
-		scaleX = float32(scale)
-		scaleY = float32(scale)
+		scale := min(scaleX, scaleY)
+		scaleX = scale
+		scaleY = scale
 		offsetX = (dstWidth - srcWidth*scaleX) * 0.5
 		offsetY = (dstHeight - srcHeight*scaleY) * 0.5
 	case FillModeFill:
 		// 等比填充，可能裁剪
-		scale := math.Max(float64(scaleX), float64(scaleY))
-		scaleX = float32(scale)
-		scaleY = float32(scale)
+		scale := max(scaleX, scaleY)
+		scaleX = scale
+		scaleY = scale
 		offsetX = (dstWidth - srcWidth*scaleX) * 0.5
 		offsetY = (dstHeight - srcHeight*scaleY) * 0.5
 	}

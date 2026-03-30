@@ -55,32 +55,34 @@ func main() {
 	//}
 	//mask.DrawShape(ti.ShapeTypeCircle, 0.5)
 
-	text, err := render.NewTextSprite(container, fontLibrary, ti.Attr().SetWidth(120), font.WithAlign(ti.HAlignCenter, ti.VAlignMiddle))
-	if err != nil {
-		panic(err)
-	}
-	text.SetText("<text font-size='50'>Hello1111</text>\n <text font-size='60' color='#ff0000'>World</text>!")
-
 	t = time.Now()
-	img, err := render.NewImageSprite(container, ti.Attr().SetXY(-50, 300), filepath.Join(cd, "examples", "1.jpg"))
+	_, err = render.NewImageSprite(container, ti.Attr().SetWH(500, 500).SetResizeOptions(ti.FillModeFit, ti.ScaleModeLinear), filepath.Join(cd, "examples", "1.jpg"))
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("init image: %v\n", time.Since(t))
 
 	t = time.Now()
-	img.Resize(300, 300)
 	//img.Blur(ti.BlurModeMosaic, 20)
 	fmt.Printf("resize image: %v\n", time.Since(t))
 
-	text2, err := render.NewTextSprite(container, fontLibrary, ti.Attr().SetY(text.Height()+20), font.WithAlign(ti.HAlignCenter, ti.VAlignMiddle))
+	text1, err := render.NewTextSprite(container, fontLibrary, ti.Attr().SetWidth(120), font.RTOpt().SetAlign(ti.HAlignCenter, ti.VAlignMiddle))
+	if err != nil {
+		panic(err)
+	}
+	text1.SetText("<text font-size='50'>Hello1111</text>\n <text font-size='60' color='#ff0000'>World!</text>")
+
+	text2, err := render.NewTextSprite(container, fontLibrary, ti.Attr().SetY(text1.Height()+20).SetWidth(1000), font.RTOpt().SetAlign(ti.HAlignCenter, ti.VAlignMiddle))
 	if err != nil {
 		panic(err)
 	}
 
-	text2.SetText("<text font-size='50' font-color=‘#00ff00’>你</text>\n <text font-size='60' color='#ff0000'>好adada</text>\n<text  font-color=‘#00ff00’>呢啊啊</text>")
+	text2.SetText("<text font-size='50' font-color=‘#00ff00’>你们</text>\n <text font-size='60' color='#ff0000'>现在好</text>\n<text  font-color=‘#00ff00’>吗？</text>")
 
 	ti.SaveTiImageToFile(text2.Texture(), filepath.Join(misc.GetCurrentDir(), "out2.png"))
+
+	container.ScrollTop(0)
+
 	stage.Render()
 	fmt.Printf("render: %v\n", time.Since(t))
 

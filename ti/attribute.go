@@ -2,6 +2,7 @@ package ti
 
 import (
 	"image/color"
+	"math"
 )
 
 // FillMode 缩放填充模式
@@ -67,6 +68,8 @@ func Attr() *Attribute {
 		scaleY:   1.0,
 		rotation: 0.0,
 		alpha:    1.0,
+		cx:       math.MaxInt64,
+		cy:       math.MaxInt64,
 		resizeOptions: ResizeOptions{
 			FillMode:  FillModeFit,
 			ScaleMode: ScaleModeNearest,
@@ -193,6 +196,12 @@ func (a *Attribute) SetCy(cy int) *Attribute {
 // Cy 中心点y的相对值
 func (a *Attribute) Cy() int {
 	return a.cy
+}
+
+func (a *Attribute) SetCxy(x int, y int) *Attribute {
+	a.SetCx(x)
+	a.SetCy(y)
+	return a
 }
 
 func (a *Attribute) SetResizeOptions(fillMode FillMode, scaleMode ScaleMode) *Attribute {

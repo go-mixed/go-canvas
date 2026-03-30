@@ -15,9 +15,9 @@ type TextSprite struct {
 }
 
 // NewTextSprite 创建文字精灵
-func NewTextSprite(parent IParent, fontLibrary *font.FontLibrary, attribute *ti.Attribute, opts ...font.RichTextOptionFn) (*TextSprite, error) {
+func NewTextSprite(parent IParent, fontLibrary *font.FontLibrary, attribute *ti.Attribute, opts *font.RichTextOptions) (*TextSprite, error) {
 
-	rt := font.BuildRichTextLines(fontLibrary, opts...)
+	rt := font.BuildRichTextLines(fontLibrary, opts)
 
 	return BuildSprite(parent, attribute, nil, func(s *Sprite) (*TextSprite, error) {
 		ts := &TextSprite{
@@ -38,7 +38,7 @@ func (s *TextSprite) SetText(text string) error {
 
 		img := s.richText.RenderText()
 		imgW, imgH := img.Bounds().Dx(), img.Bounds().Dy()
-		var width, height = imgW, imgH
+		var width, height = s.originalWidth, s.originalHeight
 		if s.originalWidth == 0 {
 			width = imgW
 		}
@@ -82,7 +82,7 @@ func (s *TextSprite) SetText(text string) error {
 		s.attribute.SetWH(width, height)
 
 	}, func() bool {
-		return s.richText.Equal(text)
+		return !s.richText.Equal(text)
 	})
 
 	return err

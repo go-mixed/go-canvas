@@ -92,30 +92,14 @@ type RichText struct {
 	lines       *misc.List[TextSegments]
 	faceCache   map[string]font.Face
 
-	opts *richTextOptions
+	opts *RichTextOptions
 
 	width, height int // 缓存宽度和高度，避免重复计算
 }
 
 // BuildRichTextLines 解析带标签的文字，返回文本片段列表
 // 标签格式：<text bold italic color="#RRGGBBAA" font-size="15" font-family="Noto Sans CJK SC">文字</text>
-func BuildRichTextLines(fs *FontLibrary, opts ...RichTextOptionFn) *RichText {
-	options := &richTextOptions{
-		align: ti.Align{
-			HAlign: ti.HAlignCenter,
-			VAlign: ti.VAlignMiddle,
-		},
-		fontStyle: RichTextFontStyle{
-			FontFamily: "sans-serif",
-			FontSize:   16,
-			Color:      color.Black,
-			Bold:       false,
-		},
-	}
-
-	for _, opt := range opts {
-		opt(options)
-	}
+func BuildRichTextLines(fs *FontLibrary, opts *RichTextOptions) *RichText {
 
 	return &RichText{
 		fontLibrary: fs,
@@ -123,7 +107,7 @@ func BuildRichTextLines(fs *FontLibrary, opts ...RichTextOptionFn) *RichText {
 		faceCache:   make(map[string]font.Face),
 		width:       -1,
 		height:      -1,
-		opts:        options,
+		opts:        opts,
 	}
 }
 

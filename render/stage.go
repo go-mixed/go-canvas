@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-mixed/go-canvas/misc"
 	"github.com/go-mixed/go-canvas/ti"
-	"github.com/go-mixed/go-taichi/taichi"
 	"github.com/pkg/errors"
 )
 
@@ -33,7 +32,7 @@ func NewStage(renderer *Renderer, width, height int) (*Stage, error) {
 	}
 	s.container = container
 
-	imageTexture, err := taichi.NewNdArray2D(renderer.Runtime(), uint32(height), uint32(width), taichi.DataTypeU32)
+	imageTexture, err := ti.NewBgraImage(renderer.Runtime(), uint32(height), uint32(width))
 	if err != nil {
 		return nil, errors.Wrapf(err, "create image texture failed")
 	}

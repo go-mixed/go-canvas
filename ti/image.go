@@ -2,7 +2,6 @@ package ti
 
 import (
 	"image"
-	"image/color"
 
 	"github.com/go-mixed/go-canvas/misc"
 
@@ -23,6 +22,10 @@ func NewTiGrid(runtime *taichi.Runtime, width, height uint32) (*TiGrid, error) {
 
 func NewTiMask(runtime *taichi.Runtime, width, height uint32) (*TiMask, error) {
 	return NewTiGrid(runtime, width, height)
+}
+
+func NewBgraImage(runtime *taichi.Runtime, width, height uint32) (*TiImage, error) {
+	return taichi.NewNdArray2D(runtime, width, height, taichi.DataTypeU32)
 }
 
 // LoadImageToTiImage 将图片加载到 Taichi.NdArray(w, h, (r, g, b, a))
@@ -106,7 +109,7 @@ func DownloadTextureToImage(texture *TiImage, img ImageWriter) error {
 		for y := 0; y < height; y++ {
 			for x := 0; x < width; x++ {
 				idx, _ := texture.GetOffset(x, y)
-				c := TiColor2Color(data[idx], data[idx+1], data[idx+2], data[idx+3])
+				c := TiColorToColor(data[idx], data[idx+1], data[idx+2], data[idx+3])
 				img.Set(x, y, c)
 			}
 		}
@@ -117,46 +120,29 @@ func DownloadTextureToImage(texture *TiImage, img ImageWriter) error {
 	return errors.Wrapf(err, "Cannot download taichi texture to image")
 }
 
-type RawImage struct {
-	Data          []byte
-	Width, Height int
-}
-
-type BGRAImage RawImage
-type BGRImage RawImage
-
-var _ ImageWriter = (*BGRAImage)(nil)
-var _ ImageWriter = (*BGRImage)(nil)
-
-func NewBGRAImage(width, height int) *BGRAImage {
-	return &BGRAImage{
-		Data:   make([]byte, width*height*4),
-		Width:  width,
-		Height: height,
+func CalcResizeWH(originalWidth, originalHeight int, targetWidth, targetHeight int, opts ResizeOptions) (newWidth int, newHeight int) {
+	if originalWidth == 0 || originalHeight == 0 {
+		return targetWidth, targetHeight
 	}
-}
 
-func (r *BGRAImage) Set(x, y int, c color.Color) {
-	ir, g, b, a := ExpandUColor(c)
-	offset := (y*r.Width + x) * 4
-	r.Data[offset] = uint8(b)    // B
-	r.Data[offset+1] = uint8(g)  // G
-	r.Data[offset+2] = uint8(ir) // R
-	r.Data[offset+3] = uint8(a)  // A
-}
+	srcW, srcH := float32(originalWidth), float32(originalHeight)
+	dstW, dstH := float32(targetWidth), float32(targetHeight)
 
-func NewBGRImage(width, height int) *BGRImage {
-	return &BGRImage{
-		Data:   make([]byte, width*height*3),
-		Width:  width,
-		Height: height,
+	scaleX := dstW / srcW
+	scaleY := dstH / srcH
+
+	var scale float32
+	switch opts.FillMode {
+	case FillModeStretch:
+		scale = 1 // 不缩放，用目标尺寸
+	case FillModeFit:
+		scale = min(scaleX, scaleY)
+	case FillModeFill:
+		scale = max(scaleX, scaleY)
 	}
-}
 
-func (r *BGRImage) Set(x, y int, c color.Color) {
-	ir, g, b, _ := ExpandUColor(c)
-	offset := (y*r.Width + x) * 3
-	r.Data[offset] = uint8(b)    // B
-	r.Data[offset+1] = uint8(g)  // G
-	r.Data[offset+2] = uint8(ir) // R
+	newWidth = int(srcW * scale)
+	newHeight = int(srcH * scale)
+
+	return newWidth, newHeight
 }

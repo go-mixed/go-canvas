@@ -6,62 +6,63 @@ import (
 	"github.com/go-mixed/go-canvas/ti"
 )
 
-type richTextOptions struct {
+type RichTextOptions struct {
 	align     ti.Align
 	fontStyle RichTextFontStyle
 }
 
-type RichTextOptionFn func(options *richTextOptions)
-
-func RTOpt() *richTextOptions {
-	return &richTextOptions{}
-}
-
-func WithVerticalAlign(vAlign ti.VerticalAlign) RichTextOptionFn {
-	return func(opts *richTextOptions) {
-		opts.align.VAlign = vAlign
+func RTOpt() *RichTextOptions {
+	return &RichTextOptions{
+		align: ti.Align{
+			HAlign: ti.HAlignCenter,
+			VAlign: ti.VAlignMiddle,
+		},
+		fontStyle: RichTextFontStyle{
+			FontFamily: "sans-serif",
+			FontSize:   16,
+			Color:      color.Black,
+			Bold:       false,
+		},
 	}
 }
 
-func WithAlign(hAlign ti.HorizontalAlign, vAlign ti.VerticalAlign) RichTextOptionFn {
-	return func(opts *richTextOptions) {
-		opts.align.HAlign = hAlign
-		opts.align.VAlign = vAlign
-	}
+func (r *RichTextOptions) SetVerticalAlign(vAlign ti.VerticalAlign) *RichTextOptions {
+	r.align.VAlign = vAlign
+	return r
 }
 
-func WithBold(bold bool) RichTextOptionFn {
-	return func(opts *richTextOptions) {
-		opts.fontStyle.Bold = bold
-	}
+func (r *RichTextOptions) SetAlign(hAlign ti.HorizontalAlign, vAlign ti.VerticalAlign) *RichTextOptions {
+	r.align.HAlign = hAlign
+	r.align.VAlign = vAlign
+	return r
 }
 
-func WithItalic(italic bool) RichTextOptionFn {
-	return func(opts *richTextOptions) {
-		opts.fontStyle.Italic = italic
-	}
+func (r *RichTextOptions) SetBold(bold bool) *RichTextOptions {
+	r.fontStyle.Bold = bold
+	return r
 }
 
-func WithFontSize(fontSize int) RichTextOptionFn {
-	return func(opts *richTextOptions) {
-		opts.fontStyle.FontSize = fontSize
-	}
+func (r *RichTextOptions) SetItalic(italic bool) *RichTextOptions {
+	r.fontStyle.Italic = italic
+	return r
 }
 
-func WithFontFamily(fontFamily string) RichTextOptionFn {
-	return func(opts *richTextOptions) {
-		opts.fontStyle.FontFamily = fontFamily
-	}
+func (r *RichTextOptions) SetFontSize(fontSize int) *RichTextOptions {
+	r.fontStyle.FontSize = fontSize
+	return r
 }
 
-func WithFontColor(color color.Color) RichTextOptionFn {
-	return func(opts *richTextOptions) {
-		opts.fontStyle.Color = color
-	}
+func (r *RichTextOptions) SetFontFamily(fontFamily string) *RichTextOptions {
+	r.fontStyle.FontFamily = fontFamily
+	return r
 }
 
-func WithFontStyle(font RichTextFontStyle) RichTextOptionFn {
-	return func(opts *richTextOptions) {
-		opts.fontStyle = font
-	}
+func (r *RichTextOptions) SetFontColor(color color.Color) *RichTextOptions {
+	r.fontStyle.Color = color
+	return r
+}
+
+func (r *RichTextOptions) SetFontStyle(font RichTextFontStyle) *RichTextOptions {
+	r.fontStyle = font
+	return r
 }

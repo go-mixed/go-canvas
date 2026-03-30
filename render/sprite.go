@@ -1,6 +1,8 @@
 package render
 
 import (
+	"math"
+
 	"github.com/go-mixed/go-canvas/misc"
 	"github.com/go-mixed/go-canvas/ti"
 )
@@ -20,12 +22,12 @@ var _ IMaskParent = (*Sprite)(nil)
 
 // BuildSprite 创建非容器的精灵，需要传入纹理
 func BuildSprite[T ISprite](parent IParent, attribute *ti.Attribute, texture *ti.TiImage, instanceCreator func(s *Sprite) (T, error)) (T, error) {
-	//var w, h uint32
-	//
-	//if texture != nil {
-	//	shape := texture.Shape()
-	//	w, h = shape[0], shape[1]
-	//}
+	if attribute.Cx() == math.MaxInt64 {
+		attribute.SetCx(attribute.Width() / 2)
+	}
+	if attribute.Cy() == math.MaxInt64 {
+		attribute.SetCy(attribute.Height() / 2)
+	}
 
 	element := &tiElement{
 		attribute: attribute,

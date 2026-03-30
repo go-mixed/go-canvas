@@ -19,7 +19,28 @@ func NewImageSprite(parent IParent, attribute *ti.Attribute, filePath string) (*
 	}
 	shape := texture.Shape()
 	w, h := shape[0], shape[1]
-	attribute.SetWH(int(w), int(h))
+	// 自适应宽高
+	if attribute.Width() == 0 {
+		attribute.SetWidth(int(w))
+	}
+	if attribute.Height() == 0 {
+		attribute.SetHeight(int(h))
+	}
+
+	// Resize Image if image.w/h != attribute.w/h
+	if attribute.Width() != int(w) || attribute.Height() != int(h) {
+		nW, nH := ti.CalcResizeWH(int(w), int(h), attribute.Width(), attribute.Height(), attribute.ResizeOptions())
+		newTexture, err := ti.NewTiImage(parent.Renderer().Runtime(), uint32(nW), uint32(nH))
+		if err != nil {
+			texture.Release()
+			return nil, errors.Wrapf(err, "Cannot create new texture while image resizing")
+		}
+
+		parent.Renderer().Module().Resize(texture, newTexture, attribute.ResizeOptions())
+		texture.Release()
+		texture = newTexture
+		attribute.SetWH(nW, nH)
+	}
 
 	return BuildSprite(parent, attribute, texture, func(s *Sprite) (*ImageSprite, error) {
 		return &ImageSprite{

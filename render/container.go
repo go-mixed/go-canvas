@@ -11,6 +11,9 @@ type Container struct {
 	*Sprite
 
 	children *misc.List[ISprite]
+
+	childOffsetX int
+	childOffsetY int
 }
 
 var _ IContainer = (*Container)(nil)
@@ -19,7 +22,7 @@ var _ IMaskParent = (*Container)(nil)
 
 // NewContainer 创建容器，只能添加子精灵
 // 容器中的texture为空白，当Render时，会将子精灵、容器渲染在上面
-func NewContainer(parent IParent, attribute *ti.Attribute) (IContainer, error) {
+func NewContainer(parent IParent, attribute *ti.Attribute) (*Container, error) {
 	texture, err := ti.NewTiImage(parent.Renderer().Runtime(), uint32(attribute.Width()), uint32(attribute.Height()))
 	if err != nil {
 		return nil, err
@@ -109,13 +112,20 @@ func (c *Container) Render() {
 	c.mutex.Unlock()
 
 	w, h := c.attribute.Width(), c.attribute.Height()
+	relativeContainerRect := ti.RectWH(0, 0, float32(w), float32(h))
 
 	for _, child := range children.Range() {
 		// 渲染子级
 		child.Render()
 		childTexture := child.Texture()
 
-		bbox := child.ClippedRect(w, h)
+		// 得到子项（旋转、缩放、平移）之后真实坐标
+		bbox := child.ClientRect()
+		// 添加滚动条
+		bbox = bbox.Add(ti.Pt[float32](float32(c.childOffsetX), float32(c.childOffsetY)))
+		// 计算和当前容器的交集
+		bbox = bbox.Intersect(relativeContainerRect)
+
 		if bbox.Dx() == 0 || bbox.Dy() == 0 {
 			continue
 		}
@@ -130,8 +140,8 @@ func (c *Container) Render() {
 		}
 
 		options := ti.RenderLayerOptions{
-			X:        float32(childAttribute.X()),
-			Y:        float32(childAttribute.Y()),
+			X:        float32(childAttribute.X() + c.childOffsetX),
+			Y:        float32(childAttribute.Y() + c.childOffsetY),
 			Width:    float32(childAttribute.Width()),
 			Height:   float32(childAttribute.Height()),
 			Cx:       float32(childAttribute.Cx()),
@@ -176,4 +186,39 @@ func (c *Container) Release() {
 	defer c.mutex.Unlock()
 	c.Sprite = nil
 	c.children.Clear()
+}
+
+func (c *Container) ScrollTop(y int) {
+	c.LockForUpdate(func() {
+		if y < 0 {
+			y = 0
+		}
+
+		cr := c.ClientRect()
+		ch := int(cr.Height())
+		if y > ch {
+			y = ch
+		}
+
+		c.childOffsetY = -y
+	}, func() bool {
+		return y != c.childOffsetY
+	})
+}
+
+func (c *Container) ScrollLeft(x int) {
+	c.LockForUpdate(func() {
+		if x < 0 {
+			x = 0
+		}
+		cr := c.ClientRect()
+		ch := int(cr.Height())
+		if x > ch {
+			x = ch
+		}
+
+		c.childOffsetX = -x
+	}, func() bool {
+		return x != c.childOffsetX
+	})
 }

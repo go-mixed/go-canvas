@@ -27,12 +27,12 @@ def build_inverse_affine_matrix(
     inv_scale_y = 1.0 / scale_y
 
     # 逆仿射矩阵
-    # [ cos/sx   sin/sx  -(x+cx)*cos/sx - (y+cy)*sin/sx + x + cx ]
-    # [ -sin/sy  cos/sy   (x+cx)*sin/sy - (y+cy)*cos/sy + y + cy ]
+    # [ cos/sx   sin/sx  -(x+cx)*cos/sx - (y+cy)*sin/sx + cx ]
+    # [ -sin/sy  cos/sy   (x+cx)*sin/sy - (y+cy)*cos/sy + cy ]
     # [   0       0                    1                             ]
 
-    tx = -(x + cx) * cos_r * inv_scale_x - (y + cy) * sin_r * inv_scale_x + x + cx
-    ty = (x + cx) * sin_r * inv_scale_y - (y + cy) * cos_r * inv_scale_y + y + cy
+    tx = -(x + cx) * cos_r * inv_scale_x - (y + cy) * sin_r * inv_scale_x + cx
+    ty = -(x + cx) * sin_r * inv_scale_y - (y + cy) * cos_r * inv_scale_y + cy
 
 
     return ti.math.mat3(
