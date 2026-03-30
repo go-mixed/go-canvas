@@ -130,6 +130,8 @@ func BuildRichTextLines(fs *FontLibrary, opts ...RichTextOptionFn) *RichText {
 func (r *RichText) SetText(input string) {
 	r.lines.Clear()
 	r.original = input
+	r.width = -1
+	r.height = -1
 
 	segments := r.parseText(input)
 	if len(segments) == 0 {

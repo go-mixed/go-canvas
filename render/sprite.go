@@ -19,22 +19,17 @@ var _ ISprite = (*Sprite)(nil)
 var _ IMaskParent = (*Sprite)(nil)
 
 // BuildSprite 创建非容器的精灵，需要传入纹理
-func BuildSprite[T ISprite](parent IParent, texture *ti.TiImage, instanceCreator func(s *Sprite) (T, error)) (T, error) {
-	var w, h uint32
-
-	if texture != nil {
-		shape := texture.Shape()
-		w, h = shape[0], shape[1]
-	}
+func BuildSprite[T ISprite](parent IParent, attribute *ti.Attribute, texture *ti.TiImage, instanceCreator func(s *Sprite) (T, error)) (T, error) {
+	//var w, h uint32
+	//
+	//if texture != nil {
+	//	shape := texture.Shape()
+	//	w, h = shape[0], shape[1]
+	//}
 
 	element := &tiElement{
-		rect:    ti.Rect(0, 0, float32(w), float32(h)),
-		alpha:   1.0,
-		texture: texture,
-		scaleX:  1.0,
-		scaleY:  1.0,
-		deltaCx: float32(w / 2),
-		deltaCy: float32(h / 2),
+		attribute: attribute,
+		texture:   texture,
 	}
 	s := &Sprite{
 		tiElement: element.initial(parent.Renderer()),
@@ -87,13 +82,13 @@ func (s *Sprite) Masks() *misc.List[IMask] {
 }
 
 // NewBlockSprite 创建纯色块精灵，颜色为透明的
-func NewBlockSprite(parent IParent, width, height uint32) (*Sprite, error) {
-	texture, err := ti.NewTiImage(parent.Renderer().Runtime(), width, height)
+func NewBlockSprite(parent IParent, attribute *ti.Attribute) (*Sprite, error) {
+	texture, err := ti.NewTiImage(parent.Renderer().Runtime(), uint32(attribute.Width()), uint32(attribute.Height()))
 	if err != nil {
 		return nil, err
 	}
 
-	return BuildSprite(parent, texture, func(s *Sprite) (*Sprite, error) {
+	return BuildSprite(parent, attribute, texture, func(s *Sprite) (*Sprite, error) {
 		return s, nil
 	})
 }

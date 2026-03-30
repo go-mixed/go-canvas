@@ -2,30 +2,6 @@ package ti
 
 import "math"
 
-// FillMode 缩放填充模式
-type FillMode int32
-
-const (
-	FillModeStretch FillMode = 0 // 拉伸（不保持宽高比）
-	FillModeFit     FillMode = 1 // 等比适应（可能有黑边）
-	FillModeFill    FillMode = 2 // 等比填充（可能裁剪）
-)
-
-// ScaleMode 缩放算法模式
-type ScaleMode int32
-
-const (
-	ScaleModeNearest ScaleMode = 0 // 最近邻
-	ScaleModeLinear  ScaleMode = 1 // 双线性
-	ScaleModeCubic   ScaleMode = 2 // 双三次
-	ScaleModeLanczos ScaleMode = 3 // Lanczos4（质量最高）
-)
-
-type ResizeOptions struct {
-	FillMode  FillMode  // fit, fill
-	ScaleMode ScaleMode // nearest, linear, cubic
-}
-
 // resizeParams 缩放参数
 type resizeParams struct {
 	scaleX  float32

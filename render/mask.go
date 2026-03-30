@@ -91,15 +91,15 @@ func (m *ShapeMask) RemoveMask(mask IMask) {
 var _ IMask = (*ShapeMask)(nil)
 var _ IElement = (*ShapeMask)(nil)
 
-func NewShapeMask(parent IMaskParent, width, height uint32, cx, cy uint32) (*ShapeMask, error) {
+func NewShapeMask(parent IMaskParent, attribute *ti.Attribute) (*ShapeMask, error) {
 
-	texture, err := ti.NewTiMask(parent.Renderer().Runtime(), width, height)
+	texture, err := ti.NewTiMask(parent.Renderer().Runtime(), uint32(attribute.Width()), uint32(attribute.Height()))
 	if err != nil {
 		return nil, err
 	}
 
 	return BuildMask(parent, texture, func(mask *Mask) (*ShapeMask, error) {
-		shapeSprite, err := NewShapeSprite(SelfRelease(parent.Renderer()), width, height, cx, cy)
+		shapeSprite, err := NewShapeSprite(SelfRelease(parent.Renderer()), attribute)
 		if err != nil {
 			mask.Release()
 			return nil, err

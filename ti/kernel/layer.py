@@ -15,6 +15,11 @@ def build_inverse_affine_matrix(
 
     正变换顺序：平移 → 旋转 → 缩放
     逆变换顺序：逆缩放 → 逆旋转 → 逆平移
+
+    参数说明：
+        x, y: 纹理左边界在屏幕上的绝对坐标
+        cx, cy: 纹理中心相对于纹理左边界(x=0)的偏移（比如 texture_width/2, texture_height/2）
+                最终纹理中心在屏幕上的绝对位置 = (x + cx, y + cy)
     """
     cos_r = ti.cos(rotation)
     sin_r = ti.sin(rotation)
@@ -22,12 +27,13 @@ def build_inverse_affine_matrix(
     inv_scale_y = 1.0 / scale_y
 
     # 逆仿射矩阵
-    # [ cos/sx   sin/sx  -(x+cx)*cos/sx - (y+cy)*sin/sx + cx ]
-    # [ -sin/sy  cos/sy   (x+cx)*sin/sy - (y+cy)*cos/sy + cy ]
-    # [   0       0                    1                     ]
+    # [ cos/sx   sin/sx  -(x+cx)*cos/sx - (y+cy)*sin/sx + x + cx ]
+    # [ -sin/sy  cos/sy   (x+cx)*sin/sy - (y+cy)*cos/sy + y + cy ]
+    # [   0       0                    1                             ]
 
-    tx = -(x + cx) * cos_r * inv_scale_x - (y + cy) * sin_r * inv_scale_x + cx
-    ty = -(x + cx) * sin_r * inv_scale_y - (y + cy) * cos_r * inv_scale_y + cy
+    tx = -(x + cx) * cos_r * inv_scale_x - (y + cy) * sin_r * inv_scale_x + x + cx
+    ty = (x + cx) * sin_r * inv_scale_y - (y + cy) * cos_r * inv_scale_y + y + cy
+
 
     return ti.math.mat3(
         cos_r * inv_scale_x,  sin_r * inv_scale_x, tx,
@@ -103,8 +109,8 @@ def render_layer_no_mask(
     :param texture: 纹理层，结构为[w, h] = [r, g, b, a]
     :param x: 前景相对screen的x偏移值，如果x为0，表示从左上角开始绘制
     :param y: 前景相对screen的y偏移值，如果y为0，表示从左上角开始绘制
-    :param cx: 纹理中心x坐标
-    :param cy: 纹理中心y坐标
+    :param cx: 纹理中心相对于纹理左边界(x=0)的偏移（比如 texture_width/2）
+    :param cy: 纹理中心相对于纹理上边界(y=0)的偏移（比如 texture_height/2）
     :param scale_x: x轴缩放，（单位：倍数）, 默认为1.0, 表示不缩放
     :param scale_y: y轴缩放，（单位：倍数）, 默认为1.0, 表示不缩放
     :param rotation: 旋转，（单位：弧度）, 默认为0.0, 表示不旋转
@@ -154,8 +160,8 @@ def render_layer_with_mask(
     :param texture: 纹理层，结构为[w, h] = [r, g, b, a]
     :param x: 前景相对screen的x偏移值，如果x为0，表示从左上角开始绘制
     :param y: 前景相对screen的y偏移值，如果y为0，表示从左上角开始绘制
-    :param cx: 纹理中心x坐标
-    :param cy: 纹理中心y坐标
+    :param cx: 纹理中心相对于纹理左边界(x=0)的偏移（比如 texture_width/2）
+    :param cy: 纹理中心相对于纹理上边界(y=0)的偏移（比如 texture_height/2）
     :param scale_x: x轴缩放，（单位：倍数）, 默认为1.0, 表示不缩放
     :param scale_y: y轴缩放，（单位：倍数）, 默认为1.0, 表示不缩放
     :param rotation: 旋转，（单位：弧度）, 默认为0.0, 表示不旋转

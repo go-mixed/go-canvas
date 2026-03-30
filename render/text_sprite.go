@@ -11,20 +11,20 @@ type TextSprite struct {
 	*Sprite
 	richText *font.RichText
 
-	originalWidth, originalHeight uint32
+	originalWidth, originalHeight int
 }
 
 // NewTextSprite 创建文字精灵
-func NewTextSprite(parent IParent, fontLibrary *font.FontLibrary, width, height uint32, opts ...font.RichTextOptionFn) (*TextSprite, error) {
+func NewTextSprite(parent IParent, fontLibrary *font.FontLibrary, attribute *ti.Attribute, opts ...font.RichTextOptionFn) (*TextSprite, error) {
 
 	rt := font.BuildRichTextLines(fontLibrary, opts...)
 
-	return BuildSprite(parent, nil, func(s *Sprite) (*TextSprite, error) {
+	return BuildSprite(parent, attribute, nil, func(s *Sprite) (*TextSprite, error) {
 		ts := &TextSprite{
 			Sprite:         s,
 			richText:       rt,
-			originalWidth:  width,
-			originalHeight: height,
+			originalWidth:  attribute.Width(),
+			originalHeight: attribute.Height(),
 		}
 		return ts, nil
 	})
@@ -37,7 +37,7 @@ func (s *TextSprite) SetText(text string) error {
 		s.richText.SetText(text)
 
 		img := s.richText.RenderText()
-		imgW, imgH := uint32(img.Bounds().Dx()), uint32(img.Bounds().Dy())
+		imgW, imgH := img.Bounds().Dx(), img.Bounds().Dy()
 		var width, height = imgW, imgH
 		if s.originalWidth == 0 {
 			width = imgW
@@ -47,7 +47,7 @@ func (s *TextSprite) SetText(text string) error {
 		}
 
 		var texture *ti.TiImage
-		texture, err = ti.NewTiImage(s.Renderer().Runtime(), width, height)
+		texture, err = ti.NewTiImage(s.Renderer().Runtime(), uint32(width), uint32(height))
 		if err != nil {
 			return
 		}
@@ -56,17 +56,17 @@ func (s *TextSprite) SetText(text string) error {
 		var imgOffset ti.Point[int]
 		switch s.richText.Align().HAlign {
 		case ti.HAlignCenter:
-			imgOffset.X = (int(width) - int(imgW)) / 2
+			imgOffset.X = (width - imgW) / 2
 		case ti.HAlignRight:
-			imgOffset.X = int(width) - int(imgW)
+			imgOffset.X = width - imgW
 		default:
 		}
 
 		switch s.richText.Align().VAlign {
 		case ti.VAlignMiddle:
-			imgOffset.Y = (int(height) - int(imgH)) / 2
+			imgOffset.Y = ((height) - (imgH)) / 2
 		case ti.VAlignBottom:
-			imgOffset.Y = int(height) - int(imgH)
+			imgOffset.Y = (height) - (imgH)
 		default:
 		}
 
@@ -79,10 +79,7 @@ func (s *TextSprite) SetText(text string) error {
 			s.texture.Release()
 		}
 		s.texture = texture
-		s.rect.Max = ti.Point[float32]{
-			X: float32(width) + s.rect.Min.X,
-			Y: float32(height) + s.rect.Min.Y,
-		}
+		s.attribute.SetWH(width, height)
 
 	}, func() bool {
 		return s.richText.Equal(text)

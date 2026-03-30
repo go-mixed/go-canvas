@@ -15,14 +15,15 @@ type ShapeSprite struct {
 	dx, dy *taichi.NdArray
 }
 
-func NewShapeSprite(parent IParent, width, height uint32, cx, cy uint32) (*ShapeSprite, error) {
+func NewShapeSprite(parent IParent, attribute *ti.Attribute) (*ShapeSprite, error) {
 
+	width, height := uint32(attribute.Width()), uint32(attribute.Height())
 	texture, err := ti.NewTiImage(parent.Renderer().Runtime(), width, height)
 	if err != nil {
 		return nil, err
 	}
 
-	return BuildSprite[*ShapeSprite](parent, texture, func(sprite *Sprite) (*ShapeSprite, error) {
+	return BuildSprite[*ShapeSprite](parent, attribute, texture, func(sprite *Sprite) (*ShapeSprite, error) {
 		dx, err := ti.NewTiGrid(parent.Renderer().Runtime(), width, height)
 		if err != nil {
 			return nil, err
@@ -34,9 +35,7 @@ func NewShapeSprite(parent IParent, width, height uint32, cx, cy uint32) (*Shape
 			return nil, err
 		}
 
-		parent.Renderer().Module().ComputeNormalizedCoords(dx, dy, float32(cx), float32(cy))
-		sprite.SetCx(float32(cx))
-		sprite.SetCy(float32(cy))
+		parent.Renderer().Module().ComputeNormalizedCoords(dx, dy, float32(attribute.Cx()), float32(attribute.Cy()))
 
 		return &ShapeSprite{
 			Sprite: sprite,

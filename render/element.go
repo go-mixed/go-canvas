@@ -11,13 +11,7 @@ import (
 )
 
 type tiElement struct {
-	rect           ti.Rectangle[float32]
-	scaleX, scaleY float32 // 1.0 for no scaling
-	rotation       float32 // 0.0 for no rotation, in radians
-	alpha          float32 // 0.0 for no alpha, 1.0 for full alpha
-
-	// 中心点的相对值
-	deltaCx, deltaCy float32
+	attribute *ti.Attribute
 
 	texture *ti.TiImage
 
@@ -62,139 +56,125 @@ func (e *tiElement) SetDirty(val bool) {
 	e.dirty = val
 }
 
-func (e *tiElement) SetX(x float32) {
-	e.MoveTo(x, e.Y())
+func (e *tiElement) SetX(x int) {
+	e.MoveTo(x, e.attribute.Y())
 }
 
-func (e *tiElement) X() float32 {
+func (e *tiElement) X() int {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	return e.rect.X()
+	return e.attribute.X()
 }
 
-func (e *tiElement) SetY(y float32) {
-	e.MoveTo(e.X(), y)
+func (e *tiElement) SetY(y int) {
+	e.MoveTo(e.attribute.X(), y)
 }
 
-func (e *tiElement) Y() float32 {
+func (e *tiElement) Y() int {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	return e.rect.Y()
+	return e.attribute.Y()
 }
 
-func (e *tiElement) MoveTo(x float32, y float32) {
+func (e *tiElement) MoveTo(x int, y int) {
 	e.LockForUpdate(func() {
-		e.rect = e.rect.MoveTo(x, y)
+		e.attribute.MoveTo(x, y)
 	}, func() bool {
-		return misc.NumberEqual(e.rect.X(), x, misc.Epsilon) && misc.NumberEqual(e.rect.Y(), y, misc.Epsilon)
+		return misc.NumberEqual(e.attribute.X(), x, misc.Epsilon) && misc.NumberEqual(e.attribute.Y(), y, misc.Epsilon)
 	})
 }
 
-func (e *tiElement) Width() float32 {
+func (e *tiElement) Width() int {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	return e.width()
+	return e.attribute.Width()
 }
 
-func (e *tiElement) width() float32 {
-	return e.rect.Dx()
-}
-
-func (e *tiElement) Height() float32 {
+func (e *tiElement) Height() int {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	return e.height()
-}
-
-func (e *tiElement) height() float32 {
-	return e.rect.Dy()
+	return e.attribute.Height()
 }
 
 func (e *tiElement) SetScale(scaleX, scaleY float32) {
 	e.LockForUpdate(func() {
-		e.scaleX = scaleX
-		e.scaleY = scaleY
+		e.attribute.SetScale(scaleX, scaleY)
 	}, func() bool {
-		return misc.NumberEqual(e.scaleX, scaleX, misc.Epsilon) && misc.NumberEqual(e.scaleY, scaleY, misc.Epsilon)
+		return !misc.NumberEqual(e.attribute.ScaleX(), scaleX, misc.Epsilon) && misc.NumberEqual(e.attribute.ScaleY(), scaleY, misc.Epsilon)
 	})
 }
 
 func (e *tiElement) ScaleX() float32 {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	return e.scaleX
+	return e.attribute.ScaleX()
 }
 
 func (e *tiElement) ScaleY() float32 {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	return e.scaleY
+	return e.attribute.ScaleY()
 }
 
 func (e *tiElement) SetRotation(rotation float32) {
 	e.LockForUpdate(func() {
-		e.rotation = rotation
+		e.attribute.SetRotation(rotation)
 	}, func() bool {
-		return misc.NumberEqual(e.rotation, rotation, misc.Epsilon)
+		return !misc.NumberEqual(e.attribute.Rotation(), rotation, misc.Epsilon)
 	})
 }
 
 func (e *tiElement) Rotation() float32 {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	return e.rotation
+	return e.attribute.Rotation()
 }
 
 func (e *tiElement) SetAlpha(alpha float32) {
 	e.LockForUpdate(func() {
-		e.alpha = alpha
+		e.attribute.SetAlpha(alpha)
 	}, func() bool {
-		return misc.NumberEqual(e.alpha, alpha, misc.Epsilon)
+		return !misc.NumberEqual(e.attribute.Alpha(), alpha, misc.Epsilon)
 	})
 }
 
 func (e *tiElement) Alpha() float32 {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	return e.alpha
+	return e.attribute.Alpha()
 }
 
-func (e *tiElement) Cx() float32 {
+func (e *tiElement) Cx() int {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	return e.X() + e.deltaCx
+	return e.attribute.Cx()
 }
 
-func (e *tiElement) SetCx(cx float32) {
+func (e *tiElement) SetCx(cx int) {
 	e.LockForUpdate(func() {
-		e.deltaCx = cx
+		e.attribute.SetCx(cx)
 	}, func() bool {
-		return misc.NumberEqual(e.deltaCx, cx, misc.Epsilon)
+		return e.attribute.Cx() != cx
 	})
 }
 
-func (e *tiElement) Cy() float32 {
+func (e *tiElement) Cy() int {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
-	return e.Y() + e.deltaCy
+	return e.attribute.Cy()
 }
 
-func (e *tiElement) SetCy(cy float32) {
+func (e *tiElement) SetCy(cy int) {
 	e.LockForUpdate(func() {
-		e.deltaCy = cy
-	}, func() bool { return misc.NumberEqual(e.deltaCy, cy, misc.Epsilon) })
+		e.attribute.SetCy(cy)
+	}, func() bool { return e.attribute.Cy() != cy })
 }
 
-//// SetTexture 设置精灵纹理
-//func (s *tiElement) SetTexture(texture *ti.TiImage)  {
-//	s.LockForUpdate(func() {
-//		if s.texture != nil {
-//			s.texture.Release()
-//		}
-//		s.texture = texture
-//	}, func() bool { return s.texture != texture })
-//	return s
-//}
+func (e *tiElement) Attribute() *ti.Attribute {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	return e.attribute
+}
 
 // Fill 填充纯色
 func (e *tiElement) Fill(color color.Color) {
@@ -209,15 +189,19 @@ func (e *tiElement) Texture() *ti.TiImage {
 	return e.texture
 }
 
-func (e *tiElement) Resize(width, height uint32) error {
+func (e *tiElement) Resize(width, height int) error {
+	if width <= 0 || height <= 0 {
+		return errors.New("width or height must be greater than 0")
+	}
+
 	var err error
 	e.LockForUpdate(func() {
-		if misc.NumberEqual(e.width(), width, misc.Epsilon) && misc.NumberEqual(e.height(), height, misc.Epsilon) {
+		if e.attribute.Width() == width && e.attribute.Width() == height {
 			return
 		}
-		e.rect = ti.Rect[float32](0, 0, float32(width), float32(height))
+		e.attribute.SetWH(width, height)
 		var newTexture *ti.TiImage
-		newTexture, err = ti.NewTiImage(e.Renderer().Runtime(), width, height)
+		newTexture, err = ti.NewTiImage(e.Renderer().Runtime(), uint32(width), uint32(height))
 		if err != nil {
 			return
 		}
@@ -227,15 +211,12 @@ func (e *tiElement) Resize(width, height uint32) error {
 			return
 		}
 
-		e.Renderer().Module().Resize(e.texture, newTexture, ti.ResizeOptions{
-			FillMode:  ti.FillModeFit,
-			ScaleMode: ti.ScaleModeLanczos,
-		})
+		e.Renderer().Module().Resize(e.texture, newTexture, e.attribute.ResizeOptions())
 
 		e.texture.Release()
 		e.texture = newTexture
 	}, func() bool {
-		return misc.NumberEqual(e.width(), width, misc.Epsilon) && misc.NumberEqual(e.height(), height, misc.Epsilon)
+		return e.attribute.Width() != width || e.attribute.Width() != height
 	})
 
 	if err != nil {
@@ -280,9 +261,9 @@ func (e *tiElement) Blur(mode ti.BlurMode, radius int32) error {
 // 假设纹理左上角为(0,0)，中心点为(cx, cy)：
 // (0, 0)           ●────────● (width, 0)
 //
-//	│        │
-//	│   ●    │  ← 中心点 (cx, cy)
-//	│        │
+//		                │        │
+//	             	│   ●    │  ← 中心点 (cx, cy)
+//	             	│        │
 //
 // (0, height)      ●────────● (width, height)
 //
@@ -290,17 +271,19 @@ func (e *tiElement) Blur(mode ti.BlurMode, radius int32) error {
 // 左上: (-cx, -cy)，右上: (width-cx, -cy)
 // 右下: (width-cx, height-cy)，左下: (-cx, height-cy)
 func (e *tiElement) ClientRect() ti.Rectangle[float32] {
-	cx, cy := e.Cx(), e.Cy()
+	cx, cy := float32(e.attribute.Cx()), float32(e.attribute.Cy())
+	w, h := float32(e.attribute.Width()), float32(e.attribute.Height())
 
+	// 此处的运算都假设x, y = 0，所以最后需要加上x, y
 	corners := [][2]float32{
 		{0 - cx, 0 - cy},
-		{e.Width() - cx, 0 - cy},
-		{e.Width() - cx, e.Height() - cy},
-		{0 - cx, e.Height() - cy},
+		{w - cx, 0 - cy},
+		{w - cx, h - cy},
+		{0 - cx, h - cy},
 	}
 
-	cosR := float32(math.Cos(float64(e.rotation)))
-	sinR := float32(math.Sin(float64(e.rotation)))
+	cosR := float32(math.Cos(float64(e.attribute.Rotation())))
+	sinR := float32(math.Sin(float64(e.attribute.Rotation())))
 
 	var minX, maxX, minY, maxY float32
 	minX, maxX = math.MaxFloat32, -math.MaxFloat32
@@ -308,8 +291,8 @@ func (e *tiElement) ClientRect() ti.Rectangle[float32] {
 
 	for _, corner := range corners {
 		dx, dy := corner[0], corner[1]
-		scaledDx := dx * e.scaleX
-		scaledDy := dy * e.scaleY
+		scaledDx := dx * e.attribute.ScaleX()
+		scaledDy := dy * e.attribute.ScaleY()
 		rx := scaledDx*cosR - scaledDy*sinR + cx
 		ry := scaledDx*sinR + scaledDy*cosR + cy
 
@@ -327,8 +310,8 @@ func (e *tiElement) ClientRect() ti.Rectangle[float32] {
 		}
 	}
 
-	bbox := ti.Rect(minX, minY, maxX, maxY)
-	return bbox.MoveTo(e.rect.X(), e.rect.Y())
+	bbox := ti.RectXY(minX, minY, maxX, maxY)
+	return bbox.MoveTo(float32(e.attribute.X()), float32(e.attribute.Y()))
 }
 
 // ClippedRect 获取与父级区域裁剪后的可视区域
@@ -336,8 +319,8 @@ func (e *tiElement) ClientRect() ti.Rectangle[float32] {
 //     请查看examples/bounding_box_visualize.png以了解原理
 //
 // 返回：边界框在屏幕坐标系中的范围（与父级区域求交集后的结果）
-func (e *tiElement) ClippedRect(parentWidth, parentHeight float32) ti.Rectangle[float32] {
-	parentRect := ti.Rect(0, 0, parentWidth, parentHeight)
+func (e *tiElement) ClippedRect(parentWidth, parentHeight int) ti.Rectangle[float32] {
+	parentRect := ti.RectWH[float32](0, 0, float32(parentWidth), float32(parentHeight))
 	return e.ClientRect().Intersect(parentRect)
 }
 

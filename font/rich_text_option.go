@@ -13,6 +13,10 @@ type richTextOptions struct {
 
 type RichTextOptionFn func(options *richTextOptions)
 
+func RTOpt() *richTextOptions {
+	return &richTextOptions{}
+}
+
 func WithVerticalAlign(vAlign ti.VerticalAlign) RichTextOptionFn {
 	return func(opts *richTextOptions) {
 		opts.align.VAlign = vAlign

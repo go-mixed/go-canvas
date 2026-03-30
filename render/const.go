@@ -7,9 +7,34 @@ import (
 	"github.com/go-mixed/go-canvas/ti"
 )
 
-type IElementOperation interface {
+type IAttribute interface {
+	X() int
+	Y() int
+	Cx() int
+	Cy() int
+	Width() int
+	Height() int
+	ScaleX() float32
+	ScaleY() float32
+	Rotation() float32
+	Alpha() float32
+
+	SetX(x int)
+	SetY(y int)
+	MoveTo(x int, y int)
+	SetCx(cx int)
+	SetCy(cy int)
+
+	SetScale(scaleX, scaleY float32)
+	SetRotation(rotation float32)
+	SetAlpha(alpha float32)
+
 	// Resize 设置尺寸
-	Resize(width, height uint32) error
+	Resize(width, height int) error
+}
+
+type IElementOperation interface {
+
 	// Blur 模糊纹理（马赛克/高斯/普通）
 	Blur(mode ti.BlurMode, radius int32) error
 	// Fill 所有像素填充同一个颜色
@@ -18,33 +43,16 @@ type IElementOperation interface {
 
 // IElement 精灵操作接口，主要是Set/Get，没有复杂操作
 type IElement interface {
-	X() float32
-	Y() float32
-	Width() float32
-	Height() float32
-	ScaleX() float32
-	ScaleY() float32
-	Rotation() float32
-	Alpha() float32
-	Cx() float32
-	Cy() float32
+	IAttribute
+
+	Attribute() *ti.Attribute
 
 	Texture() *ti.TiImage
-
-	SetX(x float32)
-	SetY(y float32)
-	MoveTo(x float32, y float32)
-	SetCx(cx float32)
-	SetCy(cy float32)
-
-	SetScale(scaleX, scaleY float32)
-	SetRotation(rotation float32)
-	SetAlpha(alpha float32)
 
 	// ClientRect 获取元素自身旋转+缩放后的边界（不与父级求交集）
 	ClientRect() ti.Rectangle[float32]
 	// ClippedRect 获取与父级区域裁剪后的可视区域（请在 Container.Render 中使用）
-	ClippedRect(parentWidth, parentHeight float32) ti.Rectangle[float32]
+	ClippedRect(parentWidth, parentHeight int) ti.Rectangle[float32]
 
 	IsDirty() bool
 	SetDirty(val bool)

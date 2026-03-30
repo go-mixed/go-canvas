@@ -21,19 +21,19 @@ type Stage struct {
 var _ IParent = (*Stage)(nil)
 
 // NewStage 创建舞台，注意：调用 Stage.Release 时，不会释放 Renderer
-func NewStage(renderer *Renderer, width, height uint32) (*Stage, error) {
+func NewStage(renderer *Renderer, width, height int) (*Stage, error) {
 	s := &Stage{
 		renderer: renderer,
 		mutex:    &sync.RWMutex{},
 	}
 
-	container, err := NewContainer(SelfRelease(renderer), width, height)
+	container, err := NewContainer(SelfRelease(renderer), ti.Attr().SetWH(width, height))
 	if err != nil {
 		return nil, errors.Wrapf(err, "create container of stage failed")
 	}
 	s.container = container
 
-	imageTexture, err := taichi.NewNdArray2D(renderer.Runtime(), height, width, taichi.DataTypeU32)
+	imageTexture, err := taichi.NewNdArray2D(renderer.Runtime(), uint32(height), uint32(width), taichi.DataTypeU32)
 	if err != nil {
 		return nil, errors.Wrapf(err, "create image texture failed")
 	}

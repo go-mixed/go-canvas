@@ -19,13 +19,13 @@ var _ IMaskParent = (*Container)(nil)
 
 // NewContainer 创建容器，只能添加子精灵
 // 容器中的texture为空白，当Render时，会将子精灵、容器渲染在上面
-func NewContainer(parent IParent, width, height uint32) (IContainer, error) {
-	texture, err := ti.NewTiImage(parent.Renderer().Runtime(), width, height)
+func NewContainer(parent IParent, attribute *ti.Attribute) (IContainer, error) {
+	texture, err := ti.NewTiImage(parent.Renderer().Runtime(), uint32(attribute.Width()), uint32(attribute.Height()))
 	if err != nil {
 		return nil, err
 	}
 
-	return BuildSprite(parent, texture, func(s *Sprite) (*Container, error) {
+	return BuildSprite(parent, attribute, texture, func(s *Sprite) (*Container, error) {
 		return &Container{
 			Sprite:   s,
 			children: misc.NewList[ISprite](),
@@ -108,7 +108,7 @@ func (c *Container) Render() {
 	children := c.children
 	c.mutex.Unlock()
 
-	w, h := c.Width(), c.Height()
+	w, h := c.attribute.Width(), c.attribute.Height()
 
 	for _, child := range children.Range() {
 		// 渲染子级
@@ -120,6 +120,8 @@ func (c *Container) Render() {
 			continue
 		}
 
+		childAttribute := child.Attribute()
+
 		// 暂时只支持第一个mask
 		masks := child.Masks()
 		var mask IMask
@@ -128,16 +130,16 @@ func (c *Container) Render() {
 		}
 
 		options := ti.RenderLayerOptions{
-			X:        child.X(),
-			Y:        child.Y(),
-			Width:    child.Width(),
-			Height:   child.Height(),
-			Cx:       child.Cx(),
-			Cy:       child.Cy(),
-			ScaleX:   child.ScaleX(),
-			ScaleY:   child.ScaleY(),
-			Rotation: child.Rotation(),
-			Alpha:    child.Alpha(),
+			X:        float32(childAttribute.X()),
+			Y:        float32(childAttribute.Y()),
+			Width:    float32(childAttribute.Width()),
+			Height:   float32(childAttribute.Height()),
+			Cx:       float32(childAttribute.Cx()),
+			Cy:       float32(childAttribute.Cy()),
+			ScaleX:   childAttribute.ScaleX(),
+			ScaleY:   childAttribute.ScaleY(),
+			Rotation: childAttribute.Rotation(),
+			Alpha:    childAttribute.Alpha(),
 			MinX:     int32(bbox.Min.X),
 			MaxX:     int32(bbox.Max.X),
 			MinY:     int32(bbox.Min.Y),

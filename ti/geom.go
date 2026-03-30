@@ -1,9 +1,10 @@
 package ti
 
 import (
-	"github.com/go-mixed/go-canvas/misc"
 	"image/color"
 	"math"
+
+	"github.com/go-mixed/go-canvas/misc"
 )
 
 type Point[T misc.Integer | misc.Float] struct {
@@ -66,10 +67,10 @@ type Rectangle[T misc.Integer | misc.Float] struct {
 	Min, Max Point[T]
 }
 
-// Rect is shorthand for [Rectangle]{Pt(x0, y0), [Pt](x1, y1)}. The returned
+// RectXY is shorthand for [Rectangle]{Pt(x0, y0), [Pt](x1, y1)}. The returned
 // rectangle has minimum and maximum coordinates swapped if necessary so that
 // it is well-formed.
-func Rect[T misc.Integer | misc.Float](x0, y0, x1, y1 T) Rectangle[T] {
+func RectXY[T misc.Integer | misc.Float](x0, y0, x1, y1 T) Rectangle[T] {
 	if x0 > x1 {
 		x0, x1 = x1, x0
 	}
@@ -77,6 +78,19 @@ func Rect[T misc.Integer | misc.Float](x0, y0, x1, y1 T) Rectangle[T] {
 		y0, y1 = y1, y0
 	}
 	return Rectangle[T]{Point[T]{x0, y0}, Point[T]{x1, y1}}
+}
+
+// RectWH is shorthand for [Rectangle]{Pt(x, y), Pt(x+w, y+h)}.
+func RectWH[T misc.Integer | misc.Float](x, y, w, h T) Rectangle[T] {
+	return RectXY(x, y, x+w, y+h)
+}
+
+// ToRect convert a Rectangle[S] to Rectangle[D]
+func ToRect[D, S misc.Integer | misc.Float](srcRect Rectangle[S]) Rectangle[D] {
+	return Rectangle[D]{
+		Point[D]{D(srcRect.Min.X), D(srcRect.Min.Y)},
+		Point[D]{D(srcRect.Max.X), D(srcRect.Max.Y)},
+	}
 }
 
 func (r Rectangle[T]) X() T {
@@ -116,6 +130,13 @@ func (r Rectangle[T]) Dy() T {
 func (r Rectangle[T]) Size() Point[T] {
 	return Point[T]{r.Max.X - r.Min.X,
 		r.Max.Y - r.Min.Y}
+}
+
+// Resize the rectangle
+func (r Rectangle[T]) Resize(width T, height T) Rectangle[T] {
+	r.Max.X = r.Min.X + width
+	r.Max.Y = r.Min.Y + height
+	return r
 }
 
 // Add return A NEW Rectangle with the MIN/MAX point added to the rectangle.
