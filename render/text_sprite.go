@@ -34,6 +34,10 @@ func NewTextSprite(parent IParent, fontLibrary *font.FontLibrary, attribute *ti.
 func (s *TextSprite) SetText(text string) error {
 	var err error
 	s.LockForUpdate(func() {
+		if s.richText.Equal(text) {
+			return
+		}
+
 		s.richText.SetText(text)
 
 		img := s.richText.RenderText()

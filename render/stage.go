@@ -47,6 +47,10 @@ func (s *Stage) Render() {
 	s.container.Render()
 }
 
+func (s *Stage) IsDirty() bool {
+	return s.container.IsDirty()
+}
+
 func (s *Stage) ToBgraImage(buffer []uint32) error {
 	// 将 ti image 转换为 bgra image
 	s.Renderer().Module().TiImageToBgra(s.Texture(), s.imageTexture)
@@ -71,6 +75,14 @@ func (s *Stage) AddChild(child ISprite) {
 
 func (s *Stage) RemoveChild(child ISprite) {
 	s.container.RemoveChild(child)
+}
+
+func (s *Stage) Width() int {
+	return s.container.Width()
+}
+
+func (s *Stage) Height() int {
+	return s.container.Height()
 }
 
 func (s *Stage) Children() *misc.List[ISprite] {
