@@ -2,10 +2,8 @@ package font
 
 import (
 	"image/color"
-	"regexp"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/go-mixed/go-canvas/misc"
 )
@@ -14,18 +12,19 @@ import (
 type RichTextFontStyle struct {
 	Bold       bool
 	Italic     bool
+	Underline  bool
 	Color      color.Color
 	FontSize   int
 	FontFamily string
 }
 
 func (r *RichText) parseText(input string) TextSegments {
-	var segments TextSegments
-	var text strings.Builder
+	segments := make(TextSegments, 0, 16)
 	currentStyle := r.opts.fontStyle
 	styleStack := []RichTextFontStyle{currentStyle}
 
 	i := 0
+	textStart := 0
 	for i < len(input) {
 		// 检查是否到达标签
 		if input[i] == '<' {
@@ -35,17 +34,15 @@ func (r *RichText) parseText(input string) TextSegments {
 			isOpenTag := strings.HasPrefix(inputToEnd, "<text ") || strings.HasPrefix(inputToEnd, "<text>")
 
 			if !isOpenTag && !isCloseTag {
-				// 不是标签，把 < 当作普通字符处理
-				text.WriteByte(input[i])
+				// 不是标签，把 < 当作普通字符处理（保持在原字符串片段中）
 				i++
 				continue
 			}
 
 			// 先保存当前累积的文字（保留换行和制表符）
-			if text.Len() > 0 {
-				seg := r.createSegment(text.String(), currentStyle)
+			if i > textStart {
+				seg := r.createSegment(input[textStart:i], currentStyle)
 				segments = append(segments, seg)
-				text.Reset()
 			}
 
 			// 检查是开标签还是闭标签
@@ -56,11 +53,12 @@ func (r *RichText) parseText(input string) TextSegments {
 					currentStyle = styleStack[len(styleStack)-1]
 				}
 				i += len("</text>")
+				textStart = i
 				continue
 			}
 
 			// 开标签，解析属性
-			endIdx := strings.Index(inputToEnd, ">")
+			endIdx := strings.IndexByte(inputToEnd, '>')
 			if endIdx == -1 {
 				i++
 				continue
@@ -74,45 +72,78 @@ func (r *RichText) parseText(input string) TextSegments {
 				FontFamily: currentStyle.FontFamily,
 				Bold:       currentStyle.Bold,
 				Italic:     currentStyle.Italic,
+				Underline:  currentStyle.Underline,
 			}
 			r.parseAttributes(tagContent, &newStyle)
 			styleStack = append(styleStack, newStyle)
 			currentStyle = newStyle
 			i += endIdx + 1
+			textStart = i
 			continue
 
 		}
 
-		// 普通字符，累积到 text
-		text.WriteByte(input[i])
 		i++
 	}
 
 	// 最后剩余的文字
-	if text.Len() > 0 {
-		seg := r.createSegment(text.String(), currentStyle)
+	if textStart < len(input) {
+		seg := r.createSegment(input[textStart:], currentStyle)
 		segments = append(segments, seg)
 	}
 
 	return segments
 }
 
-// attrRegex 匹配属性，如 color="#FF0000"、font-size="24"、font-family="Arial"、bold、italic（无值属性）
-var attrRegex = regexp.MustCompile(`([\w-]+)(?:=(?:"([^"]*)"|'([^']*)'|([^"\s>]+)))?`)
-
 // parseAttributes 解析标签属性
 func (r *RichText) parseAttributes(tag string, opts *RichTextFontStyle) {
-	// 解析其他属性
-	attrs := attrRegex.FindAllStringSubmatch(tag, -1)
-	for _, match := range attrs {
-		key := match[1]
-		var value string
-		if len(match[2]) > 0 {
-			value = match[2]
-		} else if len(match[3]) > 0 {
-			value = match[3]
-		} else if len(match[4]) > 0 {
-			value = match[4]
+	i := 0
+	for i < len(tag) {
+		for i < len(tag) && isASCIISpace(tag[i]) {
+			i++
+		}
+		if i >= len(tag) {
+			break
+		}
+
+		ks := i
+		for i < len(tag) && isAttrKeyChar(tag[i]) {
+			i++
+		}
+		if ks == i {
+			i++
+			continue
+		}
+		key := tag[ks:i]
+
+		for i < len(tag) && isASCIISpace(tag[i]) {
+			i++
+		}
+
+		value := ""
+		if i < len(tag) && tag[i] == '=' {
+			i++
+			for i < len(tag) && isASCIISpace(tag[i]) {
+				i++
+			}
+			if i < len(tag) && (tag[i] == '"' || tag[i] == '\'') {
+				quote := tag[i]
+				i++
+				vs := i
+				for i < len(tag) && tag[i] != quote {
+					i++
+				}
+				value = tag[vs:i]
+				if i < len(tag) && tag[i] == quote {
+					i++
+				}
+			} else {
+				vs := i
+				for i < len(tag) && !isASCIISpace(tag[i]) {
+					i++
+				}
+				value = tag[vs:i]
+			}
 		}
 
 		switch key {
@@ -120,6 +151,8 @@ func (r *RichText) parseAttributes(tag string, opts *RichTextFontStyle) {
 			opts.Bold = value == "" || misc.ToBool(value)
 		case "italic":
 			opts.Italic = value == "" || misc.ToBool(value)
+		case "underline":
+			opts.Underline = value == "" || misc.ToBool(value)
 		case "color":
 			if c, err := parseColor(value); err == nil {
 				opts.Color = c
@@ -158,49 +191,26 @@ func (r *RichText) createSegment(text string, opts RichTextFontStyle) *TextSegme
 	if opts.Bold {
 		weight = FontWeightBold
 	}
-	font := r.fontLibrary.MatchOrFeedback(opts.FontFamily, weight, opts.Italic)
 	return &TextSegment{
 		Text:       text,
-		Font:       font,
+		Font:       nil,
 		FontSize:   opts.FontSize,
 		Color:      opts.Color,
 		Bold:       weight,
 		Italic:     opts.Italic,
+		Underline:  opts.Underline,
+		FakeItalic: false,
 		FontFamily: opts.FontFamily,
 	}
 }
 
-func findLastBreak(runes []rune, offset int) int {
-	for i := offset; i >= 0; i-- {
-		if isBreakable(runes[i]) {
-			return i
-		}
-	}
-	return 0
+func isASCIISpace(c byte) bool {
+	return c == ' ' || c == '\t' || c == '\n' || c == '\r'
 }
 
-func findNextBreak(runes []rune, offset int) int {
-	for i := offset; i < len(runes); i++ {
-		if isBreakable(runes[i]) {
-			return i
-		}
-	}
-	return len(runes)
-}
-
-// isBreakable 判断字符是否可断行
-func isBreakable(r rune) bool {
-	if unicode.IsSpace(r) {
-		return true
-	}
-	if r >= 0x4E00 && r <= 0x9FFF {
-		return true
-	}
-	if r >= 0x3000 && r <= 0x303F {
-		return true
-	}
-	if r >= 0xFF00 && r <= 0xFFEF {
-		return true
-	}
-	return false
+func isAttrKeyChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') ||
+		(c >= 'A' && c <= 'Z') ||
+		(c >= '0' && c <= '9') ||
+		c == '-' || c == '_'
 }

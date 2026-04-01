@@ -14,7 +14,7 @@ func fallbackFontInfo(fontFamily string, weight FontWeight, italic bool) *FontIn
 	return &FontInfo{
 		Family:   fontFamily,
 		Bold:     weight,
-		Italic:   italic,
+		Italic:   false,
 		FontPath: path,
 	}
 }

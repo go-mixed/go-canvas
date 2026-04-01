@@ -3,15 +3,25 @@ package font
 import (
 	"image"
 	"image/color"
+	"time"
 
+	"github.com/go-mixed/go-canvas/misc"
 	"github.com/go-mixed/go-canvas/ti"
 	"golang.org/x/image/draw"
 	"golang.org/x/image/font"
+	"golang.org/x/image/math/f64"
 	"golang.org/x/image/math/fixed"
 )
 
+const syntheticItalicShear = 0.26
+
 // RenderText 渲染文字为图像（支持水平和垂直居中）
 func (r *RichText) RenderText() image.Image {
+	renderStart := time.Now()
+	defer func() {
+		r.timing.Render = time.Since(renderStart)
+	}()
+
 	var emptyImg = image.NewRGBA(image.Rect(0, 0, 0, 0))
 	if r.IsEmpty() {
 		return emptyImg
@@ -83,42 +93,11 @@ func (r *RichText) RenderText() image.Image {
 
 			// 绘制文字
 			src := image.NewUniform(seg.Color)
-			d := &font.Drawer{
-				Dst:  img,
-				Src:  src,
-				Face: face,
-				//Dot:  fixp(float64(offsetX), float64(offsetYSeg)),
-				Dot: fixed.Point26_6{
-					X: fixed.I(offsetX),
-					Y: fixed.I(offsetYSeg + face.Metrics().Ascent.Ceil()),
-				},
+			r.drawSegmentText(img, seg, face, src, offsetX, offsetYSeg)
+
+			if seg.Underline {
+				drawUnderline(img, seg, face, offsetX, offsetYSeg)
 			}
-			// based on Drawer.DrawString() in golang.org/x/image/font/font.go
-			//prevC := rune(-1)
-			//for _, c := range seg.Text {
-			//	if prevC >= 0 {
-			//		d.Dot.X += d.Face.Kern(prevC, c)
-			//	}
-			//	dr, mask, maskp, advance, ok := d.Face.Glyph(d.Dot, c)
-			//	if !ok {
-			//		// TODO: is falling back on the U+FFFD glyph the responsibility of
-			//		// the Drawer or the Face?
-			//		// TODO: set prevC = '\ufffd'?
-			//		continue
-			//	}
-			//	sr := dr.Sub(dr.Min)
-			//	transformer := draw.BiLinear
-			//	fx, fy := float64(dr.Min.X), float64(dr.Min.Y)
-			//	m := r.matrix.Translate(fx, fy)
-			//	s2d := f64.Aff3{m.XX, m.XY, m.X0, m.YX, m.YY, m.Y0}
-			//	transformer.Transform(d.Dst, s2d, d.Src, sr, draw.Over, &draw.Options{
-			//		SrcMask:  mask,
-			//		SrcMaskP: maskp,
-			//	})
-			//	d.Dot.X += advance
-			//	prevC = c
-			//}
-			d.DrawString(seg.Text)
 
 			// 移动到下一个 segment
 			offsetX += seg.Width
@@ -129,4 +108,83 @@ func (r *RichText) RenderText() image.Image {
 	}
 
 	return img
+}
+
+func (r *RichText) drawSegmentText(dst *image.RGBA, seg *TextSegment, face font.Face, src image.Image, offsetX, offsetY int) {
+	drawX := offsetX
+	if seg.FakeItalic {
+		// 倾斜后会向左偏移，先把起点右移补偿，保证与未倾斜文本左边对齐。
+		drawX += syntheticItalicExtraWidth(seg.Height)
+	}
+
+	d := &font.Drawer{
+		Dst:  dst,
+		Src:  src,
+		Face: face,
+		Dot:  fixedP(drawX, offsetY+face.Metrics().Ascent.Ceil()),
+	}
+
+	transformer := draw.BiLinear
+	base := r.baseTextMatrix(seg)
+	prevC := rune(-1)
+	for _, c := range seg.Text {
+		if prevC >= 0 {
+			d.Dot.X += d.Face.Kern(prevC, c)
+		}
+		dr, mask, maskp, advance, ok := d.Face.Glyph(d.Dot, c)
+		if !ok {
+			continue
+		}
+
+		sr := dr.Sub(dr.Min)
+		fx, fy := float64(dr.Min.X), float64(dr.Min.Y)
+		m := base.Translate(fx, fy)
+		s2d := f64.Aff3{m.XX, m.XY, m.X0, m.YX, m.YY, m.Y0}
+		transformer.Transform(d.Dst, s2d, d.Src, sr, draw.Over, &draw.Options{
+			SrcMask:  mask,
+			SrcMaskP: maskp,
+		})
+
+		d.Dot.X += advance
+		prevC = c
+	}
+}
+
+func (r *RichText) baseTextMatrix(seg *TextSegment) misc.Matrix {
+	if seg.FakeItalic {
+		// image 坐标系 Y 轴向下，为了得到常见“右斜”视觉效果，使用负 shear。
+		// 左侧补偿由 drawSegmentText 的 drawX 处理。
+		return r.matrix.Shear(-syntheticItalicShear, 0)
+	}
+	return r.matrix
+}
+
+func fixedP(x, y int) fixed.Point26_6 {
+	return fixed.Point26_6{
+		X: fixed.I(x),
+		Y: fixed.I(y),
+	}
+}
+
+func drawUnderline(dst *image.RGBA, seg *TextSegment, face font.Face, offsetX, offsetY int) {
+	baseline := offsetY + face.Metrics().Ascent.Ceil()
+	thickness := max(1, seg.FontSize/14)
+	underlineY := baseline + max(1, seg.metrics.Descent.Ceil()/3)
+	underlineWidth := seg.baseWidth
+	if underlineWidth <= 0 {
+		underlineWidth = seg.Width
+	}
+
+	for i := 0; i < thickness; i++ {
+		y := underlineY + i
+		if y < 0 || y >= dst.Bounds().Dy() {
+			continue
+		}
+		for x := offsetX; x < offsetX+underlineWidth && x < dst.Bounds().Dx(); x++ {
+			if x < 0 {
+				continue
+			}
+			dst.Set(x, y, seg.Color)
+		}
+	}
 }
