@@ -63,7 +63,7 @@ func (r *RichText) RenderText() image.Image {
 
 		// 渲染该行的每个 segment
 		for _, seg := range segments {
-			face := r.GetFace(seg.FontFamily, seg.FontSize)
+			face := r.fontLibrary.GetFace(seg.Font, seg.FontSize)
 			if face == nil {
 				continue
 			}

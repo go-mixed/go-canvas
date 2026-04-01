@@ -3,12 +3,10 @@ package font
 import (
 	"image/color"
 	"math"
-	"strconv"
 	"time"
 
 	"github.com/go-mixed/go-canvas/misc"
 	"github.com/go-mixed/go-canvas/ti"
-	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font"
 )
 
@@ -45,16 +43,6 @@ func (t *TextSegment) CopyWithText(text string) *TextSegment {
 	newSegment.measured = false
 
 	return &newSegment
-}
-
-// CreateFace 创建字体Face
-func (t *TextSegment) CreateFace() font.Face {
-	tf, _ := t.Font.GetTrueTypeFont()
-	return truetype.NewFace(tf, &truetype.Options{
-		Size:    float64(t.FontSize),
-		DPI:     120,
-		Hinting: font.HintingFull,
-	})
 }
 
 func (t *TextSegment) MeasureString(face font.Face) (int, int) {
@@ -117,7 +105,6 @@ type RichText struct {
 	fontLibrary *FontLibrary
 	original    string
 	lines       *misc.List[TextSegments]
-	faceCache   map[string]font.Face
 
 	opts   *RichTextOptions
 	matrix misc.Matrix
@@ -144,7 +131,6 @@ func BuildRichTextLines(fs *FontLibrary, opts *RichTextOptions) *RichText {
 	return &RichText{
 		fontLibrary: fs,
 		lines:       misc.NewList[TextSegments](),
-		faceCache:   make(map[string]font.Face),
 		width:       -1,
 		height:      -1,
 		opts:        opts,
@@ -177,7 +163,7 @@ func (r *RichText) SetText(input string) {
 	layoutStart := time.Now()
 	expanded := make(TextSegments, 0, len(segments))
 	for _, seg := range segments {
-		r.createFaceOrNot(seg.FontFamily, seg.FontSize, seg)
+		r.ensureSegmentFontAndFace(seg)
 		expanded = append(expanded, splitSegmentByNewline(seg)...)
 	}
 	r.timing.Layout = time.Since(layoutStart)
@@ -233,36 +219,23 @@ func (r *RichText) Equal(text string) bool {
 	return r.original == text
 }
 
-func (r *RichText) createFaceOrNot(family string, size int, seg *TextSegment) {
+func (r *RichText) ensureSegmentFontAndFace(seg *TextSegment) {
 	if seg.Font == nil {
-		seg.Font = r.fontLibrary.MatchOrFeedback(family, seg.Bold, seg.Italic)
+		seg.Font = r.fontLibrary.MatchOrFeedback(seg.FontFamily, seg.Bold, seg.Italic)
 		seg.FakeItalic = seg.Italic && !seg.Font.Italic
 	}
-
-	k := family + "-" + strconv.Itoa(size)
-	if _, ok := r.faceCache[k]; !ok {
-		r.faceCache[k] = seg.CreateFace()
-	}
-}
-
-// GetFace 根据 fontFamily 和 fontSize 获取缓存的 face
-func (r *RichText) GetFace(fontFamily string, fontSize int) font.Face {
-	k := fontFamily + "-" + strconv.Itoa(fontSize)
-	if face, ok := r.faceCache[k]; ok {
-		return face
-	}
-	return nil
+	_ = r.fontLibrary.GetFace(seg.Font, seg.FontSize)
 }
 
 // measure 测量每个文本片段的宽度和高度
 func (r *RichText) measure() {
-	for el := r.lines.Front(); el != nil; el = el.Next() {
-		for i := range el.Value {
-			if el.Value[i].measured {
+	for _, segments := range r.lines.Range() {
+		for _, seg := range segments {
+			if seg.measured {
 				continue
 			}
-			face := r.GetFace(el.Value[i].FontFamily, el.Value[i].FontSize)
-			el.Value[i].MeasureString(face)
+			face := r.fontLibrary.GetFace(seg.Font, seg.FontSize)
+			seg.MeasureString(face)
 		}
 	}
 }

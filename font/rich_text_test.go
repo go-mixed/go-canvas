@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-mixed/go-canvas/ti"
 )
@@ -91,9 +92,13 @@ func TestRenderTextComplexLayoutCase(t *testing.T) {
 		SetFontFamily(defaultFamily).SetWrapAlgorithm(WrapAlgorithmFirstFit)
 	rt := BuildRichTextLines(fs, opts)
 	rt.width = 980 // 作为可用行宽，触发自动分段
+	tSet := time.Now()
 	rt.SetText(b.String())
+	setElapsed := time.Since(tSet)
 
+	tRender := time.Now()
 	img := rt.RenderText()
+	renderElapsed := time.Since(tRender)
 	if img == nil || img.Bounds().Dx() <= 0 || img.Bounds().Dy() <= 0 {
 		t.Fatalf("RenderText returned empty image: %v", img.Bounds())
 	}
@@ -112,6 +117,12 @@ func TestRenderTextComplexLayoutCase(t *testing.T) {
 	if !foundUnderline {
 		t.Fatalf("expected at least one underline segment")
 	}
+
+	tm := rt.Timing()
+	t.Logf(
+		"timing set=%s render=%s parse=%s layout=%s wrap=%s measure=%s",
+		setElapsed, renderElapsed, tm.Parse, tm.Layout, tm.Wrap, tm.Measure,
+	)
 
 	if err := savePNG(filepath.Join("test_output", "rich_text_complex_layout.png"), img); err != nil {
 		t.Fatalf("save png failed: %v", err)

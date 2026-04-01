@@ -4,10 +4,12 @@ import (
 	"cmp"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/go-mixed/go-canvas/misc"
 	"github.com/golang/freetype/truetype"
+	xfont "golang.org/x/image/font"
 )
 
 type FontInfo struct {
@@ -20,22 +22,36 @@ type FontInfo struct {
 }
 
 type FontLibrary struct {
-	fonts map[string][]*FontInfo
+	fonts      map[string][]*FontInfo
+	matchCache map[string]*FontInfo
+	faceCache  map[string]xfont.Face
+
+	fallbackLoaded      bool
+	fallbackRegularInfo *FontInfo
+	fallbackBoldInfo    *FontInfo
+	fallbackLightInfo   *FontInfo
 }
 
 func NewFontLibrary(paths ...string) *FontLibrary {
 	list := LoadFonts(paths...)
 
 	return &FontLibrary{
-		fonts: list,
+		fonts:      list,
+		matchCache: make(map[string]*FontInfo),
+		faceCache:  make(map[string]xfont.Face),
 	}
 }
 
 // MatchOrFeedback 从字体列表中匹配最合适的字体
 // weight: 粗细数值 (100-900)，italic: 是否斜体
 func (fs *FontLibrary) MatchOrFeedback(fontFamily string, weight FontWeight, italic bool) *FontInfo {
+	cacheKey := fontFamily + "|" + strconv.Itoa(int(weight)) + "|" + strconv.FormatBool(italic)
+	if fi, ok := fs.matchCache[cacheKey]; ok {
+		return fi
+	}
+
 	if fontFamily == "" {
-		return fallbackFontInfo(fontFamily, weight, italic)
+		return fs.fallbackFontInfo(fontFamily, weight, italic)
 	}
 
 	type fontScore struct {
@@ -68,7 +84,9 @@ func (fs *FontLibrary) MatchOrFeedback(fontFamily string, weight FontWeight, ita
 	}
 
 	if len(matches) == 0 {
-		return fallbackFontInfo(fontFamily, weight, italic)
+		fi := fs.fallbackFontInfo(fontFamily, weight, italic)
+		fs.matchCache[cacheKey] = fi
+		return fi
 	}
 
 	// 多字段排序（family DESC, weight DESC, italic DESC）
@@ -85,10 +103,29 @@ func (fs *FontLibrary) MatchOrFeedback(fontFamily string, weight FontWeight, ita
 	})
 
 	if len(matches) > 0 {
-		return matches[0].f
+		fi := matches[0].f
+		fs.matchCache[cacheKey] = fi
+		return fi
 	}
 
-	return fallbackFontInfo(fontFamily, weight, italic)
+	fi := fs.fallbackFontInfo(fontFamily, weight, italic)
+	fs.matchCache[cacheKey] = fi
+	return fi
+}
+
+func (fs *FontLibrary) registerFallbackFamilyAlias(fontFamily string) {
+	key := fontFamily
+	if key == "" {
+		key = "fallback"
+	}
+	if _, ok := fs.fonts[key]; ok {
+		return
+	}
+	fs.fonts[key] = []*FontInfo{
+		fs.fallbackRegularInfo,
+		fs.fallbackBoldInfo,
+		fs.fallbackLightInfo,
+	}
 }
 
 func (f *FontInfo) GetTrueTypeFont() (*truetype.Font, error) {
@@ -101,7 +138,12 @@ func (f *FontInfo) GetTrueTypeFont() (*truetype.Font, error) {
 		return nil, err
 	}
 
-	return truetype.Parse(data)
+	tf, err := truetype.Parse(data)
+	if err != nil {
+		return nil, err
+	}
+	f.TruetypeFont = tf
+	return tf, nil
 }
 
 func FontFamilySimilarity(family1, family2 string) float32 {
@@ -110,4 +152,36 @@ func FontFamilySimilarity(family1, family2 string) float32 {
 	}
 
 	return 0
+}
+
+func (fs *FontLibrary) GetFace(fi *FontInfo, fontSize int) xfont.Face {
+	if fi == nil {
+		return nil
+	}
+	k := fontFaceKey(fi, fontSize)
+	if face, ok := fs.faceCache[k]; ok {
+		return face
+	}
+	face := fs.CreateFace(fi, fontSize)
+	fs.faceCache[k] = face
+	return face
+}
+
+func fontFaceKey(fi *FontInfo, size int) string {
+	if fi != nil && fi.FontPath != "" {
+		return fi.FontPath + "-" + strconv.Itoa(size)
+	}
+	if fi != nil {
+		return fi.Family + "-" + strconv.Itoa(size)
+	}
+	return strconv.Itoa(size)
+}
+
+func (fs *FontLibrary) CreateFace(fi *FontInfo, fontSize int) xfont.Face {
+	tf, _ := fi.GetTrueTypeFont()
+	return truetype.NewFace(tf, &truetype.Options{
+		Size:    float64(fontSize),
+		DPI:     120,
+		Hinting: xfont.HintingFull,
+	})
 }

@@ -2,19 +2,50 @@
 
 package font
 
-func fallbackFontInfo(fontFamily string, weight FontWeight, italic bool) *FontInfo {
-	var path string
-	if weight == FontWeightRegular {
-		path, _ = FindFont("msyh.ttc")
-	} else if weight > FontWeightRegular {
-		path, _ = FindFont("msyhbd.ttc")
-	} else {
-		path, _ = FindFont("msyhl.ttc")
+func (fs *FontLibrary) initFallbackPaths() {
+	if fs.fallbackLoaded {
+		return
 	}
-	return &FontInfo{
-		Family:   fontFamily,
-		Bold:     weight,
+	regular, _ := FindFont("msyh.ttc")
+	bold, _ := FindFont("msyhbd.ttc")
+	light, _ := FindFont("msyhl.ttc")
+
+	fs.fallbackRegularInfo = &FontInfo{
+		Family:   "fallback",
+		Bold:     FontWeightRegular,
 		Italic:   false,
-		FontPath: path,
+		FontPath: regular,
 	}
+	fs.fallbackBoldInfo = &FontInfo{
+		Family:   "fallback",
+		Bold:     FontWeightBold,
+		Italic:   false,
+		FontPath: bold,
+	}
+	fs.fallbackLightInfo = &FontInfo{
+		Family:   "fallback",
+		Bold:     FontWeightLight,
+		Italic:   false,
+		FontPath: light,
+	}
+	fs.fallbackLoaded = true
+}
+
+func (fs *FontLibrary) fallbackFontInfo(fontFamily string, weight FontWeight, italic bool) *FontInfo {
+	fs.initFallbackPaths()
+	fs.registerFallbackFamilyAlias(fontFamily)
+
+	if fontFamily != "" {
+		fs.fallbackRegularInfo.Family = fontFamily
+		fs.fallbackBoldInfo.Family = fontFamily
+		fs.fallbackLightInfo.Family = fontFamily
+	}
+
+	if weight == FontWeightRegular {
+		return fs.fallbackRegularInfo
+	}
+	if weight > FontWeightRegular {
+		return fs.fallbackBoldInfo
+	}
+	return fs.fallbackLightInfo
 }
