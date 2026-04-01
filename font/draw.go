@@ -3,6 +3,7 @@ package font
 import (
 	"image"
 	"image/color"
+	"math"
 	"time"
 
 	"github.com/go-mixed/go-canvas/misc"
@@ -111,21 +112,15 @@ func (r *RichText) RenderText() image.Image {
 }
 
 func (r *RichText) drawSegmentText(dst *image.RGBA, seg *TextSegment, face font.Face, src image.Image, offsetX, offsetY int) {
-	drawX := offsetX
-	if seg.FakeItalic {
-		// 倾斜后会向左偏移，先把起点右移补偿，保证与未倾斜文本左边对齐。
-		drawX += syntheticItalicExtraWidth(seg.Height)
-	}
-
 	d := &font.Drawer{
 		Dst:  dst,
 		Src:  src,
 		Face: face,
-		Dot:  fixedP(drawX, offsetY+face.Metrics().Ascent.Ceil()),
+		Dot:  fixedP(offsetX, offsetY+face.Metrics().Ascent.Ceil()),
 	}
 
 	transformer := draw.BiLinear
-	base := r.baseTextMatrix(seg)
+	base := r.baseTextMatrix(seg, offsetY)
 	prevC := rune(-1)
 	for _, c := range seg.Text {
 		if prevC >= 0 {
@@ -150,11 +145,13 @@ func (r *RichText) drawSegmentText(dst *image.RGBA, seg *TextSegment, face font.
 	}
 }
 
-func (r *RichText) baseTextMatrix(seg *TextSegment) misc.Matrix {
+func (r *RichText) baseTextMatrix(seg *TextSegment, offsetY int) misc.Matrix {
 	if seg.FakeItalic {
-		// image 坐标系 Y 轴向下，为了得到常见“右斜”视觉效果，使用负 shear。
-		// 左侧补偿由 drawSegmentText 的 drawX 处理。
-		return r.matrix.Shear(-syntheticItalicShear, 0)
+		// Shear(-k,0) 会产生 x' = x - k*y，先补偿全局 y 带来的整体左移，
+		// 再补一个斜体额外宽，避免行首裁切。
+		yComp := int(math.Ceil(float64(offsetY) * syntheticItalicShear))
+		comp := float64(yComp + syntheticItalicExtraWidth(seg.Height))
+		return r.matrix.Shear(-syntheticItalicShear, 0).Translate(comp, 0)
 	}
 	return r.matrix
 }
