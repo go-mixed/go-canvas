@@ -1,6 +1,7 @@
 package font
 
 import (
+	"image"
 	"image/color"
 	"math"
 	"time"
@@ -106,10 +107,15 @@ type RichText struct {
 	original    string
 	lines       *misc.List[TextSegments]
 
-	opts   *RichTextOptions
-	matrix misc.Matrix
+	opts *RichTextOptions
 
 	wrapScratch wrapScratch
+	// Fake italic buffers are owned by RichText and reused across segments
+	// to avoid per-segment allocations during render.
+	// - italicAlphaBuf: default non-emoji fake italic path (1 byte/pixel).
+	// - italicRGBABuf: emoji fallback path for better glyph compatibility.
+	italicRGBABuf  *image.RGBA
+	italicAlphaBuf *image.Alpha
 
 	width, height int // 缓存宽度和高度，避免重复计算
 
@@ -134,7 +140,6 @@ func BuildRichTextLines(fs *FontLibrary, opts *RichTextOptions) *RichText {
 		width:       -1,
 		height:      -1,
 		opts:        opts,
-		matrix:      misc.IdentityMatrix(),
 	}
 }
 
@@ -170,11 +175,23 @@ func (r *RichText) SetText(input string) {
 
 	wrapStart := time.Now()
 	var wrapped TextSegments
-	switch r.opts.wrapAlgo {
-	case WrapAlgorithmFirstFit:
-		wrapped = r.wrapFirstFit(expanded, maxWidth, r.opts.breakMode)
-	default:
-		wrapped = r.wordWrap(expanded, maxWidth, r.opts.breakMode)
+	if maxWidth <= 0 {
+		// 无宽度限制：不自动换行，直接使用展开后的 segments。
+		// Unlimited width: skip wrapping and keep expanded segments as-is.
+		wrapped = expanded
+	} else {
+		// 如果只有一行，就快速返回
+		if fast, ok := r.fastPathNoWrap(expanded, maxWidth); ok {
+			wrapped = fast
+		}
+		if wrapped == nil {
+			switch r.opts.wrapAlgo {
+			case WrapAlgorithmFirstFit:
+				wrapped = r.wrapFirstFit(expanded, maxWidth, r.opts.breakMode)
+			default:
+				wrapped = r.wordWrap(expanded, maxWidth, r.opts.breakMode)
+			}
+		}
 	}
 	r.timing.Wrap = time.Since(wrapStart)
 
@@ -199,6 +216,39 @@ func (r *RichText) SetText(input string) {
 	r.timing.Measure = time.Since(measureStart)
 	r.timing.SetText = time.Since(setTextStart)
 
+}
+
+// fastPathNoWrap 快速判断是否可整行直过，避免进入 wrap 分段流程。
+// fastPathNoWrap checks whether all segments fit in one line and can skip wrapping.
+func (r *RichText) fastPathNoWrap(in TextSegments, maxWidth int) (TextSegments, bool) {
+	lineWidth := 0
+	for _, seg := range in {
+		if seg == nil {
+			continue
+		}
+		if seg.BreakLine {
+			return nil, false
+		}
+		if seg.Text == "" {
+			continue
+		}
+
+		face := r.fontLibrary.GetFace(seg.Font, seg.FontSize)
+		if face == nil {
+			return nil, false
+		}
+
+		if !seg.measured || seg.baseWidth <= 0 {
+			baseWidth := font.MeasureString(face, seg.Text).Ceil()
+			applySegmentMeasureWithBase(seg, face, baseWidth)
+		}
+
+		lineWidth += seg.Width
+		if lineWidth > maxWidth {
+			return nil, false
+		}
+	}
+	return in, true
 }
 
 // Len 返回文本段落的总行数

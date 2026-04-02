@@ -97,7 +97,7 @@ func (r *RichText) RenderText() image.Image {
 			r.drawSegmentText(img, seg, face, src, offsetX, offsetYSeg)
 
 			if seg.Underline {
-				drawUnderline(img, seg, face, offsetX, offsetYSeg)
+				drawUnderline(img, seg, offsetX, offsetYSeg)
 			}
 
 			// 移动到下一个 segment
@@ -111,51 +111,180 @@ func (r *RichText) RenderText() image.Image {
 	return img
 }
 
+// drawSegmentText 绘制单个文本段，普通文本直绘，假斜体走专用路径。
+// drawSegmentText renders one segment; normal text is direct draw, fake italic uses dedicated paths.
 func (r *RichText) drawSegmentText(dst *image.RGBA, seg *TextSegment, face font.Face, src image.Image, offsetX, offsetY int) {
-	d := &font.Drawer{
-		Dst:  dst,
+	// Fast path for normal text.
+	if !seg.FakeItalic {
+		d := &font.Drawer{
+			Dst:  dst,
+			Src:  src,
+			Face: face,
+			Dot:  fixedP(offsetX, offsetY+seg.metrics.Ascent.Ceil()),
+		}
+		d.DrawString(seg.Text)
+		return
+	}
+
+	// Fake italic path:
+	// - emoji-like text: keep RGBA path for compatibility.
+	// - normal text: use alpha-mask transform for better throughput.
+	if containsEmojiLikeRunes(seg.Text) {
+		r.drawSegmentFakeItalicRGBA(dst, seg, face, src, offsetX, offsetY)
+		return
+	}
+	r.drawSegmentFakeItalicMask(dst, seg, face, offsetX, offsetY)
+}
+
+// drawSegmentFakeItalicMask 用 Alpha mask 渲染假斜体，减少像素带宽与内存开销。
+// drawSegmentFakeItalicMask renders fake italic via an alpha mask to reduce memory bandwidth.
+func (r *RichText) drawSegmentFakeItalicMask(dst *image.RGBA, seg *TextSegment, face font.Face, offsetX, offsetY int) {
+	segHeight := max(1, seg.Height)
+	extra := syntheticItalicExtraWidth(segHeight)
+	baseWidth := seg.baseWidth
+	if baseWidth <= 0 {
+		baseWidth = max(1, seg.Width-extra)
+	}
+	bufW := max(1, baseWidth+extra)
+	mask := r.ensureItalicAlphaBuffer(bufW, segHeight)
+	// Reuse a shared alpha buffer and clear only the active region.
+	clearAlpha(mask, image.Rect(0, 0, bufW, segHeight))
+	maskDrawer := &font.Drawer{
+		Dst:  mask,
+		Src:  image.Opaque,
+		Face: face,
+		Dot:  fixedP(extra, seg.metrics.Ascent.Ceil()),
+	}
+	maskDrawer.DrawString(seg.Text)
+
+	drawShearedMaskNearest(dst, image.NewUniform(seg.Color), mask, offsetX, offsetY, -syntheticItalicShear)
+}
+
+// drawSegmentFakeItalicRGBA 用 RGBA 缓冲渲染假斜体，主要用于 emoji 兼容回退。
+// drawSegmentFakeItalicRGBA renders fake italic via RGBA buffer, mainly as emoji-compatible fallback.
+func (r *RichText) drawSegmentFakeItalicRGBA(dst *image.RGBA, seg *TextSegment, face font.Face, src image.Image, offsetX, offsetY int) {
+	segHeight := max(1, seg.Height)
+	extra := syntheticItalicExtraWidth(segHeight)
+	baseWidth := seg.baseWidth
+	if baseWidth <= 0 {
+		baseWidth = max(1, seg.Width-extra)
+	}
+	bufW := max(1, baseWidth+extra)
+	buf := r.ensureItalicRGBABuffer(bufW, segHeight)
+	// Keep RGBA path for emoji-like runs where color glyph compatibility matters.
+	clearRGBA(buf, image.Rect(0, 0, bufW, segHeight))
+	bufDrawer := &font.Drawer{
+		Dst:  buf,
 		Src:  src,
 		Face: face,
-		Dot:  fixedP(offsetX, offsetY+face.Metrics().Ascent.Ceil()),
+		Dot:  fixedP(extra, seg.metrics.Ascent.Ceil()),
 	}
+	bufDrawer.DrawString(seg.Text)
 
-	transformer := draw.BiLinear
-	base := r.baseTextMatrix(seg, offsetY)
-	prevC := rune(-1)
-	for _, c := range seg.Text {
-		if prevC >= 0 {
-			d.Dot.X += d.Face.Kern(prevC, c)
+	m := misc.IdentityMatrix().Shear(-syntheticItalicShear, 0).Translate(float64(offsetX), float64(offsetY))
+	s2d := f64.Aff3{m.XX, m.XY, m.X0, m.YX, m.YY, m.Y0}
+	srcRect := image.Rect(0, 0, bufW, segHeight)
+	draw.NearestNeighbor.Transform(dst, s2d, buf, srcRect, draw.Over, nil)
+}
+
+// ensureItalicRGBABuffer 确保 RGBA 斜体缓冲尺寸足够，不足则扩容复用。
+// ensureItalicRGBABuffer ensures reusable RGBA italic buffer capacity.
+func (r *RichText) ensureItalicRGBABuffer(width, height int) *image.RGBA {
+	if r.italicRGBABuf == nil || r.italicRGBABuf.Bounds().Dx() < width || r.italicRGBABuf.Bounds().Dy() < height {
+		r.italicRGBABuf = image.NewRGBA(image.Rect(0, 0, width, height))
+	}
+	return r.italicRGBABuf
+}
+
+// ensureItalicAlphaBuffer 确保 Alpha 斜体缓冲尺寸足够，不足则扩容复用。
+// ensureItalicAlphaBuffer ensures reusable alpha italic buffer capacity.
+func (r *RichText) ensureItalicAlphaBuffer(width, height int) *image.Alpha {
+	if r.italicAlphaBuf == nil || r.italicAlphaBuf.Bounds().Dx() < width || r.italicAlphaBuf.Bounds().Dy() < height {
+		r.italicAlphaBuf = image.NewAlpha(image.Rect(0, 0, width, height))
+	}
+	return r.italicAlphaBuf
+}
+
+// clearRGBA 清空 RGBA 缓冲中的指定矩形区域。
+// clearRGBA clears a target rectangle in an RGBA buffer.
+func clearRGBA(img *image.RGBA, rect image.Rectangle) {
+	rect = rect.Intersect(img.Bounds())
+	if rect.Empty() {
+		return
+	}
+	stride := img.Stride
+	for y := rect.Min.Y; y < rect.Max.Y; y++ {
+		row := img.Pix[y*stride+rect.Min.X*4 : y*stride+rect.Max.X*4]
+		for i := range row {
+			row[i] = 0
 		}
-		dr, mask, maskp, advance, ok := d.Face.Glyph(d.Dot, c)
-		if !ok {
+	}
+}
+
+// clearAlpha 清空 Alpha 缓冲中的指定矩形区域。
+// clearAlpha clears a target rectangle in an alpha buffer.
+func clearAlpha(img *image.Alpha, rect image.Rectangle) {
+	rect = rect.Intersect(img.Bounds())
+	if rect.Empty() {
+		return
+	}
+	stride := img.Stride
+	for y := rect.Min.Y; y < rect.Max.Y; y++ {
+		row := img.Pix[y*stride+rect.Min.X : y*stride+rect.Max.X]
+		for i := range row {
+			row[i] = 0
+		}
+	}
+}
+
+// drawShearedMaskNearest 以“逐行整数位移”的方式绘制斜切 mask。
+// drawShearedMaskNearest draws a sheared alpha mask by per-row integer shifting.
+func drawShearedMaskNearest(dst *image.RGBA, src image.Image, mask *image.Alpha, offsetX, offsetY int, shearX float64) {
+	b := mask.Bounds()
+	w, h := b.Dx(), b.Dy()
+	if w <= 0 || h <= 0 {
+		return
+	}
+	for y := 0; y < h; y++ {
+		shiftX := int(math.Floor(shearX * float64(y)))
+		dr := image.Rect(offsetX+shiftX, offsetY+y, offsetX+shiftX+w, offsetY+y+1)
+		if dr.Max.Y <= dst.Bounds().Min.Y || dr.Min.Y >= dst.Bounds().Max.Y {
 			continue
 		}
-
-		sr := dr.Sub(dr.Min)
-		fx, fy := float64(dr.Min.X), float64(dr.Min.Y)
-		m := base.Translate(fx, fy)
-		s2d := f64.Aff3{m.XX, m.XY, m.X0, m.YX, m.YY, m.Y0}
-		transformer.Transform(d.Dst, s2d, d.Src, sr, draw.Over, &draw.Options{
-			SrcMask:  mask,
-			SrcMaskP: maskp,
-		})
-
-		d.Dot.X += advance
-		prevC = c
+		draw.DrawMask(dst, dr, src, image.Point{}, mask, image.Point{b.Min.X, b.Min.Y + y}, draw.Over)
 	}
 }
 
-func (r *RichText) baseTextMatrix(seg *TextSegment, offsetY int) misc.Matrix {
-	if seg.FakeItalic {
-		// Shear(-k,0) 会产生 x' = x - k*y，先补偿全局 y 带来的整体左移，
-		// 再补一个斜体额外宽，避免行首裁切。
-		yComp := int(math.Ceil(float64(offsetY) * syntheticItalicShear))
-		comp := float64(yComp + syntheticItalicExtraWidth(seg.Height))
-		return r.matrix.Shear(-syntheticItalicShear, 0).Translate(comp, 0)
+// containsEmojiLikeRunes 粗略判断文本是否包含 emoji 风格序列，用于路径回退。
+// containsEmojiLikeRunes heuristically detects emoji-like sequences for RGBA fallback.
+func containsEmojiLikeRunes(s string) bool {
+	// Heuristic trigger for falling back to RGBA fake-italic path.
+	// Covers common emoji blocks, ZWJ sequences, variation selectors and flags.
+	for _, r := range s {
+		if r == '\u200d' || isVariationSelector(r) || isRegionalIndicator(r) || isEmojiRune(r) {
+			return true
+		}
 	}
-	return r.matrix
+	return false
 }
 
+// isEmojiRune 判断 rune 是否落在常见 emoji Unicode 区段。
+// isEmojiRune reports whether rune is in common emoji Unicode blocks.
+func isEmojiRune(r rune) bool {
+	switch {
+	case r >= 0x1F300 && r <= 0x1FAFF:
+		return true
+	case r >= 0x2600 && r <= 0x27BF:
+		return true
+	case r >= 0x1F1E6 && r <= 0x1F1FF:
+		return true
+	default:
+		return false
+	}
+}
+
+// fixedP 将整型像素坐标转换为 fixed.Point26_6。
+// fixedP converts integer pixel coordinates to fixed.Point26_6.
 func fixedP(x, y int) fixed.Point26_6 {
 	return fixed.Point26_6{
 		X: fixed.I(x),
@@ -163,8 +292,10 @@ func fixedP(x, y int) fixed.Point26_6 {
 	}
 }
 
-func drawUnderline(dst *image.RGBA, seg *TextSegment, face font.Face, offsetX, offsetY int) {
-	baseline := offsetY + face.Metrics().Ascent.Ceil()
+// drawUnderline 绘制文本段下划线，使用 segment 预计算的 metrics 对齐基线。
+// drawUnderline draws underline using precomputed segment metrics for baseline alignment.
+func drawUnderline(dst *image.RGBA, seg *TextSegment, offsetX, offsetY int) {
+	baseline := offsetY + seg.metrics.Ascent.Ceil()
 	thickness := max(1, seg.FontSize/14)
 	underlineY := baseline + max(1, seg.metrics.Descent.Ceil()/3)
 	underlineWidth := seg.baseWidth
