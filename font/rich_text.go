@@ -2,105 +2,12 @@ package font
 
 import (
 	"image"
-	"image/color"
-	"math"
 	"time"
 
 	"github.com/go-mixed/go-canvas/misc"
 	"github.com/go-mixed/go-canvas/ti"
 	"golang.org/x/image/font"
 )
-
-// TextSegment 单个文本片段
-type TextSegment struct {
-	Text       string
-	Font       *FontInfo
-	FontSize   int
-	Color      color.Color
-	Bold       FontWeight
-	BreakLine  bool
-	Italic     bool
-	Underline  bool
-	FakeItalic bool
-	FontFamily string
-	baseWidth  int
-	Width      int
-	Height     int
-	metrics    font.Metrics
-	measured   bool
-}
-
-func (t *TextSegment) CopyWithText(text string) *TextSegment {
-	newSegment := *t
-	newSegment.Text = text
-	// 换行标记只由输入 text 决定，避免继承上一个 segment 的 BreakLine 状态。
-	newSegment.BreakLine = text == "\n"
-
-	// 文本变更后，测量相关字段必须失效，等待 wrap/measure 重新填充。
-	newSegment.baseWidth = 0
-	newSegment.Width = 0
-	newSegment.Height = 0
-	newSegment.metrics = font.Metrics{}
-	newSegment.measured = false
-
-	return &newSegment
-}
-
-func (t *TextSegment) MeasureString(face font.Face) (int, int) {
-	segWidth := font.MeasureString(face, t.Text).Ceil()
-	t.baseWidth = segWidth
-
-	t.Width = segWidth
-	// 使用 ascent + |descent| 作为高度，确保能完整渲染
-	t.metrics = face.Metrics()
-	t.Height = (t.metrics.Ascent + t.metrics.Descent).Ceil()
-	if t.FakeItalic {
-		t.Width += syntheticItalicExtraWidth(t.Height)
-	}
-	t.measured = true
-	return segWidth, t.Height
-}
-
-func syntheticItalicExtraWidth(height int) int {
-	if height <= 0 {
-		return 0
-	}
-	// Roughly 14-15 degrees of slant for synthetic italic.
-	return int(math.Ceil(float64(height) * 0.26))
-}
-
-type TextSegments []*TextSegment
-
-// Height 返回该行最大字号的高度（Metrics.Height）
-func (s TextSegments) Height() int {
-	var maxHeight int
-	for _, seg := range s {
-		if maxHeight < seg.Height {
-			maxHeight = seg.Height
-		}
-	}
-	return maxHeight
-}
-
-// MaxMetrics 返回该行最大字号的 Metrics
-func (s TextSegments) MaxMetrics() font.Metrics {
-	var maxMetrics font.Metrics
-	for _, seg := range s {
-		if (maxMetrics.Ascent + maxMetrics.Descent).Ceil() < seg.Height {
-			maxMetrics = seg.metrics
-		}
-	}
-	return maxMetrics
-}
-
-// Width 总长度
-func (s TextSegments) Width() int {
-	var sumV int
-	for _, seg := range s {
-		sumV += seg.Width
-	}
-	return sumV
-}
 
 type RichText struct {
 	fontLibrary *FontLibrary
@@ -117,7 +24,8 @@ type RichText struct {
 	italicRGBABuf  *image.RGBA
 	italicAlphaBuf *image.Alpha
 
-	width, height int // 缓存宽度和高度，避免重复计算
+	maxWidth, maxHeight int // 约束：换行宽度与最大渲染高度
+	width, height       int // 缓存内容宽度和高度，避免重复计算
 
 	timing RichTextTiming
 }
@@ -134,9 +42,14 @@ type RichTextTiming struct {
 // BuildRichTextLines 解析带标签的文字，返回文本片段列表
 // 标签格式：<text bold italic color="#RRGGBBAA" font-size="15" font-family="Noto Sans CJK SC">文字</text>
 func BuildRichTextLines(fs *FontLibrary, opts *RichTextOptions) *RichText {
+	if opts == nil {
+		opts = RTOpt()
+	}
 	return &RichText{
 		fontLibrary: fs,
 		lines:       misc.NewList[TextSegments](),
+		maxWidth:    opts.width,
+		maxHeight:   opts.height,
 		width:       -1,
 		height:      -1,
 		opts:        opts,
@@ -147,10 +60,7 @@ func (r *RichText) SetText(input string) {
 	setTextStart := time.Now()
 	r.timing = RichTextTiming{}
 
-	maxWidth := r.width
-	if maxWidth < 0 {
-		maxWidth = 0
-	}
+	maxWidth := r.maxWidth
 
 	r.lines.Clear()
 	r.original = input
@@ -199,7 +109,7 @@ func (r *RichText) SetText(input string) {
 	for _, seg := range wrapped {
 		if seg.BreakLine {
 			if len(line) > 0 {
-				r.lines.PushBack(line)
+				r.lines.PushBack(coalesceLineSegments(line))
 				line = nil
 			}
 			continue
@@ -208,7 +118,7 @@ func (r *RichText) SetText(input string) {
 	}
 
 	if len(line) > 0 {
-		r.lines.PushBack(line)
+		r.lines.PushBack(coalesceLineSegments(line))
 	}
 
 	measureStart := time.Now()
@@ -216,6 +126,44 @@ func (r *RichText) SetText(input string) {
 	r.timing.Measure = time.Since(measureStart)
 	r.timing.SetText = time.Since(setTextStart)
 
+}
+
+// coalesceLineSegments 合并同一行内样式完全一致的相邻 segment，减少 DrawString 调用次数。
+// coalesceLineSegments merges adjacent segments with identical style in one line to reduce DrawString calls.
+func coalesceLineSegments(line TextSegments) TextSegments {
+	if len(line) <= 1 {
+		return line
+	}
+	out := make(TextSegments, 0, len(line))
+	for _, seg := range line {
+		if seg == nil || seg.Text == "" {
+			continue
+		}
+		n := len(out)
+		if n == 0 {
+			out = append(out, seg)
+			continue
+		}
+		last := out[n-1]
+		if !last.CanMergeAdjacent(seg) {
+			out = append(out, seg)
+			continue
+		}
+
+		last.Text += seg.Text
+		last.baseWidth += seg.baseWidth
+		last.Width += seg.Width
+		if seg.Height > last.Height {
+			last.Height = seg.Height
+		}
+		if (seg.metrics.Ascent + seg.metrics.Descent).Ceil() > (last.metrics.Ascent + last.metrics.Descent).Ceil() {
+			last.metrics = seg.metrics
+		}
+		// Width/height 已在合并时更新，避免后续重复测量。
+		// Width/height are already updated during merge; keep measured to avoid re-measure.
+		last.measured = true
+	}
+	return out
 }
 
 // fastPathNoWrap 快速判断是否可整行直过，避免进入 wrap 分段流程。
@@ -291,7 +239,7 @@ func (r *RichText) measure() {
 }
 
 func (r *RichText) Width() int {
-	if r.width > 0 {
+	if r.width >= 0 {
 		return r.width
 	}
 
@@ -307,7 +255,7 @@ func (r *RichText) Width() int {
 }
 
 func (r *RichText) Height() int {
-	if r.height > 0 {
+	if r.height >= 0 {
 		return r.height
 	}
 

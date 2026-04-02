@@ -35,3 +35,9 @@ func Deg2Rad[V Float](deg V) V {
 func Rad2Deg[V Float](rad V) V {
 	return rad * 180.0 / math.Pi
 }
+
+// FloorToInt 返回 float64 的向下取整整数值。
+// FloorToInt returns floor(v) as int.
+func FloorToInt(v float64) int {
+	return int(math.Floor(v))
+}

@@ -26,6 +26,8 @@ type RichTextOptions struct {
 	fontStyle RichTextFontStyle
 	breakMode LineBreakPolicy
 	wrapAlgo  WrapAlgorithm
+	width     int
+	height    int
 }
 
 func RTOpt() *RichTextOptions {
@@ -43,6 +45,8 @@ func RTOpt() *RichTextOptions {
 		},
 		breakMode: LineBreakWhenNecessary,
 		wrapAlgo:  WrapAlgorithmSmart,
+		width:     0,
+		height:    0,
 	}
 }
 
@@ -99,5 +103,39 @@ func (r *RichTextOptions) SetLineBreakPolicy(mode LineBreakPolicy) *RichTextOpti
 
 func (r *RichTextOptions) SetWrapAlgorithm(algo WrapAlgorithm) *RichTextOptions {
 	r.wrapAlgo = algo
+	return r
+}
+
+// SetWidth 设置可用行宽。0 表示无限宽，不自动换行。
+// SetWidth sets line wrap width. 0 means unlimited width (no auto wrap).
+func (r *RichTextOptions) SetWidth(width int) *RichTextOptions {
+	if width < 0 {
+		width = 0
+	}
+	r.width = width
+	return r
+}
+
+// SetHeight 设置渲染高度上限。0 表示不限制高度。
+// SetHeight sets render height limit. 0 means unlimited height.
+func (r *RichTextOptions) SetHeight(height int) *RichTextOptions {
+	if height < 0 {
+		height = 0
+	}
+	r.height = height
+	return r
+}
+
+// SetSize 同时设置宽高限制。
+// SetSize sets both width and height limits.
+func (r *RichTextOptions) SetSize(width, height int) *RichTextOptions {
+	if width < 0 {
+		width = 0
+	}
+	if height < 0 {
+		height = 0
+	}
+	r.width = width
+	r.height = height
 	return r
 }

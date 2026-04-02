@@ -3,7 +3,6 @@ package font
 import (
 	"image"
 	"image/color"
-	"math"
 	"time"
 
 	"github.com/go-mixed/go-canvas/misc"
@@ -32,6 +31,9 @@ func (r *RichText) RenderText() image.Image {
 	maxWidth := r.Width()
 	// 计算总高度
 	totalHeight := r.Height()
+	if r.maxHeight > 0 && totalHeight > r.maxHeight {
+		totalHeight = r.maxHeight
+	}
 	if maxWidth <= 0 || totalHeight <= 0 {
 		return emptyImg
 	}
@@ -45,6 +47,9 @@ func (r *RichText) RenderText() image.Image {
 	for _, segments := range r.lines.Range() {
 		lineWidth := segments.Width()
 		lineHeight := segments.Height()
+		if offsetY >= totalHeight {
+			break
+		}
 
 		// 计算水平起始偏移
 		offsetX := 0
@@ -129,7 +134,7 @@ func (r *RichText) drawSegmentText(dst *image.RGBA, seg *TextSegment, face font.
 	// Fake italic path:
 	// - emoji-like text: keep RGBA path for compatibility.
 	// - normal text: use alpha-mask transform for better throughput.
-	if containsEmojiLikeRunes(seg.Text) {
+	if misc.ContainsEmojiLikeRunes(seg.Text) {
 		r.drawSegmentFakeItalicRGBA(dst, seg, face, src, offsetX, offsetY)
 		return
 	}
@@ -246,40 +251,12 @@ func drawShearedMaskNearest(dst *image.RGBA, src image.Image, mask *image.Alpha,
 		return
 	}
 	for y := 0; y < h; y++ {
-		shiftX := int(math.Floor(shearX * float64(y)))
+		shiftX := misc.FloorToInt(shearX * float64(y))
 		dr := image.Rect(offsetX+shiftX, offsetY+y, offsetX+shiftX+w, offsetY+y+1)
 		if dr.Max.Y <= dst.Bounds().Min.Y || dr.Min.Y >= dst.Bounds().Max.Y {
 			continue
 		}
 		draw.DrawMask(dst, dr, src, image.Point{}, mask, image.Point{b.Min.X, b.Min.Y + y}, draw.Over)
-	}
-}
-
-// containsEmojiLikeRunes 粗略判断文本是否包含 emoji 风格序列，用于路径回退。
-// containsEmojiLikeRunes heuristically detects emoji-like sequences for RGBA fallback.
-func containsEmojiLikeRunes(s string) bool {
-	// Heuristic trigger for falling back to RGBA fake-italic path.
-	// Covers common emoji blocks, ZWJ sequences, variation selectors and flags.
-	for _, r := range s {
-		if r == '\u200d' || isVariationSelector(r) || isRegionalIndicator(r) || isEmojiRune(r) {
-			return true
-		}
-	}
-	return false
-}
-
-// isEmojiRune 判断 rune 是否落在常见 emoji Unicode 区段。
-// isEmojiRune reports whether rune is in common emoji Unicode blocks.
-func isEmojiRune(r rune) bool {
-	switch {
-	case r >= 0x1F300 && r <= 0x1FAFF:
-		return true
-	case r >= 0x2600 && r <= 0x27BF:
-		return true
-	case r >= 0x1F1E6 && r <= 0x1F1FF:
-		return true
-	default:
-		return false
 	}
 }
 

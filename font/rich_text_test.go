@@ -74,7 +74,7 @@ func TestRenderTextComplexLayoutCase(t *testing.T) {
 	runs := []richRun{
 		{Text: "富文本 + 自动降级（字体 fallback）", SizePt: 34, Color: color.RGBA{22, 22, 22, 255}, Bold: true, Families: []string{"Microsoft YaHei", "Noto Sans SC", "DengXian"}},
 		{Text: " English bold italic ", SizePt: 30, Color: color.RGBA{20, 95, 190, 255}, Bold: true, Italic: true, Families: []string{"Segoe UI", "Verdana"}},
-		{Text: "中文混排 ", SizePt: 40, Color: color.RGBA{190, 45, 45, 255}, Bold: true, Underline: true, Families: []string{"Microsoft YaHei", "Noto Sans SC"}},
+		{Text: "中文混排 ", SizePt: 40, Color: color.RGBA{190, 45, 45, 255}, Bold: true, Underline: true, Italic: true, Families: []string{"Microsoft YaHei", "Noto Sans SC"}},
 		{Text: "日本語テスト ", SizePt: 34, Color: color.RGBA{10, 126, 88, 255}, Families: []string{"Yu Gothic UI", "Meiryo"}},
 		{Text: "한국어 테스트 ", SizePt: 34, Color: color.RGBA{120, 68, 170, 255}, Families: []string{"Malgun Gothic", "Gulim"}},
 		{Text: "ไทยทดลองการตัดคำ和สระวรรณยุกต์ ", SizePt: 36, Color: color.RGBA{30, 30, 30, 255}, Families: []string{"Leelawadee UI", "Segoe UI"}},
@@ -88,10 +88,11 @@ func TestRenderTextComplexLayoutCase(t *testing.T) {
 	}
 
 	opts := RTOpt().
-		SetAlign(ti.HAlignLeft, ti.VAlignTop).
-		SetFontFamily(defaultFamily).SetWrapAlgorithm(WrapAlgorithmFirstFit)
+		SetAlign(ti.HAlignLeft, ti.VAlignBottom).
+		SetFontFamily(defaultFamily).
+		SetWrapAlgorithm(WrapAlgorithmFirstFit).
+		SetWidth(980)
 	rt := BuildRichTextLines(fs, opts)
-	rt.width = 980 // 作为可用行宽，触发自动分段
 	tSet := time.Now()
 	rt.SetText(b.String())
 	setElapsed := time.Since(tSet)

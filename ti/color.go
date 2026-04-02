@@ -94,3 +94,14 @@ func Color2TiColor(color color.Color) TiColor {
 	r, g, b, a := ExpandFColor(color)
 	return TiColor{r, g, b, a}
 }
+
+// ColorEqual 比较两个 color.Color 的 RGBA 展开值是否一致。
+// ColorEqual compares two color.Color values by expanded RGBA components.
+func ColorEqual(a, b color.Color) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	ar, ag, ab, aa := a.RGBA()
+	br, bg, bb, ba := b.RGBA()
+	return ar == br && ag == bg && ab == bb && aa == ba
+}
