@@ -87,8 +87,6 @@ func (r *RichText) SetText(input string) {
 	}
 
 	expanded := make(TextSegments, 0, len(segments))
-	var splitCoverageElapsed time.Duration
-	var splitEnsureFaceElapsed time.Duration
 	for _, seg := range segments {
 		parts := splitSegmentByNewline(seg)
 		for _, part := range parts {
@@ -99,20 +97,13 @@ func (r *RichText) SetText(input string) {
 				expanded = append(expanded, part)
 				continue
 			}
-			t = time.Now()
 			chunks := r.splitSegmentByFontCoverage(part)
-			splitCoverageElapsed += time.Since(t)
-			t = time.Now()
 			for _, p := range chunks {
-				r.ensureSegmentFontAndFace(p)
 				expanded = append(expanded, p)
 			}
-			splitEnsureFaceElapsed += time.Since(t)
 		}
 	}
-	r.logf("[richtext] split.coverage=%s", splitCoverageElapsed)
-	r.logf("[richtext] split.ensure_face=%s", splitEnsureFaceElapsed)
-	t = time.Now()
+	logStep("split")
 
 	var wrapped TextSegments
 	if maxWidth <= 0 {
@@ -255,14 +246,6 @@ func (r *RichText) Equal(text string) bool {
 	return r.original == text
 }
 
-func (r *RichText) ensureSegmentFontAndFace(seg *TextSegment) {
-	if seg.Font == nil {
-		seg.Font = r.fontLibrary.MatchOrFeedback(seg.FontFamily, seg.Bold, seg.Italic)
-		seg.FakeItalic = seg.Italic && !seg.Font.Italic
-	}
-	_ = r.fontLibrary.GetFace(seg.Font, seg.FontSize)
-}
-
 // splitSegmentByFontCoverage 按字符覆盖能力拆分 segment，并为每段选择可渲染字体。
 // splitSegmentByFontCoverage splits segment by rune coverage and assigns drawable fonts.
 func (r *RichText) splitSegmentByFontCoverage(seg *TextSegment) TextSegments {
@@ -273,61 +256,18 @@ func (r *RichText) splitSegmentByFontCoverage(seg *TextSegment) TextSegments {
 		return TextSegments{seg}
 	}
 
-	// Fast path:
-	// 1) pick base font once;
-	// 2) if all runes are supported by base font, keep one segment and skip fallback split.
 	base := seg.Font
-	if base == nil {
-		base = r.fontLibrary.MatchOrFeedback(seg.FontFamily, seg.Bold, seg.Italic)
-		if base != nil && normalizeFamilyName(seg.FontFamily) != normalizeFamilyName(base.Family) {
-			r.logf(
-				"[richtext.fallback.base] req=%q got=%q bold=%d italic=%t text=%q",
-				seg.FontFamily, base.Family, seg.Bold, seg.Italic, summarizeTextForLog(seg.Text),
-			)
-		}
-	}
-	allSupported := true
-	for _, rn := range seg.Text {
-		if !base.coverageRanges.SupportsRune(rn) {
-			allSupported = false
-			break
-		}
-	}
-	if allSupported {
-		out := seg
-		out.Font = base
-		out.FakeItalic = out.Italic && base != nil && !base.Italic
-		return TextSegments{out}
-	}
 
-	// Slow path:
-	// only when tofu/missing glyph exists, split by rune coverage and fallback as needed.
 	start := 0
 	current := base
-	out := make(TextSegments, 0, 4)
-	runeFontCache := make(map[rune]*FontInfo, 32)
-	fallbackRunes := make(map[string][]rune, 8)
+	var out TextSegments
+	var fallbackRunes map[string][]rune = make(map[string][]rune)
 	for idx, rn := range seg.Text {
-		fi, ok := runeFontCache[rn]
-		if !ok {
-			if base != nil && base.coverageRanges.SupportsRune(rn) {
-				fi = base
-			} else {
-				fi = r.fontLibrary.MatchRuneOrFeedback(base, rn)
-				baseFamily := ""
-				if base != nil {
-					baseFamily = base.Family
-				}
-				if fi != nil && fi.Family != baseFamily {
-					key := fmt.Sprintf("%s -> %s", baseFamily, fi.Family)
-					fallbackRunes[key] = append(fallbackRunes[key], rn)
-				}
-			}
-			runeFontCache[rn] = fi
-		}
-		if current == nil {
-			current = fi
-			continue
+		fi := base
+		if !base.coverageRanges.SupportsRune(rn) {
+			fi = r.fontLibrary.MatchRuneOrFeedback(base, rn)
+			key := fmt.Sprintf("%s -> %s", base.Family, fi.Family)
+			fallbackRunes[key] = append(fallbackRunes[key], rn)
 		}
 		if current == fi {
 			continue
@@ -359,10 +299,8 @@ func (r *RichText) splitSegmentByFontCoverage(seg *TextSegment) TextSegments {
 func makeFontBoundSegment(base *TextSegment, text string, fi *FontInfo) *TextSegment {
 	seg := base.CopyWithText(text)
 	seg.Font = fi
-	if fi != nil {
-		seg.FontFamily = fi.Family
-		seg.FakeItalic = seg.Italic && !fi.Italic
-	}
+	seg.FontFamily = fi.Family
+	seg.FakeItalic = seg.Italic && !fi.Italic
 	return seg
 }
 

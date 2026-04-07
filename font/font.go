@@ -38,6 +38,7 @@ type FontLibrary struct {
 
 func NewFontLibrary(paths ...string) *FontLibrary {
 	fs := &FontLibrary{
+		fonts:      make(map[string][]*FontInfo),
 		matchCache: make(map[string]fontCollection),
 		faceCache:  make(map[string]xfont.Face),
 		mutex:      &sync.RWMutex{},

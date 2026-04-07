@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -120,11 +121,7 @@ func TestRenderTextComplexLayoutCase(t *testing.T) {
 		t.Fatalf("expected at least one underline segment")
 	}
 
-	tm := rt.Timing()
-	t.Logf(
-		"timing set=%s render=%s parse=%s layout=%s wrap=%s measure=%s",
-		setElapsed, renderElapsed, tm.Parse, tm.Layout, tm.Wrap, tm.Measure,
-	)
+	t.Logf("set=%s render=%s", setElapsed, renderElapsed)
 
 	if err := savePNG(filepath.Join("test_output", "rich_text_complex_layout.png"), img); err != nil {
 		t.Fatalf("save png failed: %v", err)

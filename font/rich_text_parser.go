@@ -191,15 +191,22 @@ func (r *RichText) createSegment(text string, opts RichTextFontStyle) *TextSegme
 	if opts.Bold {
 		weight = FontWeightBold
 	}
+	fi := r.fontLibrary.MatchOrFeedback(opts.FontFamily, weight, opts.Italic)
+	if normalizeFamilyName(opts.FontFamily) != normalizeFamilyName(fi.Family) {
+		r.logf(
+			"[richtext.fallback.base] req=%q got=%q bold=%d italic=%t text=%q",
+			opts.FontFamily, fi.Family, weight, opts.Italic, summarizeTextForLog(text),
+		)
+	}
 	return &TextSegment{
 		Text:       text,
-		Font:       nil,
+		Font:       fi,
 		FontSize:   opts.FontSize,
 		Color:      opts.Color,
 		Bold:       weight,
 		Italic:     opts.Italic,
 		Underline:  opts.Underline,
-		FakeItalic: false,
+		FakeItalic: opts.Italic && !fi.Italic,
 		FontFamily: opts.FontFamily,
 	}
 }
