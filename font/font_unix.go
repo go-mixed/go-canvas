@@ -1,60 +1,18 @@
-//go:build unix && !darwin
+//go:build !windows
 
 package font
 
-func (fs *FontLibrary) initFallbackPaths() {
-	if fs.fallbackLoaded {
-		return
-	}
-	regular, _ := FindFont("LiberationSans-Regular.ttf")
-	if regular == "" {
-		regular, _ = FindFont("DejaVuSans.ttf")
-	}
-	bold, _ := FindFont("LiberationSans-Bold.ttf")
-	if bold == "" {
-		bold, _ = FindFont("DejaVuSans-Bold.ttf")
-	}
-	light, _ := FindFont("LiberationSans-Light.ttf")
-	if light == "" {
-		light, _ = FindFont("DejaVuSans.ttf")
-	}
+import "os"
 
-	fs.fallbackRegularInfo = &FontInfo{
-		Family:   "fallback",
-		Bold:     FontWeightRegular,
-		Italic:   false,
-		FontPath: regular,
+func detectSystemLanguage() string {
+	for _, key := range []string{"LC_ALL", "LC_MESSAGES", "LANG", "LANGUAGE"} {
+		if v := os.Getenv(key); v != "" {
+			return v
+		}
 	}
-	fs.fallbackBoldInfo = &FontInfo{
-		Family:   "fallback",
-		Bold:     FontWeightBold,
-		Italic:   false,
-		FontPath: bold,
-	}
-	fs.fallbackLightInfo = &FontInfo{
-		Family:   "fallback",
-		Bold:     FontWeightLight,
-		Italic:   false,
-		FontPath: light,
-	}
-	fs.fallbackLoaded = true
+	return ""
 }
 
-func (fs *FontLibrary) fallbackFontInfo(fontFamily string, weight FontWeight, italic bool) *FontInfo {
-	fs.initFallbackPaths()
-	fs.registerFallbackFamilyAlias(fontFamily)
-
-	if fontFamily != "" {
-		fs.fallbackRegularInfo.Family = fontFamily
-		fs.fallbackBoldInfo.Family = fontFamily
-		fs.fallbackLightInfo.Family = fontFamily
-	}
-
-	if weight == FontWeightRegular {
-		return fs.fallbackRegularInfo
-	}
-	if weight > FontWeightRegular {
-		return fs.fallbackBoldInfo
-	}
-	return fs.fallbackLightInfo
+func systemFallbackFamilies() []string {
+	return []string{"DejaVu Sans", "Liberation Sans", "Noto Sans"}
 }

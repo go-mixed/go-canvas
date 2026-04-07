@@ -60,7 +60,11 @@ func (fs *FontLibrary) loadFonts(userFontPaths ...string) map[string][]*FontInfo
 			cachedEntries[0].Family != "" {
 			for _, entry := range cachedEntries {
 				info := fs.fontInfoFromEntry(entry)
-				fontInfos[info.Family] = append(fontInfos[info.Family], info)
+				key := normalizeFamilyName(info.Family)
+				if key == "" {
+					key = info.Family
+				}
+				fontInfos[key] = append(fontInfos[key], info)
 			}
 			nextEntries[path] = cachedEntries
 			continue
@@ -77,7 +81,11 @@ func (fs *FontLibrary) loadFonts(userFontPaths ...string) map[string][]*FontInfo
 		}
 		entries := make([]fontIndexEntry, 0, len(infos))
 		for _, info := range infos {
-			fontInfos[info.Family] = append(fontInfos[info.Family], info)
+			key := normalizeFamilyName(info.Family)
+			if key == "" {
+				key = info.Family
+			}
+			fontInfos[key] = append(fontInfos[key], info)
 			entries = append(entries, fontIndexEntry{
 				Family:    info.Family,
 				SubFamily: info.SubFamily,

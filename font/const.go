@@ -91,6 +91,35 @@ func (ur unicodeRanges) SupportsRune(r rune) bool {
 	return r >= rng.start && r <= rng.end
 }
 
+func (ur unicodeRanges) IntersectionCount(preferred unicodeRanges) int {
+	if len(ur) == 0 || len(preferred) == 0 {
+		return 0
+	}
+	i, j := 0, 0
+	total := 0
+	for i < len(ur) && j < len(preferred) {
+		a := ur[i]
+		b := preferred[j]
+		start := a.start
+		if b.start > start {
+			start = b.start
+		}
+		end := a.end
+		if b.end < end {
+			end = b.end
+		}
+		if end >= start {
+			total += int(end - start + 1)
+		}
+		if a.end < b.end {
+			i++
+		} else {
+			j++
+		}
+	}
+	return total
+}
+
 type fontCollection struct {
 	baseFont  *FontInfo
 	runeFonts []*FontInfo

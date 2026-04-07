@@ -132,10 +132,12 @@ func TestRenderTextComplexLayoutCase(t *testing.T) {
 func mustFontLibraryForRenderTests(t *testing.T) (*FontLibrary, string) {
 	t.Helper()
 
-	fs := NewFontLibrary()
-	if len(fs.fonts) == 0 {
-		t.Skip("no system fonts found")
+	n := time.Now()
+	fs, err := NewFontLibrary()
+	if err != nil {
+		t.Fatalf("create font library error: %v", err)
 	}
+	t.Logf("create font library %v", time.Since(n))
 	for family := range fs.fonts {
 		if family != "" {
 			return fs, family

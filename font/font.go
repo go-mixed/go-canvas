@@ -2,6 +2,7 @@ package font
 
 import (
 	"cmp"
+	"fmt"
 	"slices"
 	"strconv"
 	"strings"
@@ -36,7 +37,7 @@ type FontLibrary struct {
 	mutex *sync.RWMutex
 }
 
-func NewFontLibrary(paths ...string) *FontLibrary {
+func NewFontLibrary(paths ...string) (*FontLibrary, error) {
 	fs := &FontLibrary{
 		fonts:      make(map[string][]*FontInfo),
 		matchCache: make(map[string]fontCollection),
@@ -44,7 +45,10 @@ func NewFontLibrary(paths ...string) *FontLibrary {
 		mutex:      &sync.RWMutex{},
 	}
 	fs.fonts = fs.loadFonts(paths...)
-	return fs
+	if len(fs.fonts) == 0 {
+		return nil, fmt.Errorf("no fonts found in %v", paths)
+	}
+	return fs, fs.initFallbackPaths()
 }
 
 type fontScore struct {
@@ -58,7 +62,7 @@ type fontScore struct {
 // weight: 粗细数值 (100-900)，italic: 是否斜体
 func (fs *FontLibrary) MatchOrFeedback(fontFamily string, weight FontWeight, italic bool) *FontInfo {
 	if fontFamily == "" {
-		return fs.fallbackFontInfo(fontFamily, weight, italic)
+		return fs.fallbackFontInfo(weight)
 	}
 
 	cacheKey := fontFamily + "|" + strconv.Itoa(int(weight)) + "|" + strconv.FormatBool(italic)
@@ -74,7 +78,7 @@ func (fs *FontLibrary) MatchOrFeedback(fontFamily string, weight FontWeight, ita
 
 	var fi *FontInfo
 	if len(candidates) == 0 {
-		fi = fs.fallbackFontInfo(fontFamily, weight, italic)
+		fi = fs.fallbackFontInfo(weight)
 	} else {
 		fi = candidates[0].f
 	}
@@ -189,21 +193,6 @@ func (fs *FontLibrary) rankFonts(fontFamily string, weight FontWeight, italic bo
 		return cmp.Compare(fontStableKey(a.f), fontStableKey(b.f))
 	})
 	return matches
-}
-
-func (fs *FontLibrary) registerFallbackFamilyAlias(fontFamily string) {
-	key := fontFamily
-	if key == "" {
-		key = "fallback"
-	}
-	if _, ok := fs.fonts[key]; ok {
-		return
-	}
-	fs.fonts[key] = []*FontInfo{
-		fs.fallbackRegularInfo,
-		fs.fallbackBoldInfo,
-		fs.fallbackLightInfo,
-	}
 }
 
 func fontFamilySimilarity(family1, family2 string) float32 {
