@@ -1,10 +1,7 @@
 package font
 
 import (
-	"fmt"
 	"slices"
-	"strings"
-	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -12,161 +9,20 @@ import (
 	"golang.org/x/image/math/fixed"
 )
 
-func (r *RichText) wordWrap(in TextSegments, maxWidth int, breakPolicy LineBreakPolicy) TextSegments {
-	t0 := time.Now()
-	defer func() {
-		fmt.Printf("[richtext.wordWrap] maxWidth=%d breakPolicy=%d in=%d elapsed=%s\n", maxWidth, breakPolicy, len(in), time.Since(t0))
-	}()
-
-	if maxWidth <= 0 {
-		return in
-	}
-
-	out := make(TextSegments, 0, len(in))
-	lineWidth := 0
-	lineHasContent := false
-	ws := &r.wrapScratch
-
-	for _, seg := range in {
-		if seg == nil {
-			continue
-		}
-		if seg.BreakLine {
-			out = append(out, seg)
-			lineWidth = 0
-			lineHasContent = false
-			continue
-		}
-		if seg.Text == "" {
-			continue
-		}
-
-		face := r.fontLibrary.GetFace(seg.Font, seg.FontSize)
-		if face == nil {
-			out = append(out, seg)
-			lineWidth += seg.Width
-			if seg.Text != "" {
-				lineHasContent = true
-			}
-			continue
-		}
-
-		extraItalic := 0
-		if seg.FakeItalic {
-			extraItalic = syntheticItalicExtraWidth((face.Metrics().Ascent + face.Metrics().Descent).Ceil())
-		}
-		segWidth := seg.Width
-		if !seg.measured || seg.baseWidth <= 0 {
-			segWidth = font.MeasureString(face, seg.Text).Ceil()
-		} else if seg.baseWidth > 0 {
-			segWidth = seg.baseWidth
-		}
-		applySegmentMeasureWithBase(seg, face, segWidth)
-		if extraItalic > 0 {
-			segWidth += extraItalic
-		}
-		remaining := maxWidth - lineWidth
-		if segWidth <= remaining {
-			out = append(out, seg)
-			lineWidth += segWidth
-			lineHasContent = true
-			continue
-		}
-
-		if breakPolicy == LineBreakNever {
-			if lineHasContent {
-				out = append(out, newBreakMarker(seg))
-				lineWidth = 0
-				lineHasContent = false
-			}
-			out = append(out, seg)
-			lineWidth += segWidth
-			lineHasContent = true
-			continue
-		}
-
-		ws.resetForSegment()
-		clusters := splitGraphemeClustersInto(ws.clusters, seg.Text)
-		ws.clusters = clusters
-		if len(clusters) == 0 {
-			continue
-		}
-
-		prefixW := buildPrefixWidthsInto(ws.prefixW, face, clusters)
-		ws.prefixW = prefixW
-		legal := findLegalBreaksInto(ws.legal, clusters)
-		ws.legal = legal
-
-		start := 0
-		for start < len(clusters) {
-			remaining := maxWidth - lineWidth
-			if remaining <= 0 && lineHasContent {
-				out = append(out, newBreakMarker(seg))
-				lineWidth = 0
-				lineHasContent = false
-				continue
-			}
-
-			totalW := clusterRangeWidth(prefixW, start, len(clusters), extraItalic)
-			if totalW <= remaining {
-				chunkText := strings.Join(clusters[start:], "")
-				chunkBase := clusterRangeWidth(prefixW, start, len(clusters), 0)
-				chunk := seg.CopyWithText(chunkText)
-				applySegmentMeasureWithBase(chunk, face, chunkBase)
-				out = append(out, chunk)
-				lineWidth += totalW
-				lineHasContent = chunk.Text != ""
-				break
-			}
-
-			if lineHasContent {
-				semantic := breakPolicy != LineBreakAlways
-				k := chooseBreakIndex(clusters, legal, prefixW, start, remaining, extraItalic, semantic, ws)
-				if k <= start {
-					out = append(out, newBreakMarker(seg))
-					lineWidth = 0
-					lineHasContent = false
-					continue
-				}
-				chunkText := strings.Join(clusters[start:k], "")
-				chunkBase := clusterRangeWidth(prefixW, start, k, 0)
-				chunk := seg.CopyWithText(chunkText)
-				applySegmentMeasureWithBase(chunk, face, chunkBase)
-				out = append(out, chunk)
-				out = append(out, newBreakMarker(seg))
-				start = k
-				lineWidth = 0
-				lineHasContent = false
-				continue
-			}
-
-			// 当前行为空：先语义断点，失败后强制按 cluster 截断。
-			semantic := breakPolicy != LineBreakAlways
-			k := chooseBreakIndex(clusters, legal, prefixW, start, remaining, extraItalic, semantic, ws)
-			if k <= start {
-				k = chooseBreakIndex(clusters, nil, prefixW, start, remaining, extraItalic, false, ws)
-			}
-			if k <= start {
-				k = min(start+1, len(clusters))
-			}
-
-			chunkText := strings.Join(clusters[start:k], "")
-			chunkBase := clusterRangeWidth(prefixW, start, k, 0)
-			chunk := seg.CopyWithText(chunkText)
-			applySegmentMeasureWithBase(chunk, face, chunkBase)
-			out = append(out, chunk)
-			start = k
-			lineWidth = 0
-			lineHasContent = false
-			if start < len(clusters) {
-				out = append(out, newBreakMarker(seg))
-			}
-		}
-	}
-
-	return out
+// isLineBreakNever 判断策略是否为“禁止自动换行”。
+// isLineBreakNever reports whether policy disables auto wrapping.
+func isLineBreakNever(p LineBreakPolicy) bool {
+	return p == LineBreakNoWrap
 }
 
+// isLineBreakAlways 判断策略是否为“总是按宽度断行”。
+// isLineBreakAlways reports whether policy forces width-based wrapping.
+func isLineBreakAlways(p LineBreakPolicy) bool {
+	return p == LineBreakAnywhere
+}
+
+// chooseBreakIndex 选择当前行可放下的最佳断点（先估算，再在候选断点上二分）。
+// chooseBreakIndex picks the best fitting break index (estimate first, then binary-search candidates).
 func chooseBreakIndex(
 	clusters []string,
 	legal []int,
@@ -225,10 +81,14 @@ func chooseBreakIndex(
 	return best
 }
 
+// buildCandidates 返回断点候选列表（语义断点或全部 cluster 边界）。
+// buildCandidates returns break candidates (semantic breakpoints or all cluster boundaries).
 func buildCandidates(legal []int, start, n int, useSemanticBreak bool) []int {
 	return buildCandidatesInto(nil, legal, start, n, useSemanticBreak)
 }
 
+// buildCandidatesInto 将候选断点写入可复用切片，减少临时分配。
+// buildCandidatesInto writes candidate breakpoints into a reusable slice to reduce allocations.
 func buildCandidatesInto(dst []int, legal []int, start, n int, useSemanticBreak bool) []int {
 	if !useSemanticBreak {
 		candidates := dst[:0]
@@ -247,6 +107,8 @@ func buildCandidatesInto(dst []int, legal []int, start, n int, useSemanticBreak 
 	return candidates
 }
 
+// findLastCandidateLE 返回小于等于给定值的最后一个候选断点。
+// findLastCandidateLE returns the last candidate breakpoint that is <= target value.
 func findLastCandidateLE(candidates []int, v int) int {
 	l, r := 0, len(candidates)-1
 	ans := -1
@@ -265,10 +127,14 @@ func findLastCandidateLE(candidates []int, v int) int {
 	return 0
 }
 
+// findLegalBreak 计算文本的合法断点索引。
+// findLegalBreak computes legal break indexes for given grapheme clusters.
 func findLegalBreaks(clusters []string) []int {
 	return findLegalBreaksInto(nil, clusters)
 }
 
+// findLegalBreaksInto 将合法断点写入可复用切片，减少分配。
+// findLegalBreaksInto writes legal breakpoints into a reusable slice.
 func findLegalBreaksInto(dst []int, clusters []string) []int {
 	if len(clusters) <= 1 {
 		return dst[:0]
@@ -285,6 +151,8 @@ func findLegalBreaksInto(dst []int, clusters []string) []int {
 	return breaks
 }
 
+// isLegalBreak 判断两个 cluster 间是否允许断行，包含 kinsoku 与脚本切换规则。
+// isLegalBreak reports whether a line break is allowed between two clusters, including kinsoku/script rules.
 func isLegalBreak(prevCluster, nextCluster string) bool {
 	if prevCluster == "" || nextCluster == "" {
 		return true
@@ -319,10 +187,38 @@ func isLegalBreak(prevCluster, nextCluster string) bool {
 	return prevScript != scriptUnknown && nextScript != scriptUnknown && prevScript != nextScript
 }
 
+// isLegalBreakLegacy 保留历史断点逻辑（不含 kinsoku/sticky 约束），仅用于考古对比，不参与运行时分支。
+// isLegalBreakLegacy keeps historical break logic (without kinsoku/sticky constraints) for archaeology only.
+func isLegalBreakLegacy(prevCluster, nextCluster string) bool {
+	if prevCluster == "" || nextCluster == "" {
+		return true
+	}
+	prevLast, _ := utf8LastRune(prevCluster)
+	nextFirst, _ := utf8.DecodeRuneInString(nextCluster)
+
+	if unicode.IsSpace(prevLast) {
+		return true
+	}
+	if isPunctuationRune(prevLast) {
+		return true
+	}
+	if isCJKRune(prevLast) && isCJKRune(nextFirst) {
+		return true
+	}
+
+	prevScript := scriptClass(prevLast)
+	nextScript := scriptClass(nextFirst)
+	return prevScript != scriptUnknown && nextScript != scriptUnknown && prevScript != nextScript
+}
+
+// buildPrefixWidths 构建 cluster 前缀宽数组。
+// buildPrefixWidths builds prefix-width array for grapheme clusters.
 func buildPrefixWidths(face FontFaceAdvance, clusters []string) []fixed.Int26_6 {
 	return buildPrefixWidthsInto(nil, face, clusters)
 }
 
+// buildPrefixWidthsInto 构建可复用的前缀宽数组（含 kerning）。
+// buildPrefixWidthsInto builds reusable prefix widths (including kerning).
 func buildPrefixWidthsInto(dst []fixed.Int26_6, face FontFaceAdvance, clusters []string) []fixed.Int26_6 {
 	need := len(clusters) + 1
 	prefix := dst[:0]
@@ -350,11 +246,15 @@ func buildPrefixWidthsInto(dst []fixed.Int26_6, face FontFaceAdvance, clusters [
 	return prefix
 }
 
+// FontFaceAdvance 提供 wrap 阶段所需的最小字形 advance/kerning 接口。
+// FontFaceAdvance is the minimal glyph advance/kerning interface used by wrapping.
 type FontFaceAdvance interface {
 	GlyphAdvance(r rune) (advance fixed.Int26_6, ok bool)
 	Kern(r0, r1 rune) fixed.Int26_6
 }
 
+// applySegmentMeasureWithBase 将测量结果写回 segment，并统一处理伪斜体额外宽度。
+// applySegmentMeasureWithBase stores measured values into segment and applies synthetic-italic extra width.
 func applySegmentMeasureWithBase(seg *TextSegment, face font.Face, baseWidth int) {
 	seg.baseWidth = baseWidth
 	seg.Width = baseWidth
@@ -366,6 +266,8 @@ func applySegmentMeasureWithBase(seg *TextSegment, face font.Face, baseWidth int
 	seg.measured = true
 }
 
+// wrapScratch 复用 wrap 过程中的临时切片，降低 GC 压力。
+// wrapScratch reuses temporary slices in wrapping to reduce GC pressure.
 type wrapScratch struct {
 	clusters   []string
 	prefixW    []fixed.Int26_6
@@ -373,6 +275,8 @@ type wrapScratch struct {
 	candidates []int
 }
 
+// resetForSegment 清空当前 segment 的临时缓冲。
+// resetForSegment clears temporary buffers for the current segment.
 func (w *wrapScratch) resetForSegment() {
 	w.clusters = w.clusters[:0]
 	w.prefixW = w.prefixW[:0]
@@ -380,6 +284,8 @@ func (w *wrapScratch) resetForSegment() {
 	w.candidates = w.candidates[:0]
 }
 
+// clusterRangeWidth 通过前缀宽 O(1) 计算 cluster 子区间宽度。
+// clusterRangeWidth computes sub-range width in O(1) using prefix widths.
 func clusterRangeWidth(prefixW []fixed.Int26_6, i, j int, extraItalic int) int {
 	if i < 0 {
 		i = 0
@@ -397,10 +303,14 @@ func clusterRangeWidth(prefixW []fixed.Int26_6, i, j int, extraItalic int) int {
 	return w
 }
 
+// splitGraphemeClusters 将字符串拆为 grapheme cluster 列表。
+// splitGraphemeClusters splits input text into grapheme clusters.
 func splitGraphemeClusters(s string) []string {
 	return splitGraphemeClustersInto(nil, s)
 }
 
+// splitGraphemeClustersInto 将 cluster 写入可复用切片，处理 ZWJ/变体选择符/组合附标等。
+// splitGraphemeClustersInto writes clusters into reusable slice, handling ZWJ/VS/combining marks.
 func splitGraphemeClustersInto(dst []string, s string) []string {
 	if s == "" {
 		return dst[:0]
@@ -461,39 +371,45 @@ func splitGraphemeClustersInto(dst []string, s string) []string {
 	return out
 }
 
+// isCombiningMark 判断字符是否为组合附标。
+// isCombiningMark reports whether rune is a combining mark.
 func isCombiningMark(r rune) bool {
 	return unicode.Is(unicode.Mn, r) || unicode.Is(unicode.Mc, r) || unicode.Is(unicode.Me, r)
 }
 
+// isVariationSelector 判断字符是否为变体选择符。
+// isVariationSelector reports whether rune is a variation selector.
 func isVariationSelector(r rune) bool {
 	return (r >= 0xFE00 && r <= 0xFE0F) || (r >= 0xE0100 && r <= 0xE01EF)
 }
 
+// isEmojiModifier 判断字符是否为 emoji 肤色修饰符。
+// isEmojiModifier reports whether rune is an emoji skin-tone modifier.
 func isEmojiModifier(r rune) bool {
 	return r >= 0x1F3FB && r <= 0x1F3FF
 }
 
+// isRegionalIndicator 判断字符是否为区域旗帜指示符。
+// isRegionalIndicator reports whether rune is a regional indicator symbol.
 func isRegionalIndicator(r rune) bool {
 	return r >= 0x1F1E6 && r <= 0x1F1FF
 }
 
+// utf8LastRune 返回字符串最后一个有效 rune。
+// utf8LastRune returns the last valid rune of a UTF-8 string.
 func utf8LastRune(s string) (rune, int) {
-	r, size := rune(utf8.RuneError), 0
-	for i := range len(s) {
-		rr, sz := utf8.DecodeRuneInString(s[i:])
-		if rr == utf8.RuneError && sz == 1 {
-			continue
-		}
-		r = rr
-		size = sz
-		i += sz - 1
+	if s == "" {
+		return utf8.RuneError, 0
 	}
-	if size == 0 {
+	r, size := utf8.DecodeLastRuneInString(s)
+	if r == utf8.RuneError && size == 1 {
 		return utf8.RuneError, 0
 	}
 	return r, size
 }
 
+// isCJKRune 判断字符是否属于 CJK 常见区间。
+// isCJKRune reports whether rune belongs to common CJK ranges.
 func isCJKRune(r rune) bool {
 	return (r >= 0x4E00 && r <= 0x9FFF) ||
 		(r >= 0x3400 && r <= 0x4DBF) ||
@@ -501,6 +417,8 @@ func isCJKRune(r rune) bool {
 		(r >= 0xAC00 && r <= 0xD7AF)
 }
 
+// isPunctuationRune 判断字符是否为常见标点（含全角标点块）。
+// isPunctuationRune reports whether rune is punctuation (including full-width blocks).
 func isPunctuationRune(r rune) bool {
 	return unicode.IsPunct(r) || (r >= 0x3000 && r <= 0x303F) || (r >= 0xFF00 && r <= 0xFFEF)
 }
@@ -514,6 +432,8 @@ const (
 	scriptOtherLetter
 )
 
+// scriptClass 返回字符所属的简化脚本类别，用于脚本切换断点规则。
+// scriptClass returns simplified script class used by script-switch break rules.
 func scriptClass(r rune) scriptKind {
 	switch {
 	case isCJKRune(r):
@@ -527,6 +447,8 @@ func scriptClass(r rune) scriptKind {
 	}
 }
 
+// isKinsokuStartRune 判断字符是否属于行首禁则集合。
+// isKinsokuStartRune reports whether rune is prohibited at line start.
 func isKinsokuStartRune(r rune) bool {
 	switch r {
 	case '，', '．', '！', '：', '；', '？', '、', '。', '・',
@@ -538,6 +460,8 @@ func isKinsokuStartRune(r rune) bool {
 	}
 }
 
+// isKinsokuEndRune 判断字符是否属于行末禁则集合。
+// isKinsokuEndRune reports whether rune is prohibited at line end.
 func isKinsokuEndRune(r rune) bool {
 	switch r {
 	case '"', '(', '[', '{', '“', '‘', '«', '‹',
@@ -548,6 +472,8 @@ func isKinsokuEndRune(r rune) bool {
 	}
 }
 
+// isLeftStickyPunctuationRune 判断字符是否应黏在前一个词尾，不应出现在新行行首。
+// isLeftStickyPunctuationRune reports whether rune should stick to previous token and not start a new line.
 func isLeftStickyPunctuationRune(r rune) bool {
 	switch r {
 	case '.', ',', '!', '?', ':', ';', ')', ']', '}', '%', '"', '”', '’', '»', '›', '…',
@@ -558,12 +484,16 @@ func isLeftStickyPunctuationRune(r rune) bool {
 	}
 }
 
+// newBreakMarker 创建换行标记 segment。
+// newBreakMarker creates a segment used as explicit line-break marker.
 func newBreakMarker(seg *TextSegment) *TextSegment {
 	m := seg.CopyWithText("")
 	m.BreakLine = true
 	return m
 }
 
+// clampInt 将整数限制在闭区间 [lo, hi]。
+// clampInt clamps integer to inclusive range [lo, hi].
 func clampInt(v, lo, hi int) int {
 	if v < lo {
 		return lo
@@ -574,6 +504,8 @@ func clampInt(v, lo, hi int) int {
 	return v
 }
 
+// boolToInt 将 bool 转换为 0/1。
+// boolToInt converts bool to 0/1 integer.
 func boolToInt(v bool) int {
 	if v {
 		return 1

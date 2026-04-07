@@ -2,20 +2,16 @@ package font
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
 	"golang.org/x/image/font"
-	"golang.org/x/image/math/fixed"
 )
 
-// wrapFirstFit: textwrap::wrap_first_fit 风格的贪心分行。
-// 对每段文本按可断点做 first-fit，超长无断点时再回退到 grapheme 强制截断。
-func (r *RichText) wrapFirstFit(in TextSegments, maxWidth int, breakPolicy LineBreakPolicy) TextSegments {
+func (r *RichText) wordWrap(in TextSegments, maxWidth int, breakPolicy LineBreakPolicy) TextSegments {
 	t0 := time.Now()
 	defer func() {
-		fmt.Printf("[richtext.wrapFirstFit] maxWidth=%d breakPolicy=%d in=%d elapsed=%s\n", maxWidth, breakPolicy, len(in), time.Since(t0))
+		fmt.Printf("[richtext.wordWrap] maxWidth=%d breakPolicy=%d in=%d elapsed=%s\n", maxWidth, breakPolicy, len(in), time.Since(t0))
 	}()
 
 	if maxWidth <= 0 {
@@ -45,7 +41,9 @@ func (r *RichText) wrapFirstFit(in TextSegments, maxWidth int, breakPolicy LineB
 		if face == nil {
 			out = append(out, seg)
 			lineWidth += seg.Width
-			lineHasContent = seg.Text != ""
+			if seg.Text != "" {
+				lineHasContent = true
+			}
 			continue
 		}
 
@@ -53,7 +51,6 @@ func (r *RichText) wrapFirstFit(in TextSegments, maxWidth int, breakPolicy LineB
 		if seg.FakeItalic {
 			extraItalic = syntheticItalicExtraWidth((face.Metrics().Ascent + face.Metrics().Descent).Ceil())
 		}
-
 		segWidth := seg.Width
 		if !seg.measured || seg.baseWidth <= 0 {
 			segWidth = font.MeasureString(face, seg.Text).Ceil()
@@ -64,7 +61,6 @@ func (r *RichText) wrapFirstFit(in TextSegments, maxWidth int, breakPolicy LineB
 		if extraItalic > 0 {
 			segWidth += extraItalic
 		}
-
 		remaining := maxWidth - lineWidth
 		if segWidth <= remaining {
 			out = append(out, seg)
@@ -73,7 +69,7 @@ func (r *RichText) wrapFirstFit(in TextSegments, maxWidth int, breakPolicy LineB
 			continue
 		}
 
-		if breakPolicy == LineBreakNever {
+		if isLineBreakNever(breakPolicy) {
 			if lineHasContent {
 				out = append(out, newBreakMarker(seg))
 				lineWidth = 0
@@ -91,6 +87,7 @@ func (r *RichText) wrapFirstFit(in TextSegments, maxWidth int, breakPolicy LineB
 		if len(clusters) == 0 {
 			continue
 		}
+
 		prefixW := buildPrefixWidthsInto(ws.prefixW, face, clusters)
 		ws.prefixW = prefixW
 		legal := findLegalBreaksInto(ws.legal, clusters)
@@ -98,7 +95,7 @@ func (r *RichText) wrapFirstFit(in TextSegments, maxWidth int, breakPolicy LineB
 
 		start := 0
 		for start < len(clusters) {
-			remaining = maxWidth - lineWidth
+			remaining := maxWidth - lineWidth
 			if remaining <= 0 && lineHasContent {
 				out = append(out, newBreakMarker(seg))
 				lineWidth = 0
@@ -118,82 +115,50 @@ func (r *RichText) wrapFirstFit(in TextSegments, maxWidth int, breakPolicy LineB
 				break
 			}
 
-			k := 0
-			if breakPolicy == LineBreakAlways {
-				k = maxFittingByCluster(prefixW, start, remaining, extraItalic)
-			} else {
-				k = maxFittingByLegalBreak(legal, prefixW, start, remaining, extraItalic)
-			}
-
-			if k <= start {
-				if lineHasContent {
+			if lineHasContent {
+				semantic := !isLineBreakAlways(breakPolicy)
+				k := chooseBreakIndex(clusters, legal, prefixW, start, remaining, extraItalic, semantic, ws)
+				if k <= start {
 					out = append(out, newBreakMarker(seg))
 					lineWidth = 0
 					lineHasContent = false
 					continue
 				}
-				k = maxFittingByCluster(prefixW, start, remaining, extraItalic)
-				if k <= start {
-					k = min(start+1, len(clusters))
-				}
+				chunkText := strings.Join(clusters[start:k], "")
+				chunkBase := clusterRangeWidth(prefixW, start, k, 0)
+				chunk := seg.CopyWithText(chunkText)
+				applySegmentMeasureWithBase(chunk, face, chunkBase)
+				out = append(out, chunk)
+				out = append(out, newBreakMarker(seg))
+				start = k
+				lineWidth = 0
+				lineHasContent = false
+				continue
 			}
 
-			chunkW := clusterRangeWidth(prefixW, start, k, extraItalic)
+			// 当前行为空：先语义断点，失败后强制按 cluster 截断。
+			semantic := !isLineBreakAlways(breakPolicy)
+			k := chooseBreakIndex(clusters, legal, prefixW, start, remaining, extraItalic, semantic, ws)
+			if k <= start {
+				k = chooseBreakIndex(clusters, nil, prefixW, start, remaining, extraItalic, false, ws)
+			}
+			if k <= start {
+				k = min(start+1, len(clusters))
+			}
+
 			chunkText := strings.Join(clusters[start:k], "")
 			chunkBase := clusterRangeWidth(prefixW, start, k, 0)
 			chunk := seg.CopyWithText(chunkText)
 			applySegmentMeasureWithBase(chunk, face, chunkBase)
 			out = append(out, chunk)
 			start = k
+			lineWidth = 0
+			lineHasContent = false
 			if start < len(clusters) {
 				out = append(out, newBreakMarker(seg))
-				lineWidth = 0
-				lineHasContent = false
-			} else {
-				lineWidth += chunkW
-				lineHasContent = chunk.Text != ""
 			}
 		}
 	}
 
 	return out
-}
-
-func maxFittingByLegalBreak(legal []int, prefixW []fixed.Int26_6, start, remainingWidth, extraItalic int) int {
-	if len(legal) == 0 {
-		return start
-	}
-	i, _ := slices.BinarySearch(legal, start+1)
-	if i >= len(legal) {
-		return start
-	}
-	lo, hi := i, len(legal)-1
-	best := start
-	for lo <= hi {
-		mid := (lo + hi) >> 1
-		k := legal[mid]
-		if clusterRangeWidth(prefixW, start, k, extraItalic) <= remainingWidth {
-			best = k
-			lo = mid + 1
-		} else {
-			hi = mid - 1
-		}
-	}
-	return best
-}
-
-func maxFittingByCluster(prefixW []fixed.Int26_6, start, remainingWidth, extraItalic int) int {
-	lo, hi := start+1, len(prefixW)-1
-	best := start
-	for lo <= hi {
-		mid := (lo + hi) >> 1
-		w := clusterRangeWidth(prefixW, start, mid, extraItalic)
-		if w <= remainingWidth {
-			best = mid
-			lo = mid + 1
-		} else {
-			hi = mid - 1
-		}
-	}
-	return best
 }

@@ -2,18 +2,20 @@ package font
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
 	"golang.org/x/image/font"
+	"golang.org/x/image/math/fixed"
 )
 
-// wrapKinsoku 使用带 CJK 行首/行末禁则（kinsoku）的换行算法。
-// wrapKinsoku wraps text with CJK kinsoku line-start/line-end prohibition rules.
-func (r *RichText) wrapKinsoku(in TextSegments, maxWidth int, breakPolicy LineBreakPolicy) TextSegments {
+// wrapFirstFit: textwrap::wrap_first_fit 风格的贪心分行。
+// 对每段文本按可断点做 first-fit，超长无断点时再回退到 grapheme 强制截断。
+func (r *RichText) wrapFirstFit(in TextSegments, maxWidth int, breakPolicy LineBreakPolicy) TextSegments {
 	t0 := time.Now()
 	defer func() {
-		fmt.Printf("[richtext.wrapKinsoku] maxWidth=%d breakPolicy=%d in=%d elapsed=%s\n", maxWidth, breakPolicy, len(in), time.Since(t0))
+		fmt.Printf("[richtext.wrapFirstFit] maxWidth=%d breakPolicy=%d in=%d elapsed=%s\n", maxWidth, breakPolicy, len(in), time.Since(t0))
 	}()
 
 	if maxWidth <= 0 {
@@ -43,9 +45,7 @@ func (r *RichText) wrapKinsoku(in TextSegments, maxWidth int, breakPolicy LineBr
 		if face == nil {
 			out = append(out, seg)
 			lineWidth += seg.Width
-			if seg.Text != "" {
-				lineHasContent = true
-			}
+			lineHasContent = seg.Text != ""
 			continue
 		}
 
@@ -53,6 +53,7 @@ func (r *RichText) wrapKinsoku(in TextSegments, maxWidth int, breakPolicy LineBr
 		if seg.FakeItalic {
 			extraItalic = syntheticItalicExtraWidth((face.Metrics().Ascent + face.Metrics().Descent).Ceil())
 		}
+
 		segWidth := seg.Width
 		if !seg.measured || seg.baseWidth <= 0 {
 			segWidth = font.MeasureString(face, seg.Text).Ceil()
@@ -72,7 +73,7 @@ func (r *RichText) wrapKinsoku(in TextSegments, maxWidth int, breakPolicy LineBr
 			continue
 		}
 
-		if breakPolicy == LineBreakNever {
+		if isLineBreakNever(breakPolicy) {
 			if lineHasContent {
 				out = append(out, newBreakMarker(seg))
 				lineWidth = 0
@@ -97,7 +98,7 @@ func (r *RichText) wrapKinsoku(in TextSegments, maxWidth int, breakPolicy LineBr
 
 		start := 0
 		for start < len(clusters) {
-			remaining := maxWidth - lineWidth
+			remaining = maxWidth - lineWidth
 			if remaining <= 0 && lineHasContent {
 				out = append(out, newBreakMarker(seg))
 				lineWidth = 0
@@ -117,49 +118,82 @@ func (r *RichText) wrapKinsoku(in TextSegments, maxWidth int, breakPolicy LineBr
 				break
 			}
 
-			if lineHasContent {
-				semantic := breakPolicy != LineBreakAlways
-				k := chooseBreakIndex(clusters, legal, prefixW, start, remaining, extraItalic, semantic, ws)
-				if k <= start {
+			k := 0
+			if isLineBreakAlways(breakPolicy) {
+				k = maxFittingByCluster(prefixW, start, remaining, extraItalic)
+			} else {
+				k = maxFittingByLegalBreak(legal, prefixW, start, remaining, extraItalic)
+			}
+
+			if k <= start {
+				if lineHasContent {
 					out = append(out, newBreakMarker(seg))
 					lineWidth = 0
 					lineHasContent = false
 					continue
 				}
-				chunkText := strings.Join(clusters[start:k], "")
-				chunkBase := clusterRangeWidth(prefixW, start, k, 0)
-				chunk := seg.CopyWithText(chunkText)
-				applySegmentMeasureWithBase(chunk, face, chunkBase)
-				out = append(out, chunk)
-				out = append(out, newBreakMarker(seg))
-				start = k
-				lineWidth = 0
-				lineHasContent = false
-				continue
+				k = maxFittingByCluster(prefixW, start, remaining, extraItalic)
+				if k <= start {
+					k = min(start+1, len(clusters))
+				}
 			}
 
-			semantic := breakPolicy != LineBreakAlways
-			k := chooseBreakIndex(clusters, legal, prefixW, start, remaining, extraItalic, semantic, ws)
-			if k <= start {
-				k = chooseBreakIndex(clusters, nil, prefixW, start, remaining, extraItalic, false, ws)
-			}
-			if k <= start {
-				k = min(start+1, len(clusters))
-			}
-
+			chunkW := clusterRangeWidth(prefixW, start, k, extraItalic)
 			chunkText := strings.Join(clusters[start:k], "")
 			chunkBase := clusterRangeWidth(prefixW, start, k, 0)
 			chunk := seg.CopyWithText(chunkText)
 			applySegmentMeasureWithBase(chunk, face, chunkBase)
 			out = append(out, chunk)
 			start = k
-			lineWidth = 0
-			lineHasContent = false
 			if start < len(clusters) {
 				out = append(out, newBreakMarker(seg))
+				lineWidth = 0
+				lineHasContent = false
+			} else {
+				lineWidth += chunkW
+				lineHasContent = chunk.Text != ""
 			}
 		}
 	}
 
 	return out
+}
+
+func maxFittingByLegalBreak(legal []int, prefixW []fixed.Int26_6, start, remainingWidth, extraItalic int) int {
+	if len(legal) == 0 {
+		return start
+	}
+	i, _ := slices.BinarySearch(legal, start+1)
+	if i >= len(legal) {
+		return start
+	}
+	lo, hi := i, len(legal)-1
+	best := start
+	for lo <= hi {
+		mid := (lo + hi) >> 1
+		k := legal[mid]
+		if clusterRangeWidth(prefixW, start, k, extraItalic) <= remainingWidth {
+			best = k
+			lo = mid + 1
+		} else {
+			hi = mid - 1
+		}
+	}
+	return best
+}
+
+func maxFittingByCluster(prefixW []fixed.Int26_6, start, remainingWidth, extraItalic int) int {
+	lo, hi := start+1, len(prefixW)-1
+	best := start
+	for lo <= hi {
+		mid := (lo + hi) >> 1
+		w := clusterRangeWidth(prefixW, start, mid, extraItalic)
+		if w <= remainingWidth {
+			best = mid
+			lo = mid + 1
+		} else {
+			hi = mid - 1
+		}
+	}
+	return best
 }

@@ -9,9 +9,15 @@ import (
 type LineBreakPolicy uint8
 
 const (
-	LineBreakWhenNecessary LineBreakPolicy = iota
-	LineBreakNever
-	LineBreakAlways
+	// LineBreakNormal 正常换行：仅在超宽时断行，优先语义/合法断点（类似 CSS word-break: normal）。
+	// LineBreakNormal wraps only when necessary, preferring semantic/legal breakpoints.
+	LineBreakNormal LineBreakPolicy = iota
+	// LineBreakNoWrap 不自动换行（类似 CSS white-space: nowrap）。
+	// LineBreakNoWrap disables auto wrapping.
+	LineBreakNoWrap
+	// LineBreakAnywhere 可在任意 cluster 边界断行（类似 CSS overflow-wrap:anywhere）。
+	// LineBreakAnywhere allows break at any cluster boundary.
+	LineBreakAnywhere
 )
 
 type WrapAlgorithm uint8
@@ -19,7 +25,6 @@ type WrapAlgorithm uint8
 const (
 	WrapAlgorithmSmart WrapAlgorithm = iota
 	WrapAlgorithmFirstFit
-	WrapAlgorithmKinsoku
 )
 
 type RichTextOptions struct {
@@ -44,7 +49,7 @@ func RTOpt() *RichTextOptions {
 			Bold:       false,
 			Underline:  false,
 		},
-		breakMode: LineBreakWhenNecessary,
+		breakMode: LineBreakNormal,
 		wrapAlgo:  WrapAlgorithmSmart,
 		width:     0,
 		height:    0,
