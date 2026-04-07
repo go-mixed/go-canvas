@@ -1,5 +1,7 @@
 package font
 
+import "sort"
+
 type FontWeight int16
 
 // Font weight constants (CSS Font Weight 100-900)
@@ -60,4 +62,53 @@ var italicStyles = map[string]bool{
 	"kursiv":         true,
 	"inclined":       true,
 	"backslant":      true,
+}
+
+type unicodeRange struct {
+	start rune
+	end   rune
+}
+
+type unicodeRanges []unicodeRange
+
+func (ur unicodeRanges) SupportsRune(r rune) bool {
+	if r < 0 || r > 0x10FFFF {
+		return false
+	}
+	if len(ur) == 0 {
+		// Runtime must not parse coverage on demand.
+		// If coverage is missing, treat as unsupported.
+		return false
+	}
+
+	i := sort.Search(len(ur), func(i int) bool {
+		return ur[i].end >= r
+	})
+	if i >= len(ur) {
+		return false
+	}
+	rng := ur[i]
+	return r >= rng.start && r <= rng.end
+}
+
+type fontCollection struct {
+	baseFont  *FontInfo
+	runeFonts []*FontInfo
+}
+
+func (c fontCollection) matchRuneFont(rn rune) *FontInfo {
+	if c.baseFont != nil && c.baseFont.coverageRanges.SupportsRune(rn) {
+		return c.baseFont
+	}
+
+	for _, runeFont := range c.runeFonts {
+		if runeFont.coverageRanges.SupportsRune(rn) {
+			return runeFont
+		}
+	}
+	return nil
+}
+
+func (c fontCollection) appendRuneFont(font *FontInfo) {
+	c.runeFonts = append(c.runeFonts, font)
 }

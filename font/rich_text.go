@@ -78,8 +78,20 @@ func (r *RichText) SetText(input string) {
 	layoutStart := time.Now()
 	expanded := make(TextSegments, 0, len(segments))
 	for _, seg := range segments {
-		r.ensureSegmentFontAndFace(seg)
-		expanded = append(expanded, splitSegmentByNewline(seg)...)
+		parts := splitSegmentByNewline(seg)
+		for _, part := range parts {
+			if part == nil {
+				continue
+			}
+			if part.BreakLine {
+				expanded = append(expanded, part)
+				continue
+			}
+			for _, p := range r.splitSegmentByFontCoverage(part) {
+				r.ensureSegmentFontAndFace(p)
+				expanded = append(expanded, p)
+			}
+		}
 	}
 	r.timing.Layout = time.Since(layoutStart)
 
@@ -151,17 +163,27 @@ func coalesceLineSegments(line TextSegments) TextSegments {
 		}
 
 		last.Text += seg.Text
-		last.baseWidth += seg.baseWidth
-		last.Width += seg.Width
-		if seg.Height > last.Height {
-			last.Height = seg.Height
+		// 只有两侧都已测量时，才可直接累加宽高并保持 measured=true。
+		// 当任一侧未测量（如 BiDi 重排后的 CopyWithText 片段）时，必须失效测量，
+		// 让后续 measure() 重新计算，避免宽度为 0 导致重叠。
+		// Keep measured=true only when both sides are already measured.
+		// If either side is unmeasured (e.g. BiDi reordered pieces), invalidate and re-measure later.
+		if last.measured && seg.measured {
+			last.baseWidth += seg.baseWidth
+			last.Width += seg.Width
+			if seg.Height > last.Height {
+				last.Height = seg.Height
+			}
+			if (seg.metrics.Ascent + seg.metrics.Descent).Ceil() > (last.metrics.Ascent + last.metrics.Descent).Ceil() {
+				last.metrics = seg.metrics
+			}
+		} else {
+			last.baseWidth = 0
+			last.Width = 0
+			last.Height = 0
+			last.metrics = font.Metrics{}
+			last.measured = false
 		}
-		if (seg.metrics.Ascent + seg.metrics.Descent).Ceil() > (last.metrics.Ascent + last.metrics.Descent).Ceil() {
-			last.metrics = seg.metrics
-		}
-		// Width/height 已在合并时更新，避免后续重复测量。
-		// Width/height are already updated during merge; keep measured to avoid re-measure.
-		last.measured = true
 	}
 	return out
 }
@@ -225,6 +247,86 @@ func (r *RichText) ensureSegmentFontAndFace(seg *TextSegment) {
 	_ = r.fontLibrary.GetFace(seg.Font, seg.FontSize)
 }
 
+// splitSegmentByFontCoverage 按字符覆盖能力拆分 segment，并为每段选择可渲染字体。
+// splitSegmentByFontCoverage splits segment by rune coverage and assigns drawable fonts.
+func (r *RichText) splitSegmentByFontCoverage(seg *TextSegment) TextSegments {
+	if seg == nil {
+		return nil
+	}
+	if seg.BreakLine || seg.Text == "" {
+		return TextSegments{seg}
+	}
+
+	// Fast path:
+	// 1) pick base font once;
+	// 2) if all runes are supported by base font, keep one segment and skip fallback split.
+	base := seg.Font
+	if base == nil {
+		base = r.fontLibrary.MatchOrFeedback(seg.FontFamily, seg.Bold, seg.Italic)
+	}
+	allSupported := true
+	for _, rn := range seg.Text {
+		if !base.coverageRanges.SupportsRune(rn) {
+			allSupported = false
+			break
+		}
+	}
+	if allSupported {
+		out := seg
+		out.Font = base
+		out.FakeItalic = out.Italic && base != nil && !base.Italic
+		return TextSegments{out}
+	}
+
+	// Slow path:
+	// only when tofu/missing glyph exists, split by rune coverage and fallback as needed.
+	start := 0
+	current := base
+	out := make(TextSegments, 0, 4)
+	runeFontCache := make(map[rune]*FontInfo, 32)
+	for idx, rn := range seg.Text {
+		fi, ok := runeFontCache[rn]
+		if !ok {
+			if base != nil && base.coverageRanges.SupportsRune(rn) {
+				fi = base
+			} else {
+				fi = r.fontLibrary.MatchRuneOrFeedback(base, rn)
+			}
+			runeFontCache[rn] = fi
+		}
+		if current == nil {
+			current = fi
+			continue
+		}
+		if current == fi {
+			continue
+		}
+		if idx > start {
+			out = append(out, makeFontBoundSegment(seg, seg.Text[start:idx], current))
+		}
+		start = idx
+		current = fi
+	}
+
+	if start < len(seg.Text) {
+		out = append(out, makeFontBoundSegment(seg, seg.Text[start:], current))
+	}
+	if len(out) == 0 {
+		return TextSegments{seg}
+	}
+	return out
+}
+
+func makeFontBoundSegment(base *TextSegment, text string, fi *FontInfo) *TextSegment {
+	seg := base.CopyWithText(text)
+	seg.Font = fi
+	if fi != nil {
+		seg.FontFamily = fi.Family
+		seg.FakeItalic = seg.Italic && !fi.Italic
+	}
+	return seg
+}
+
 // measure 测量每个文本片段的宽度和高度
 func (r *RichText) measure() {
 	for _, segments := range r.lines.Range() {
@@ -233,6 +335,14 @@ func (r *RichText) measure() {
 				continue
 			}
 			face := r.fontLibrary.GetFace(seg.Font, seg.FontSize)
+			if face == nil {
+				seg.baseWidth = 0
+				seg.Width = 0
+				seg.Height = 0
+				seg.metrics = font.Metrics{}
+				seg.measured = true
+				continue
+			}
 			seg.MeasureString(face)
 		}
 	}
