@@ -2,7 +2,6 @@ package font
 
 import (
 	"cmp"
-	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -22,9 +21,10 @@ type FontInfo struct {
 }
 
 type FontLibrary struct {
-	fonts      map[string][]*FontInfo
-	matchCache map[string]*FontInfo
-	faceCache  map[string]xfont.Face
+	fonts          map[string][]*FontInfo
+	matchCache     map[string]*FontInfo
+	faceCache      map[string]xfont.Face
+	indexCachePath string
 
 	fallbackLoaded      bool
 	fallbackRegularInfo *FontInfo
@@ -33,13 +33,13 @@ type FontLibrary struct {
 }
 
 func NewFontLibrary(paths ...string) *FontLibrary {
-	list := LoadFonts(paths...)
-
-	return &FontLibrary{
-		fonts:      list,
+	fs := &FontLibrary{
 		matchCache: make(map[string]*FontInfo),
 		faceCache:  make(map[string]xfont.Face),
 	}
+	fs.indexCachePath = defaultFontIndexCachePath()
+	fs.fonts = fs.loadFonts(paths...)
+	return fs
 }
 
 // MatchOrFeedback 从字体列表中匹配最合适的字体
@@ -126,24 +126,6 @@ func (fs *FontLibrary) registerFallbackFamilyAlias(fontFamily string) {
 		fs.fallbackBoldInfo,
 		fs.fallbackLightInfo,
 	}
-}
-
-func (f *FontInfo) GetTrueTypeFont() (*truetype.Font, error) {
-	if f.TruetypeFont != nil {
-		return f.TruetypeFont, nil
-	}
-
-	data, err := os.ReadFile(f.FontPath)
-	if err != nil {
-		return nil, err
-	}
-
-	tf, err := truetype.Parse(data)
-	if err != nil {
-		return nil, err
-	}
-	f.TruetypeFont = tf
-	return tf, nil
 }
 
 func FontFamilySimilarity(family1, family2 string) float32 {
