@@ -1,7 +1,6 @@
 package font
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -11,7 +10,7 @@ import (
 func (r *RichText) wordWrap(in TextSegments, maxWidth int, breakPolicy LineBreakPolicy) TextSegments {
 	t0 := time.Now()
 	defer func() {
-		fmt.Printf("[richtext.wordWrap] maxWidth=%d breakPolicy=%d in=%d elapsed=%s\n", maxWidth, breakPolicy, len(in), time.Since(t0))
+		r.logf("[richtext.wrap.smart] maxWidth=%d breakPolicy=%d in=%d elapsed=%s", maxWidth, breakPolicy, len(in), time.Since(t0))
 	}()
 
 	if maxWidth <= 0 {

@@ -19,7 +19,7 @@ const syntheticItalicShear = 0.26
 func (r *RichText) RenderText() image.Image {
 	renderStart := time.Now()
 	defer func() {
-		r.timing.Render = time.Since(renderStart)
+		r.logf("[richtext.render] elapsed=%s", time.Since(renderStart))
 	}()
 
 	var emptyImg = image.NewRGBA(image.Rect(0, 0, 0, 0))

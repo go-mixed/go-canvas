@@ -1,7 +1,10 @@
 package font
 
 import (
+	"fmt"
 	"image"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/go-mixed/go-canvas/misc"
@@ -26,17 +29,6 @@ type RichText struct {
 
 	maxWidth, maxHeight int // 约束：换行宽度与最大渲染高度
 	width, height       int // 缓存内容宽度和高度，避免重复计算
-
-	timing RichTextTiming
-}
-
-type RichTextTiming struct {
-	Parse   time.Duration
-	Wrap    time.Duration
-	Layout  time.Duration
-	Measure time.Duration
-	Render  time.Duration
-	SetText time.Duration
 }
 
 // BuildRichTextLines 解析带标签的文字，返回文本片段列表
@@ -56,9 +48,30 @@ func BuildRichTextLines(fs *FontLibrary, opts *RichTextOptions) *RichText {
 	}
 }
 
+// logf 通过可选 logger 输出调试信息；未设置 logger 时静默。
+// logf writes debug logs through optional logger; silent when logger is nil.
+func (r *RichText) logf(format string, args ...any) {
+	if r == nil || r.opts == nil || r.opts.logger == nil {
+		return
+	}
+	r.opts.logger.Printf(format, args...)
+}
+
+// logfFn 延迟构造日志内容：仅在 logger 存在时才执行 fn。
+// logfFn lazily builds log content only when logger is configured.
+func (r *RichText) logfFn(fn func(logger misc.Logger)) {
+	if r == nil || r.opts == nil || r.opts.logger == nil || fn == nil {
+		return
+	}
+	fn(r.opts.logger)
+}
+
 func (r *RichText) SetText(input string) {
-	setTextStart := time.Now()
-	r.timing = RichTextTiming{}
+	t := time.Now()
+	logStep := func(name string) {
+		r.logf("[richtext] %s=%s", name, time.Since(t))
+		t = time.Now()
+	}
 
 	maxWidth := r.maxWidth
 
@@ -67,16 +80,15 @@ func (r *RichText) SetText(input string) {
 	r.width = -1
 	r.height = -1
 
-	parseStart := time.Now()
 	segments := r.parseText(input)
-	r.timing.Parse = time.Since(parseStart)
+	logStep("parse")
 	if len(segments) == 0 {
-		r.timing.SetText = time.Since(setTextStart)
 		return
 	}
 
-	layoutStart := time.Now()
 	expanded := make(TextSegments, 0, len(segments))
+	var splitCoverageElapsed time.Duration
+	var splitEnsureFaceElapsed time.Duration
 	for _, seg := range segments {
 		parts := splitSegmentByNewline(seg)
 		for _, part := range parts {
@@ -87,15 +99,21 @@ func (r *RichText) SetText(input string) {
 				expanded = append(expanded, part)
 				continue
 			}
-			for _, p := range r.splitSegmentByFontCoverage(part) {
+			t = time.Now()
+			chunks := r.splitSegmentByFontCoverage(part)
+			splitCoverageElapsed += time.Since(t)
+			t = time.Now()
+			for _, p := range chunks {
 				r.ensureSegmentFontAndFace(p)
 				expanded = append(expanded, p)
 			}
+			splitEnsureFaceElapsed += time.Since(t)
 		}
 	}
-	r.timing.Layout = time.Since(layoutStart)
+	r.logf("[richtext] split.coverage=%s", splitCoverageElapsed)
+	r.logf("[richtext] split.ensure_face=%s", splitEnsureFaceElapsed)
+	t = time.Now()
 
-	wrapStart := time.Now()
 	var wrapped TextSegments
 	if maxWidth <= 0 {
 		// 无宽度限制：不自动换行，直接使用展开后的 segments。
@@ -115,7 +133,7 @@ func (r *RichText) SetText(input string) {
 			}
 		}
 	}
-	r.timing.Wrap = time.Since(wrapStart)
+	logStep("wrap")
 
 	var line TextSegments
 	for _, seg := range wrapped {
@@ -133,10 +151,8 @@ func (r *RichText) SetText(input string) {
 		r.lines.PushBack(coalesceLineSegments(line))
 	}
 
-	measureStart := time.Now()
 	r.measure()
-	r.timing.Measure = time.Since(measureStart)
-	r.timing.SetText = time.Since(setTextStart)
+	logStep("measure")
 
 }
 
@@ -263,6 +279,12 @@ func (r *RichText) splitSegmentByFontCoverage(seg *TextSegment) TextSegments {
 	base := seg.Font
 	if base == nil {
 		base = r.fontLibrary.MatchOrFeedback(seg.FontFamily, seg.Bold, seg.Italic)
+		if base != nil && normalizeFamilyName(seg.FontFamily) != normalizeFamilyName(base.Family) {
+			r.logf(
+				"[richtext.fallback.base] req=%q got=%q bold=%d italic=%t text=%q",
+				seg.FontFamily, base.Family, seg.Bold, seg.Italic, summarizeTextForLog(seg.Text),
+			)
+		}
 	}
 	allSupported := true
 	for _, rn := range seg.Text {
@@ -284,6 +306,7 @@ func (r *RichText) splitSegmentByFontCoverage(seg *TextSegment) TextSegments {
 	current := base
 	out := make(TextSegments, 0, 4)
 	runeFontCache := make(map[rune]*FontInfo, 32)
+	fallbackRunes := make(map[string][]rune, 8)
 	for idx, rn := range seg.Text {
 		fi, ok := runeFontCache[rn]
 		if !ok {
@@ -291,6 +314,14 @@ func (r *RichText) splitSegmentByFontCoverage(seg *TextSegment) TextSegments {
 				fi = base
 			} else {
 				fi = r.fontLibrary.MatchRuneOrFeedback(base, rn)
+				baseFamily := ""
+				if base != nil {
+					baseFamily = base.Family
+				}
+				if fi != nil && fi.Family != baseFamily {
+					key := fmt.Sprintf("%s -> %s", baseFamily, fi.Family)
+					fallbackRunes[key] = append(fallbackRunes[key], rn)
+				}
 			}
 			runeFontCache[rn] = fi
 		}
@@ -313,6 +344,14 @@ func (r *RichText) splitSegmentByFontCoverage(seg *TextSegment) TextSegments {
 	}
 	if len(out) == 0 {
 		return TextSegments{seg}
+	}
+	if len(fallbackRunes) > 0 {
+		r.logfFn(func(logger misc.Logger) {
+			logger.Printf(
+				"[richtext.fallback.rune] text=%q chunks=%d details=%s",
+				summarizeTextForLog(seg.Text), len(out), summarizeFallbackRunes(fallbackRunes),
+			)
+		})
 	}
 	return out
 }
@@ -389,10 +428,6 @@ func (r *RichText) FontStyle() RichTextFontStyle {
 	return r.opts.fontStyle
 }
 
-func (r *RichText) Timing() RichTextTiming {
-	return r.timing
-}
-
 func splitSegmentByNewline(seg *TextSegment) TextSegments {
 	var out TextSegments
 	start := 0
@@ -410,4 +445,56 @@ func splitSegmentByNewline(seg *TextSegment) TextSegments {
 		out = append(out, seg.CopyWithText(seg.Text[start:]))
 	}
 	return out
+}
+
+func summarizeTextForLog(s string) string {
+	const maxRunes = 24
+	rs := []rune(s)
+	if len(rs) <= maxRunes {
+		return s
+	}
+	return string(rs[:maxRunes]) + "..."
+}
+
+func summarizeFallbackRunes(m map[string][]rune) string {
+	if len(m) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	dedupRunes := func(in []rune) []rune {
+		if len(in) == 0 {
+			return nil
+		}
+		seen := make(map[rune]struct{}, len(in))
+		out := make([]rune, 0, len(in))
+		for _, rn := range in {
+			if _, ok := seen[rn]; ok {
+				continue
+			}
+			seen[rn] = struct{}{}
+			out = append(out, rn)
+		}
+		return out
+	}
+
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		rs := m[k]
+		uniq := dedupRunes(rs)
+		sample := 3
+		if len(uniq) < sample {
+			sample = len(uniq)
+		}
+		s := make([]string, 0, sample)
+		for i := 0; i < sample; i++ {
+			s = append(s, fmt.Sprintf("U+%04X(%q)", uniq[i], string(uniq[i])))
+		}
+		parts = append(parts, fmt.Sprintf("%s x%d [%s]", k, len(uniq), strings.Join(s, ", ")))
+	}
+	return strings.Join(parts, "; ")
 }

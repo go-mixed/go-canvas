@@ -1,7 +1,6 @@
 package font
 
 import (
-	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -15,7 +14,7 @@ import (
 func (r *RichText) wrapFirstFit(in TextSegments, maxWidth int, breakPolicy LineBreakPolicy) TextSegments {
 	t0 := time.Now()
 	defer func() {
-		fmt.Printf("[richtext.wrapFirstFit] maxWidth=%d breakPolicy=%d in=%d elapsed=%s\n", maxWidth, breakPolicy, len(in), time.Since(t0))
+		r.logf("[richtext.wrap.first_fit] maxWidth=%d breakPolicy=%d in=%d elapsed=%s", maxWidth, breakPolicy, len(in), time.Since(t0))
 	}()
 
 	if maxWidth <= 0 {

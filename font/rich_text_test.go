@@ -79,7 +79,7 @@ func TestRenderTextComplexLayoutCase(t *testing.T) {
 		{Text: "한국어 테스트 ", SizePt: 34, Color: color.RGBA{120, 68, 170, 255}, Family: "Malgun Gothic"},
 		{Text: "ไทยทดลองการตัดคำ和สระวรรณยุกต์ ", SizePt: 36, Color: color.RGBA{30, 30, 30, 255}, Family: "Leelawadee UI"},
 		{Text: " emoji 😄 🙈", SizePt: 32, Color: color.RGBA{30, 30, 30, 255}, Family: "Segoe UI Emoji"},
-		{Text: "长单词降级演示: Pneumonoultramicroscopicsilicovolcanoconiosis_without_space_to_force_break", SizePt: 28, Color: color.RGBA{40, 40, 40, 255}, Family: "Microsoft YaHei"},
+		{Text: "长单词降级演示: Pneumonoultramicroscopicsilicovolcanoconiosis_without_space_to_force_break", SizePt: 28, Color: color.RGBA{40, 40, 40, 255}, Family: "Segoe UI"},
 	}
 
 	var b strings.Builder
@@ -91,7 +91,8 @@ func TestRenderTextComplexLayoutCase(t *testing.T) {
 		SetAlign(ti.HAlignLeft, ti.VAlignBottom).
 		SetFontFamily(defaultFamily).
 		SetWrapAlgorithm(WrapAlgorithmSmart).
-		SetWidth(980)
+		SetWidth(980).
+		SetLogger(log.Default())
 	rt := BuildRichTextLines(fs, opts)
 	tSet := time.Now()
 	rt.SetText(b.String())
