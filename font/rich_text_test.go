@@ -68,29 +68,29 @@ func TestRenderTextComplexLayoutCase(t *testing.T) {
 		Bold      bool
 		Italic    bool
 		Underline bool
-		Families  []string
+		Family    string
 	}
 
 	runs := []richRun{
-		{Text: "富文本 + 自动降级（字体 fallback）", SizePt: 34, Color: color.RGBA{22, 22, 22, 255}, Bold: true, Families: []string{"Microsoft YaHei", "Noto Sans SC", "DengXian"}},
-		{Text: " English bold italic ", SizePt: 30, Color: color.RGBA{20, 95, 190, 255}, Bold: true, Italic: true, Families: []string{"Segoe UI", "Verdana"}},
-		{Text: "中文混排 ", SizePt: 40, Color: color.RGBA{190, 45, 45, 255}, Bold: true, Underline: true, Italic: true, Families: []string{"Microsoft YaHei", "Noto Sans SC"}},
-		{Text: "日本語テスト ", SizePt: 34, Color: color.RGBA{10, 126, 88, 255}, Families: []string{"Yu Gothic UI", "Meiryo"}},
-		{Text: "한국어 테스트 ", SizePt: 34, Color: color.RGBA{120, 68, 170, 255}, Families: []string{"Malgun Gothic", "Gulim"}},
-		{Text: "ไทยทดลองการตัดคำ和สระวรรณยุกต์ ", SizePt: 36, Color: color.RGBA{30, 30, 30, 255}, Families: []string{"Leelawadee UI", "Segoe UI"}},
-		{Text: " emoji  ", SizePt: 32, Color: color.RGBA{30, 30, 30, 255}, Families: []string{"Segoe UI Emoji", "Segoe UI"}},
-		{Text: "长单词降级演示: Pneumonoultramicroscopicsilicovolcanoconiosis_without_space_to_force_break", SizePt: 28, Color: color.RGBA{40, 40, 40, 255}, Families: []string{"Segoe UI", "Verdana"}},
+		{Text: "富文本 + 自动降级（字体 fallback）", SizePt: 34, Color: color.RGBA{22, 22, 22, 255}, Bold: true, Family: "Microsoft YaHei UI"},
+		{Text: " English bold italic ", SizePt: 30, Color: color.RGBA{20, 95, 190, 255}, Bold: true, Italic: true, Family: "Segoe UI"},
+		{Text: "中文混排 ", SizePt: 40, Color: color.RGBA{190, 45, 45, 255}, Bold: true, Underline: true, Italic: true, Family: "Microsoft YaHei"},
+		{Text: "日本語テスト ", SizePt: 34, Color: color.RGBA{10, 126, 88, 255}, Family: "Yu Gothic UI"},
+		{Text: "한국어 테스트 ", SizePt: 34, Color: color.RGBA{120, 68, 170, 255}, Family: "Malgun Gothic"},
+		{Text: "ไทยทดลองการตัดคำ和สระวรรณยุกต์ ", SizePt: 36, Color: color.RGBA{30, 30, 30, 255}, Family: "Leelawadee UI"},
+		{Text: " emoji 😄 🙈", SizePt: 32, Color: color.RGBA{30, 30, 30, 255}, Family: "Segoe UI Emoji"},
+		{Text: "长单词降级演示: Pneumonoultramicroscopicsilicovolcanoconiosis_without_space_to_force_break", SizePt: 28, Color: color.RGBA{40, 40, 40, 255}, Family: "Microsoft YaHei"},
 	}
 
 	var b strings.Builder
 	for _, run := range runs {
-		b.WriteString(buildRunTag(run, pickFamily(fs, run.Families, defaultFamily)))
+		b.WriteString(buildRunTag(run, run.Family))
 	}
 
 	opts := RTOpt().
 		SetAlign(ti.HAlignLeft, ti.VAlignBottom).
 		SetFontFamily(defaultFamily).
-		SetWrapAlgorithm(WrapAlgorithmFirstFit).
+		SetWrapAlgorithm(WrapAlgorithmSmart).
 		SetWidth(980)
 	rt := BuildRichTextLines(fs, opts)
 	tSet := time.Now()
@@ -168,7 +168,7 @@ func buildRunTag(run struct {
 	Bold      bool
 	Italic    bool
 	Underline bool
-	Families  []string
+	Family    string
 }, family string) string {
 	attrs := []string{
 		fmt.Sprintf(`font-size="%d"`, run.SizePt),

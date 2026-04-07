@@ -8,15 +8,15 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/golang/freetype/truetype"
+	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/font/sfnt"
 )
 
-const fontIndexCacheVersion = 3
+const fontIndexCacheVersion = 6
 
 type fontIndexCache struct {
-	Version int                       `json:"version"`
-	Entries map[string]fontIndexEntry `json:"entries"`
+	Version int                         `json:"version"`
+	Entries map[string][]fontIndexEntry `json:"entries"`
 }
 
 type fontIndexEntry struct {
@@ -25,6 +25,7 @@ type fontIndexEntry struct {
 	Bold      FontWeight          `json:"bold"`
 	Italic    bool                `json:"italic"`
 	Path      string              `json:"path"`
+	FaceIndex int                 `json:"face_index,omitempty"`
 	Size      int64               `json:"size"`
 	ModTime   int64               `json:"mod_time_unix_nano"`
 	Coverage  []cacheUnicodeRange `json:"coverage,omitempty"`
@@ -42,7 +43,7 @@ func (fs *FontLibrary) loadFonts(userFontPaths ...string) map[string][]*FontInfo
 	paths := ListFont(append(userFontPaths, GetSystemFontDirectories()...))
 	cache := fs.loadFontIndexCacheFile(cachePath)
 	fontInfos := make(map[string][]*FontInfo)
-	nextEntries := make(map[string]fontIndexEntry, len(paths))
+	nextEntries := make(map[string][]fontIndexEntry, len(paths))
 	changed := false
 
 	for _, path := range paths {
@@ -52,32 +53,44 @@ func (fs *FontLibrary) loadFonts(userFontPaths ...string) map[string][]*FontInfo
 			continue
 		}
 
-		if cached, ok := cache.Entries[path]; ok &&
-			cached.Size == stat.Size() &&
-			cached.ModTime == stat.ModTime().UnixNano() &&
-			cached.Family != "" {
-			info := fs.fontInfoFromEntry(cached)
-			fontInfos[info.Family] = append(fontInfos[info.Family], info)
-			nextEntries[path] = cached
+		if cachedEntries, ok := cache.Entries[path]; ok &&
+			len(cachedEntries) > 0 &&
+			cachedEntries[0].Size == stat.Size() &&
+			cachedEntries[0].ModTime == stat.ModTime().UnixNano() &&
+			cachedEntries[0].Family != "" {
+			for _, entry := range cachedEntries {
+				info := fs.fontInfoFromEntry(entry)
+				fontInfos[info.Family] = append(fontInfos[info.Family], info)
+			}
+			nextEntries[path] = cachedEntries
 			continue
 		}
 
-		info, err := fs.ReadFontInfo(path)
+		infos, err := fs.ReadTTCFontInfos(path)
 		if err != nil {
 			changed = true
 			continue
 		}
-		fontInfos[info.Family] = append(fontInfos[info.Family], info)
-		nextEntries[path] = fontIndexEntry{
-			Family:    info.Family,
-			SubFamily: info.SubFamily,
-			Bold:      info.Bold,
-			Italic:    info.Italic,
-			Path:      info.FontPath,
-			Size:      stat.Size(),
-			ModTime:   stat.ModTime().UnixNano(),
-			Coverage:  toCacheUnicodeRanges(info.coverageRanges),
+		if len(infos) == 0 {
+			changed = true
+			continue
 		}
+		entries := make([]fontIndexEntry, 0, len(infos))
+		for _, info := range infos {
+			fontInfos[info.Family] = append(fontInfos[info.Family], info)
+			entries = append(entries, fontIndexEntry{
+				Family:    info.Family,
+				SubFamily: info.SubFamily,
+				Bold:      info.Bold,
+				Italic:    info.Italic,
+				Path:      info.FontPath,
+				FaceIndex: info.FaceIndex,
+				Size:      stat.Size(),
+				ModTime:   stat.ModTime().UnixNano(),
+				Coverage:  toCacheUnicodeRanges(info.coverageRanges),
+			})
+		}
+		nextEntries[path] = entries
 		changed = true
 	}
 
@@ -98,7 +111,7 @@ func (fs *FontLibrary) defaultFontIndexCachePath() string {
 	if err != nil || base == "" {
 		base = os.TempDir()
 	}
-	return filepath.Join(base, "go-canvas", "font_index_v3.json")
+	return filepath.Join(base, "go-canvas", "font_index.json")
 }
 
 // loadFontIndexCacheFile 读取 JSON 索引缓存，失败时返回空缓存。
@@ -106,7 +119,7 @@ func (fs *FontLibrary) defaultFontIndexCachePath() string {
 func (fs *FontLibrary) loadFontIndexCacheFile(path string) fontIndexCache {
 	empty := fontIndexCache{
 		Version: fontIndexCacheVersion,
-		Entries: make(map[string]fontIndexEntry),
+		Entries: make(map[string][]fontIndexEntry),
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -143,6 +156,7 @@ func (fs *FontLibrary) fontInfoFromEntry(entry fontIndexEntry) *FontInfo {
 		Bold:           entry.Bold,
 		Italic:         entry.Italic,
 		FontPath:       entry.Path,
+		FaceIndex:      entry.FaceIndex,
 		coverageRanges: fromCacheUnicodeRanges(entry.Coverage),
 	}
 }
@@ -150,7 +164,36 @@ func (fs *FontLibrary) fontInfoFromEntry(entry fontIndexEntry) *FontInfo {
 // parseCoverageRangesFromCMAP 仅用于“扫描阶段”，从字体 cmap 解析字符覆盖区间。
 // parseCoverageRangesFromCMAP is scan-time only; it extracts coverage ranges from cmap.
 func (fs *FontLibrary) parseCoverageRangesFromCMAP(data []byte) ([]unicodeRange, bool) {
-	cmapOff, cmapLen, ok := fs.findSFNTTable(data, "cmap")
+	return fs.parseCoverageRangesFromCMAPForFace(data, 0)
+}
+
+// parseCoverageRangesFromCMAPForFace 仅用于扫描阶段，按 face 索引解析覆盖区间。
+// parseCoverageRangesFromCMAPForFace is scan-time only; it extracts ranges for the given face index.
+func (fs *FontLibrary) parseCoverageRangesFromCMAPForFace(data []byte, faceIndex int) ([]unicodeRange, bool) {
+	if faceIndex < 0 {
+		return nil, false
+	}
+	// TTC (TrueType Collection) does not start with a direct sfnt table directory.
+	// We need to resolve to a concrete face offset first.
+	if len(data) >= 4 && string(data[:4]) == "ttcf" {
+		return fs.parseCoverageRangesFromTTC(data, faceIndex)
+	}
+	if faceIndex > 0 {
+		return nil, false
+	}
+	return fs.parseCoverageRangesFromSFNT(data)
+}
+
+// parseCoverageRangesFromSFNT 从单个 SFNT 字体读取 cmap 覆盖区间。
+// parseCoverageRangesFromSFNT extracts cmap coverage ranges from one SFNT font.
+func (fs *FontLibrary) parseCoverageRangesFromSFNT(data []byte) ([]unicodeRange, bool) {
+	return fs.parseCoverageRangesFromSFNTAt(data, 0)
+}
+
+// parseCoverageRangesFromSFNTAt 从指定 sfnt 起点读取 cmap 覆盖区间。
+// parseCoverageRangesFromSFNTAt extracts cmap coverage ranges from sfnt at offset.
+func (fs *FontLibrary) parseCoverageRangesFromSFNTAt(data []byte, sfntOffset int) ([]unicodeRange, bool) {
+	cmapOff, cmapLen, ok := fs.findSFNTTableAt(data, sfntOffset, "cmap")
 	if !ok || cmapLen < 4 {
 		return nil, false
 	}
@@ -195,25 +238,80 @@ func (fs *FontLibrary) parseCoverageRangesFromCMAP(data []byte) ([]unicodeRange,
 	return nil, false
 }
 
+// parseCoverageRangesFromTTC 从 TTC 中选取第一个可解析子字体并读取覆盖区间。
+// parseCoverageRangesFromTTC picks the first parsable face from TTC and extracts coverage ranges.
+func (fs *FontLibrary) parseCoverageRangesFromTTC(data []byte, faceIndex int) ([]unicodeRange, bool) {
+	// TTC header: tag(4) + version(4) + numFonts(4) + offsets[numFonts](4 each)
+	if len(data) < 12 || string(data[:4]) != "ttcf" {
+		return nil, false
+	}
+	numFonts := int(binary.BigEndian.Uint32(data[8:12]))
+	if numFonts <= 0 {
+		return nil, false
+	}
+	offsetsBase := 12
+	if len(data) < offsetsBase+numFonts*4 {
+		return nil, false
+	}
+	if faceIndex < numFonts {
+		off := int(binary.BigEndian.Uint32(data[offsetsBase+faceIndex*4 : offsetsBase+faceIndex*4+4]))
+		if off > 0 && off < len(data) {
+			if out, ok := fs.parseCoverageRangesFromSFNTAt(data, off); ok {
+				return out, true
+			}
+		}
+	}
+	// Fallback: if target face is malformed, try subsequent faces.
+	for i := 0; i < numFonts; i++ {
+		if i == faceIndex {
+			continue
+		}
+		off := int(binary.BigEndian.Uint32(data[offsetsBase+i*4 : offsetsBase+i*4+4]))
+		if off <= 0 || off >= len(data) {
+			continue
+		}
+		if out, ok := fs.parseCoverageRangesFromSFNTAt(data, off); ok {
+			return out, true
+		}
+	}
+	return nil, false
+}
+
 func (fs *FontLibrary) findSFNTTable(data []byte, tag string) (offset, length int, ok bool) {
-	if len(data) < 12 || len(tag) != 4 {
+	return fs.findSFNTTableAt(data, 0, tag)
+}
+
+// findSFNTTableAt 在指定 sfnt 起点查找表，返回相对整个文件的绝对偏移。
+// findSFNTTableAt finds a table from sfntOffset and returns absolute file offset.
+func (fs *FontLibrary) findSFNTTableAt(data []byte, sfntOffset int, tag string) (offset, length int, ok bool) {
+	if len(tag) != 4 || sfntOffset < 0 || len(data) < sfntOffset+12 {
 		return 0, 0, false
 	}
-	numTables := int(binary.BigEndian.Uint16(data[4:6]))
-	if len(data) < 12+numTables*16 {
+	sfntData := data[sfntOffset:]
+	numTables := int(binary.BigEndian.Uint16(sfntData[4:6]))
+	if len(sfntData) < 12+numTables*16 {
 		return 0, 0, false
 	}
 	for i := 0; i < numTables; i++ {
-		rec := data[12+i*16 : 28+i*16]
+		rec := sfntData[12+i*16 : 28+i*16]
 		if string(rec[0:4]) != tag {
 			continue
 		}
 		off := int(binary.BigEndian.Uint32(rec[8:12]))
 		l := int(binary.BigEndian.Uint32(rec[12:16]))
-		if off < 0 || l < 0 || off+l > len(data) {
+		if off < 0 || l < 0 {
 			return 0, 0, false
 		}
-		return off, l, true
+		// TTC 常用“相对文件起点”的偏移；也兼容“相对 sfnt 起点”的实现。
+		// TTC often stores file-absolute offsets; keep sfnt-relative fallback for compatibility.
+		if off+l <= len(data) {
+			return off, l, true
+		}
+		absOff := sfntOffset + off
+		if absOff+l <= len(data) {
+			return absOff, l, true
+		}
+		return 0, 0, false
 	}
 	return 0, 0, false
 }
@@ -359,9 +457,11 @@ func (fs *FontLibrary) mergeRanges(in []unicodeRange) []unicodeRange {
 	return out
 }
 
-func (f *FontInfo) GetTrueTypeFont() (*truetype.Font, error) {
-	if f.TruetypeFont != nil {
-		return f.TruetypeFont, nil
+// GetOpenTypeFont 按 FontPath+FaceIndex 读取并缓存 OpenType 字体面。
+// GetOpenTypeFont loads and caches the OpenType face by FontPath+FaceIndex.
+func (f *FontInfo) GetOpenTypeFont() (*opentype.Font, error) {
+	if f.OpenTypeFont != nil {
+		return f.OpenTypeFont, nil
 	}
 
 	data, err := os.ReadFile(f.FontPath)
@@ -369,51 +469,64 @@ func (f *FontInfo) GetTrueTypeFont() (*truetype.Font, error) {
 		return nil, err
 	}
 
-	tf, err := truetype.Parse(data)
-	if err != nil {
-		return nil, err
+	var of *opentype.Font
+	if coll, cerr := opentype.ParseCollection(data); cerr == nil {
+		of, err = coll.Font(f.FaceIndex)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		of, err = opentype.Parse(data)
+		if err != nil {
+			return nil, err
+		}
 	}
-	f.TruetypeFont = tf
-	return tf, nil
+	f.OpenTypeFont = of
+	return of, nil
 }
 
-func (fs *FontLibrary) ReadFontInfo(path string) (*FontInfo, error) {
-	info := &FontInfo{
-		FontPath: path,
-	}
-
+// ReadTTCFontInfos 读取文件内所有可用 face 的字体信息（TTC 可返回多个）。
+// ReadTTCFontInfos reads all usable faces from a file (TTC may return multiple).
+func (fs *FontLibrary) ReadTTCFontInfos(path string) ([]*FontInfo, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	sf, err := parseSFNTFont(data)
+	sfs, err := parseSFNTFonts(data)
 	if err != nil {
 		return nil, err
 	}
+	infos := make([]*FontInfo, 0, len(sfs))
+	for _, sf := range sfs {
+		info := &FontInfo{FontPath: path}
+		info.FaceIndex = sf.faceIndex
+		// 从 name table 中选择最可靠的 Family 名称，并过滤乱码候选。
+		// Pick the most reliable family name from name table and filter mojibake-like candidates.
+		info.Family = pickFontFamilyName(sf.font, path)
 
-	// 从 name table 中选择最可靠的 Family 名称，并过滤乱码候选。
-	// Pick the most reliable family name from name table and filter mojibake-like candidates.
-	info.Family = pickFontFamilyName(sf, path)
+		// 判断粗体和斜体（优先 PreferredSubfamily）
+		// Determine weight/italic by subfamily (prefer PreferredSubfamily).
+		info.SubFamily = pickFontSubFamilyName(sf.font)
+		if info.SubFamily != "" {
+			info.Italic = isItalic(info.SubFamily)
+		}
+		// 从 fontStyles 匹配粗细数值
+		info.Bold = matchWeight(info.SubFamily)
 
-	// 判断粗体和斜体（优先 PreferredSubfamily）
-	// Determine weight/italic by subfamily (prefer PreferredSubfamily).
-	info.SubFamily = pickFontSubFamilyName(sf)
-	if info.SubFamily != "" {
-		info.Italic = isItalic(info.SubFamily)
+		// 扫描阶段读取 coverage 范围并写入缓存；运行阶段只查范围，不再读取字体。
+		// Read coverage ranges during scanning and persist to cache.
+		// Runtime only queries these ranges and never parses coverage again.
+		if ranges, ok := fs.parseCoverageRangesFromCMAPForFace(data, sf.faceIndex); ok {
+			info.coverageRanges = fs.mergeRanges(ranges)
+		} else {
+			info.coverageRanges = nil
+		}
+		infos = append(infos, info)
 	}
-
-	// 从 fontStyles 匹配粗细数值
-	info.Bold = matchWeight(info.SubFamily)
-
-	// 扫描阶段读取 coverage 范围并写入缓存；运行阶段只查范围，不再读取字体。
-	// Read coverage ranges during scanning and persist to cache.
-	// Runtime only queries these ranges and never parses coverage again.
-	if ranges, ok := fs.parseCoverageRangesFromCMAP(data); ok {
-		info.coverageRanges = fs.mergeRanges(ranges)
-	} else {
-		info.coverageRanges = nil
+	if len(infos) == 0 {
+		return nil, os.ErrInvalid
 	}
-	return info, nil
+	return infos, nil
 }
 
 func toCacheUnicodeRanges(in []unicodeRange) []cacheUnicodeRange {
@@ -450,13 +563,33 @@ func fromCacheUnicodeRanges(in []cacheUnicodeRange) []unicodeRange {
 	return out
 }
 
-// parseSFNTFont 解析 TTF/OTF/TTC 的第一个字体面。
-// parseSFNTFont parses the first face from TTF/OTF/TTC data.
-func parseSFNTFont(data []byte) (*sfnt.Font, error) {
+// parseSFNTFonts 解析字体文件中的所有可用面；非 TTC 时返回单个面。
+// parseSFNTFonts parses all available faces from a font file; non-TTC returns one face.
+type sfntFaceRef struct {
+	font      *sfnt.Font
+	faceIndex int
+}
+
+func parseSFNTFonts(data []byte) ([]sfntFaceRef, error) {
 	if coll, err := sfnt.ParseCollection(data); err == nil {
-		return coll.Font(0)
+		n := coll.NumFonts()
+		out := make([]sfntFaceRef, 0, n)
+		for i := 0; i < n; i++ {
+			f, ferr := coll.Font(i)
+			if ferr != nil {
+				continue
+			}
+			out = append(out, sfntFaceRef{font: f, faceIndex: i})
+		}
+		if len(out) > 0 {
+			return out, nil
+		}
 	}
-	return sfnt.Parse(data)
+	f, err := sfnt.Parse(data)
+	if err != nil {
+		return nil, err
+	}
+	return []sfntFaceRef{{font: f, faceIndex: 0}}, nil
 }
 
 // pickFontFamilyName 从多个 NameID 中挑选可用的 family 名称。

@@ -8,8 +8,8 @@ import (
 	"sync"
 
 	"github.com/go-mixed/go-canvas/misc"
-	"github.com/golang/freetype/truetype"
 	xfont "golang.org/x/image/font"
+	"golang.org/x/image/font/opentype"
 )
 
 type FontInfo struct {
@@ -17,8 +17,9 @@ type FontInfo struct {
 	Italic            bool
 	Family, SubFamily string
 	FontPath          string
+	FaceIndex         int
 
-	TruetypeFont   *truetype.Font
+	OpenTypeFont   *opentype.Font
 	coverageRanges unicodeRanges
 }
 
@@ -146,6 +147,13 @@ func (fs *FontLibrary) rankFonts(fontFamily string, weight FontWeight, italic bo
 		}
 	}
 
+	fontStableKey := func(fi *FontInfo) string {
+		if fi == nil {
+			return ""
+		}
+		return fi.FontPath + "|" + strconv.Itoa(fi.FaceIndex) + "|" + fi.Family + "|" + fi.SubFamily
+	}
+
 	// 当有rune时，排序为 weight desc, italic desc, family desc
 	// 当无rune时，排序为 family desc, weight desc, italic desc
 	slices.SortFunc(matches, func(a, b fontScore) int {
@@ -158,7 +166,11 @@ func (fs *FontLibrary) rankFonts(fontFamily string, weight FontWeight, italic bo
 			if italicCmp != 0 {
 				return -italicCmp
 			}
-			return -cmp.Compare(a.familyScore, b.familyScore)
+			familyCmp := cmp.Compare(a.familyScore, b.familyScore)
+			if familyCmp != 0 {
+				return -familyCmp
+			}
+			return cmp.Compare(fontStableKey(a.f), fontStableKey(b.f))
 		}
 
 		family := cmp.Compare(a.familyScore, b.familyScore)
@@ -169,7 +181,11 @@ func (fs *FontLibrary) rankFonts(fontFamily string, weight FontWeight, italic bo
 		if weightCmp != 0 {
 			return -weightCmp
 		}
-		return -cmp.Compare(a.italicScore, b.italicScore)
+		italicCmp := cmp.Compare(a.italicScore, b.italicScore)
+		if italicCmp != 0 {
+			return -italicCmp
+		}
+		return cmp.Compare(fontStableKey(a.f), fontStableKey(b.f))
 	})
 	return matches
 }
@@ -262,22 +278,26 @@ func (fs *FontLibrary) GetFace(fi *FontInfo, fontSize int) xfont.Face {
 
 func (fs *FontLibrary) fontFaceKey(fi *FontInfo, size int) string {
 	if fi != nil && fi.FontPath != "" {
-		return fi.FontPath + "-" + strconv.Itoa(size)
+		return fi.FontPath + "-" + strconv.Itoa(fi.FaceIndex) + "-" + strconv.Itoa(size)
 	}
 	if fi != nil {
-		return fi.Family + "-" + strconv.Itoa(size)
+		return fi.Family + "-" + strconv.Itoa(fi.FaceIndex) + "-" + strconv.Itoa(size)
 	}
 	return strconv.Itoa(size)
 }
 
 func (fs *FontLibrary) CreateFace(fi *FontInfo, fontSize int) xfont.Face {
-	tf, err := fi.GetTrueTypeFont()
-	if err != nil || tf == nil {
+	of, err := fi.GetOpenTypeFont()
+	if err != nil || of == nil {
 		return nil
 	}
-	return truetype.NewFace(tf, &truetype.Options{
+	face, err := opentype.NewFace(of, &opentype.FaceOptions{
 		Size:    float64(fontSize),
 		DPI:     120,
 		Hinting: xfont.HintingNone,
 	})
+	if err != nil {
+		return nil
+	}
+	return face
 }
