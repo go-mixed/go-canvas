@@ -98,6 +98,8 @@ func (r *RichText) SetText(input string) {
 			switch r.opts.wrapAlgo {
 			case WrapAlgorithmFirstFit:
 				wrapped = r.wrapFirstFit(expanded, maxWidth, r.opts.breakMode)
+			case WrapAlgorithmKinsoku:
+				wrapped = r.wrapKinsoku(expanded, maxWidth, r.opts.breakMode)
 			default:
 				wrapped = r.wordWrap(expanded, maxWidth, r.opts.breakMode)
 			}

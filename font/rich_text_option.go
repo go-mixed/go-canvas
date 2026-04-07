@@ -19,6 +19,7 @@ type WrapAlgorithm uint8
 const (
 	WrapAlgorithmSmart WrapAlgorithm = iota
 	WrapAlgorithmFirstFit
+	WrapAlgorithmKinsoku
 )
 
 type RichTextOptions struct {
