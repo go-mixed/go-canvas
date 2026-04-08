@@ -51,6 +51,12 @@ func (s *Stage) IsDirty() bool {
 	return s.container.IsDirty()
 }
 
+// HasAnimationAt returns true when stage tree has animation to be evaluated
+// at the given absolute frame.
+func (s *Stage) HasAnimationAt(frameIndex int) bool {
+	return s.container.HasAnimationAt(frameIndex)
+}
+
 func (s *Stage) ToBgraImage(buffer []uint32) error {
 	// 将 ti image 转换为 bgra image
 	s.Renderer().Module().TiImageToBgra(s.Texture(), s.imageTexture)

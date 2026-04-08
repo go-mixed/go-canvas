@@ -70,11 +70,23 @@ type ISprite interface {
 
 	IMaskParent
 
+	IAnimation
+
 	RemoveFromParent()
 	Render(frameIndex int)
-	Animate(targetFn ti.TargetAttributeFn, startAtFrame, durationFrame int) ISprite
+}
+
+type IAnimation interface {
+	// HasAnimationAt 在给定绝对帧号下判断是否有动画需要执行。
+	HasAnimationAt(frameIndex int) bool
+	// Animate 追加一段动画任务。
+	// targetFn 在动画实际开始帧被调用，基于当时属性生成目标属性。
+	Animate(targetFn ti.TargetAttributeFn, startFrameIndex, durationFrames int) ISprite
+	// ClearAnimations 清空当前精灵的动画队列。
 	ClearAnimations() ISprite
+	// StopAnimation 停止后续动画；reset=true 时回到当前段起点状态。
 	StopAnimation(reset bool) ISprite
+	// TickAnimation 以绝对帧号推进动画，返回是否仍有动画待执行。
 	TickAnimation(frameIndex int) bool
 }
 

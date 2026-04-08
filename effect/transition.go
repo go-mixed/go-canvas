@@ -26,12 +26,16 @@ func transitionFactory(name string, inOut EffectInOut) ti.TargetAttributeFn {
 		return Pan(inOut).WithDirection(ti.DirectionCenter).TargetAttributeFn
 	case "rotate":
 		return Rotate(inOut).TargetAttributeFn
-	case "slide":
-		return Slide(inOut).TargetAttributeFn
+	case "top":
+		return Slide(inOut).WithDirection(ti.DirectionTop).TargetAttributeFn
+	case "bottom":
+		return Slide(inOut).WithDirection(ti.DirectionBottom).TargetAttributeFn
+	case "left":
+		return Slide(inOut).WithDirection(ti.DirectionLeft).TargetAttributeFn
+	case "right":
+		return Slide(inOut).WithDirection(ti.DirectionRight).TargetAttributeFn
 	case "zoom":
 		return Zoom(inOut).TargetAttributeFn
-	case "wipe":
-		return Wipe(inOut).TargetAttributeFn
 	case "heart":
 		return Wipe(inOut).WithShapeType(ti.ShapeTypeHeart).TargetAttributeFn
 	case "star5":
@@ -53,6 +57,17 @@ func transitionFactory(name string, inOut EffectInOut) ti.TargetAttributeFn {
 	}
 }
 
-func GetTransitionEffect(name string, inOut EffectInOut) (ti.TargetAttributeFn, error) {
-	return transitionFactory(name, inOut), nil
+// IsWipeEffect 是否是 wipe 效果
+func IsWipeEffect(name string) bool {
+	switch name {
+	case "heart", "star5", "cross", "linear", "circle", "diamond", "rectangle", "triangle":
+		return true
+	default:
+		return false
+	}
+}
+
+// GetTransitionEffect 获取过渡效果
+func GetTransitionEffect(name string, inOut EffectInOut) ti.TargetAttributeFn {
+	return transitionFactory(name, inOut)
 }

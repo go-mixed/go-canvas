@@ -105,23 +105,33 @@ func (s *Sprite) Render(frameIndex int) {
 	}()
 }
 
-func (s *Sprite) Animate(targetFn ti.TargetAttributeFn, startAtFrame, durationFrame int) ISprite {
-	s.animator.enqueue(targetFn, startAtFrame, durationFrame)
+// HasAnimationAt returns true when an animation segment should be evaluated
+// at the given absolute frame.
+func (s *Sprite) HasAnimationAt(frameIndex int) bool {
+	return s.animator.hasAnimationAt(frameIndex)
+}
+
+// Animate 向当前精灵追加一段动画。
+func (s *Sprite) Animate(targetFn ti.TargetAttributeFn, startFrameIndex, durationFrames int) ISprite {
+	s.animator.enqueue(targetFn, startFrameIndex, durationFrames)
 
 	return s
 }
 
+// ClearAnimations 清空当前精灵所有未完成动画。
 func (s *Sprite) ClearAnimations() ISprite {
 	s.animator.clear()
 
 	return s
 }
 
+// StopAnimation 停止动画；reset=true 时恢复到当前段的起始状态。
 func (s *Sprite) StopAnimation(reset bool) ISprite {
 	s.animator.stop(reset)
 	return s
 }
 
+// TickAnimation 按绝对帧号推进动画。
 func (s *Sprite) TickAnimation(frameIndex int) bool {
 	return s.animator.tick(frameIndex)
 }

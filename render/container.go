@@ -95,6 +95,20 @@ func (c *Container) ClientRect() ti.Rectangle[int] {
 	return rect
 }
 
+// HasAnimationAt returns true when container or any child has animation
+// to be evaluated at the given absolute frame.
+func (c *Container) HasAnimationAt(frameIndex int) bool {
+	if c.Sprite.HasAnimationAt(frameIndex) {
+		return true
+	}
+	for _, child := range c.children.Range() {
+		if child.HasAnimationAt(frameIndex) {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *Container) Render(frameIndex int) {
 	defer func() {
 		c.SetDirty(false)
