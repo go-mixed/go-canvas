@@ -1,4 +1,4 @@
-package effect
+package ti
 
 import (
 	"github.com/go-mixed/go-canvas/misc"

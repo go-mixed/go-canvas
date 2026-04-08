@@ -38,7 +38,7 @@ type effectOptions struct {
 	wipeOptions   wipeOptions
 	zoomOptions   zoomOptions
 
-	easingFn  EasingFunction
+	easingFn  ti.EasingFunction
 	direction ti.Direction
 }
 
@@ -123,7 +123,7 @@ func WithPanIntensity(panIntensity float32) func(options *effectOptions) {
 
 func WithEasing(easingName string) func(options *effectOptions) {
 	return func(options *effectOptions) {
-		options.easingFn = GetEasingFunction(easingName)
+		options.easingFn = ti.GetEasingFunction(easingName)
 	}
 }
 

@@ -14,7 +14,8 @@ type Sprite struct {
 	// 真实的Sprite的实例，
 	instance ISprite
 
-	masks *misc.List[IMask]
+	masks    *misc.List[IMask]
+	animator *spriteAnimator
 }
 
 var _ ISprite = (*Sprite)(nil)
@@ -44,6 +45,9 @@ func BuildSprite[T ISprite](parent IParent, attribute *ti.Attribute, texture *ti
 		var nilT T
 		return nilT, err
 	}
+
+	s.animator = newSpriteAnimator(instance)
+
 	// 添加到父级
 	s.parent.AddChild(instance)
 	s.instance = instance
@@ -95,10 +99,31 @@ func NewBlockSprite(parent IParent, attribute *ti.Attribute) (*Sprite, error) {
 	})
 }
 
-func (s *Sprite) Render() {
+func (s *Sprite) Render(frameIndex int) {
 	defer func() {
 		s.SetDirty(false)
 	}()
+}
+
+func (s *Sprite) Animate(target ti.TargetAttribute, startAtFrame, durationFrame int) ISprite {
+	s.animator.enqueue(target, startAtFrame, durationFrame)
+
+	return s
+}
+
+func (s *Sprite) ClearAnimations() ISprite {
+	s.animator.clear()
+
+	return s
+}
+
+func (s *Sprite) StopAnimation(reset bool) ISprite {
+	s.animator.stop(reset)
+	return s
+}
+
+func (s *Sprite) TickAnimation(frameIndex int) bool {
+	return s.animator.tick(frameIndex)
 }
 
 // RemoveFromParent 从父级移除精灵
@@ -121,5 +146,5 @@ func (s *Sprite) Release() {
 	defer s.mutex.Unlock()
 	s.texture = nil
 	s.masks.Clear()
-
+	s.animator.clear()
 }

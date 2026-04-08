@@ -213,3 +213,11 @@ func (a *Attribute) SetResizeOptions(fillMode FillMode, scaleMode ScaleMode) *At
 func (a *Attribute) ResizeOptions() ResizeOptions {
 	return a.resizeOptions
 }
+
+func (a *Attribute) Copy() *Attribute {
+	if a == nil {
+		return nil
+	}
+	cp := *a
+	return &cp
+}

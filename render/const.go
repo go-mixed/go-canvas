@@ -71,7 +71,11 @@ type ISprite interface {
 	IMaskParent
 
 	RemoveFromParent()
-	Render()
+	Render(frameIndex int)
+	Animate(target ti.TargetAttribute, startAtFrame, durationFrame int) ISprite
+	ClearAnimations() ISprite
+	StopAnimation(reset bool) ISprite
+	TickAnimation(frameIndex int) bool
 }
 
 // IContainer 容器接口

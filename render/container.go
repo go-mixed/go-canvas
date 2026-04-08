@@ -95,10 +95,20 @@ func (c *Container) ClientRect() ti.Rectangle[int] {
 	return rect
 }
 
-func (c *Container) Render() {
+func (c *Container) Render(frameIndex int) {
 	defer func() {
 		c.SetDirty(false)
 	}()
+
+	c.TickAnimation(frameIndex)
+
+	c.mutex.Lock()
+	children := c.children
+	c.mutex.Unlock()
+
+	for _, child := range children.Range() {
+		child.TickAnimation(frameIndex)
+	}
 
 	if !c.IsDirty() {
 		return
@@ -107,16 +117,12 @@ func (c *Container) Render() {
 	// 置空为透明
 	c.Renderer().Module().FillColor(c.texture, color.Transparent)
 
-	c.mutex.Lock()
-	children := c.children
-	c.mutex.Unlock()
-
 	w, h := c.attribute.Width(), c.attribute.Height()
 	relativeContainerRect := ti.RectWH(0, 0, w, h)
 
 	for _, child := range children.Range() {
 		// 渲染子级
-		child.Render()
+		child.Render(frameIndex)
 		childTexture := child.Texture()
 
 		// 得到子项（旋转、缩放、平移）之后真实坐标

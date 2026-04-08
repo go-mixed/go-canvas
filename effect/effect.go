@@ -3,6 +3,7 @@ package effect
 import (
 	"github.com/go-mixed/go-canvas/misc"
 	"github.com/go-mixed/go-canvas/render"
+	"github.com/go-mixed/go-canvas/ti"
 )
 
 type IEffect interface {
@@ -16,7 +17,7 @@ type Effect struct {
 
 func newEffect(inOut EffectInOut, options effectOptions) *Effect {
 	if options.easingFn == nil {
-		options.easingFn = DefaultEasingFunction
+		options.easingFn = ti.DefaultEasingFunction
 	}
 	return &Effect{
 		options:   options,

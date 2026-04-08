@@ -41,3 +41,18 @@ func Rad2Deg[V Float](rad V) V {
 func FloorToInt(v float64) int {
 	return int(math.Floor(v))
 }
+
+// Lerp performs linear interpolation from a to b by t.
+// For integer types, result is rounded to nearest integer.
+// For float types, result keeps fractional precision.
+func Lerp[T Number](a, b T, t float32) T {
+	v := float64(a) + (float64(b)-float64(a))*float64(t)
+
+	var zero T
+	switch any(zero).(type) {
+	case float32, float64:
+		return T(v)
+	default:
+		return T(math.Round(v))
+	}
+}

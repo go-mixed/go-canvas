@@ -43,8 +43,8 @@ func NewStage(renderer *Renderer, width, height int) (*Stage, error) {
 }
 
 // Render 修改之后，需要触发渲染
-func (s *Stage) Render() {
-	s.container.Render()
+func (s *Stage) Render(frameIndex int) {
+	s.container.Render(frameIndex)
 }
 
 func (s *Stage) IsDirty() bool {
