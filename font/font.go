@@ -258,11 +258,18 @@ func (fs *FontLibrary) GetFace(fi *FontInfo, fontSize int) xfont.Face {
 		return nil
 	}
 	k := fs.fontFaceKey(fi, fontSize)
-	if face, ok := fs.faceCache[k]; ok {
+	fs.mutex.RLock()
+	face, ok := fs.faceCache[k]
+	fs.mutex.RUnlock()
+
+	if ok {
 		return face
 	}
-	face := fs.CreateFace(fi, fontSize)
+	face = fs.CreateFace(fi, fontSize)
+
+	fs.mutex.Lock()
 	fs.faceCache[k] = face
+	fs.mutex.Unlock()
 	return face
 }
 

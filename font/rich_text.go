@@ -103,11 +103,12 @@ func (r *RichText) SetText(input string) {
 	}
 	logStep("split")
 
-	for _, seg := range segments {
+	for _, seg := range expanded {
 		seg.Font.GetOpenTypeFont()
+		r.fontLibrary.GetFace(seg.Font, seg.FontSize)
 	}
 
-	logStep("initial open type font")
+	logStep("initial fonts & faces")
 
 	var wrapped TextSegments
 	if maxWidth <= 0 {
