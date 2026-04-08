@@ -22,9 +22,7 @@ type RichText struct {
 	wrapScratch wrapScratch
 	// Fake italic buffers are owned by RichText and reused across segments
 	// to avoid per-segment allocations during render.
-	// - italicAlphaBuf: default non-emoji fake italic path (1 byte/pixel).
-	// - italicRGBABuf: emoji fallback path for better glyph compatibility.
-	italicRGBABuf  *image.RGBA
+	// - italicAlphaBuf: fake italic path (1 byte/pixel).
 	italicAlphaBuf *image.Alpha
 
 	maxWidth, maxHeight int // 约束：换行宽度与最大渲染高度
@@ -104,6 +102,12 @@ func (r *RichText) SetText(input string) {
 		}
 	}
 	logStep("split")
+
+	for _, seg := range segments {
+		seg.Font.GetOpenTypeFont()
+	}
+
+	logStep("initial open type font")
 
 	var wrapped TextSegments
 	if maxWidth <= 0 {

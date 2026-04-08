@@ -9,7 +9,6 @@ import (
 	"github.com/go-mixed/go-canvas/ti"
 	"golang.org/x/image/draw"
 	"golang.org/x/image/font"
-	"golang.org/x/image/math/f64"
 	"golang.org/x/image/math/fixed"
 )
 
@@ -121,23 +120,13 @@ func (r *RichText) RenderText() image.Image {
 func (r *RichText) drawSegmentText(dst *image.RGBA, seg *TextSegment, face font.Face, src image.Image, offsetX, offsetY int) {
 	// Fast path for normal text.
 	if !seg.FakeItalic {
-		d := &font.Drawer{
-			Dst:  dst,
-			Src:  src,
-			Face: face,
-			Dot:  fixedP(offsetX, offsetY+seg.metrics.Ascent.Ceil()),
-		}
+		dot := fixedP(offsetX, offsetY+seg.metrics.Ascent.Ceil())
+		d := &font.Drawer{Dst: dst, Src: src, Face: face, Dot: dot}
 		d.DrawString(seg.Text)
 		return
 	}
 
-	// Fake italic path:
-	// - emoji-like text: keep RGBA path for compatibility.
-	// - normal text: use alpha-mask transform for better throughput.
-	if misc.ContainsEmojiLikeRunes(seg.Text) {
-		r.drawSegmentFakeItalicRGBA(dst, seg, face, src, offsetX, offsetY)
-		return
-	}
+	// Fake italic path: use alpha-mask transform.
 	r.drawSegmentFakeItalicMask(dst, seg, face, offsetX, offsetY)
 }
 
@@ -165,42 +154,6 @@ func (r *RichText) drawSegmentFakeItalicMask(dst *image.RGBA, seg *TextSegment, 
 	drawShearedMaskNearest(dst, image.NewUniform(seg.Color), mask, offsetX, offsetY, -syntheticItalicShear)
 }
 
-// drawSegmentFakeItalicRGBA 用 RGBA 缓冲渲染假斜体，主要用于 emoji 兼容回退。
-// drawSegmentFakeItalicRGBA renders fake italic via RGBA buffer, mainly as emoji-compatible fallback.
-func (r *RichText) drawSegmentFakeItalicRGBA(dst *image.RGBA, seg *TextSegment, face font.Face, src image.Image, offsetX, offsetY int) {
-	segHeight := max(1, seg.Height)
-	extra := syntheticItalicExtraWidth(segHeight)
-	baseWidth := seg.baseWidth
-	if baseWidth <= 0 {
-		baseWidth = max(1, seg.Width-extra)
-	}
-	bufW := max(1, baseWidth+extra)
-	buf := r.ensureItalicRGBABuffer(bufW, segHeight)
-	// Keep RGBA path for emoji-like runs where color glyph compatibility matters.
-	clearRGBA(buf, image.Rect(0, 0, bufW, segHeight))
-	bufDrawer := &font.Drawer{
-		Dst:  buf,
-		Src:  src,
-		Face: face,
-		Dot:  fixedP(extra, seg.metrics.Ascent.Ceil()),
-	}
-	bufDrawer.DrawString(seg.Text)
-
-	m := misc.IdentityMatrix().Shear(-syntheticItalicShear, 0).Translate(float64(offsetX), float64(offsetY))
-	s2d := f64.Aff3{m.XX, m.XY, m.X0, m.YX, m.YY, m.Y0}
-	srcRect := image.Rect(0, 0, bufW, segHeight)
-	draw.NearestNeighbor.Transform(dst, s2d, buf, srcRect, draw.Over, nil)
-}
-
-// ensureItalicRGBABuffer 确保 RGBA 斜体缓冲尺寸足够，不足则扩容复用。
-// ensureItalicRGBABuffer ensures reusable RGBA italic buffer capacity.
-func (r *RichText) ensureItalicRGBABuffer(width, height int) *image.RGBA {
-	if r.italicRGBABuf == nil || r.italicRGBABuf.Bounds().Dx() < width || r.italicRGBABuf.Bounds().Dy() < height {
-		r.italicRGBABuf = image.NewRGBA(image.Rect(0, 0, width, height))
-	}
-	return r.italicRGBABuf
-}
-
 // ensureItalicAlphaBuffer 确保 Alpha 斜体缓冲尺寸足够，不足则扩容复用。
 // ensureItalicAlphaBuffer ensures reusable alpha italic buffer capacity.
 func (r *RichText) ensureItalicAlphaBuffer(width, height int) *image.Alpha {
@@ -208,22 +161,6 @@ func (r *RichText) ensureItalicAlphaBuffer(width, height int) *image.Alpha {
 		r.italicAlphaBuf = image.NewAlpha(image.Rect(0, 0, width, height))
 	}
 	return r.italicAlphaBuf
-}
-
-// clearRGBA 清空 RGBA 缓冲中的指定矩形区域。
-// clearRGBA clears a target rectangle in an RGBA buffer.
-func clearRGBA(img *image.RGBA, rect image.Rectangle) {
-	rect = rect.Intersect(img.Bounds())
-	if rect.Empty() {
-		return
-	}
-	stride := img.Stride
-	for y := rect.Min.Y; y < rect.Max.Y; y++ {
-		row := img.Pix[y*stride+rect.Min.X*4 : y*stride+rect.Max.X*4]
-		for i := range row {
-			row[i] = 0
-		}
-	}
 }
 
 // clearAlpha 清空 Alpha 缓冲中的指定矩形区域。
