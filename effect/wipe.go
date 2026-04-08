@@ -66,7 +66,7 @@ func (e *WipeEffect) WithEasingName(name string) *WipeEffect {
 	return e
 }
 
-func (e *WipeEffect) TargetAttributeFn(base *ti.Attribute) *ti.TargetAttribute {
+func (e *WipeEffect) TargetAttributeFn(base ti.Attribute) (*ti.Attribute, *ti.TargetAttribute) {
 	target := ti.TargetAttr().SetEasing(e.easing)
 	opts := *e.shapeMaskOptions
 	if e.shapeMaskOptions.ShapeOptions != nil {
@@ -79,5 +79,5 @@ func (e *WipeEffect) TargetAttributeFn(base *ti.Attribute) *ti.TargetAttribute {
 		opts.SetTRange(0.0, 2.0)
 	}
 	target.SetShapeOptions(&opts)
-	return target
+	return &base, target
 }

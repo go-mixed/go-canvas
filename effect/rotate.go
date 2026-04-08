@@ -24,25 +24,30 @@ func Rotate(inOut EffectInOut) *RotateEffect {
 		easing:     ti.DefaultEasingFunction,
 	}
 }
+
 func (e *RotateEffect) WithAngleRange(start, end float32) *RotateEffect {
 	e.angleStart, e.angleEnd = start, end
 	return e
 }
+
 func (e *RotateEffect) WithScaleRange(start, end float32) *RotateEffect {
 	e.scaleStart, e.scaleEnd = start, end
 	return e
 }
+
 func (e *RotateEffect) WithEasing(fn ti.EasingFunction) *RotateEffect {
 	if fn != nil {
 		e.easing = fn
 	}
 	return e
 }
+
 func (e *RotateEffect) WithEasingName(name string) *RotateEffect {
 	e.easing = ti.GetEasingFunction(name)
 	return e
 }
-func (e *RotateEffect) TargetAttributeFn(base *ti.Attribute) *ti.TargetAttribute {
+
+func (e *RotateEffect) TargetAttributeFn(base ti.Attribute) (*ti.Attribute, *ti.TargetAttribute) {
 	target := ti.TargetAttr().SetEasing(e.easing)
 	if e.inOut == EffectOut {
 		target.SetRotation(misc.Deg2Rad(e.angleStart))
@@ -52,5 +57,5 @@ func (e *RotateEffect) TargetAttributeFn(base *ti.Attribute) *ti.TargetAttribute
 		target.SetScale(e.scaleEnd, e.scaleEnd)
 	}
 	target.SetAlpha(1.0)
-	return target
+	return &base, target
 }

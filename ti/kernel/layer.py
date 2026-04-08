@@ -32,7 +32,7 @@ def build_inverse_affine_matrix(
     # [   0       0                    1                             ]
 
     tx = -(x + cx) * cos_r * inv_scale_x - (y + cy) * sin_r * inv_scale_x + cx
-    ty = -(x + cx) * sin_r * inv_scale_y - (y + cy) * cos_r * inv_scale_y + cy
+    ty = (x + cx) * sin_r * inv_scale_y - (y + cy) * cos_r * inv_scale_y + cy
 
 
     return ti.math.mat3(
@@ -66,7 +66,6 @@ def sample_and_blend(
     Args:
         mask_value: 遮罩值（无遮罩时传入 1.0）
     """
-    # 采样纹理
     tex_color = screen_color
     if use_scale == 0:
         tex_color = texture[ti.cast(tex_x, ti.i32), ti.cast(tex_y, ti.i32)]
@@ -74,23 +73,25 @@ def sample_and_blend(
         # 双三次插值
         tex_color = bilinear_sample(texture, tex_x, tex_y, width, height)
 
-    # 计算最终透明度
-    final_alpha = ti.min(tex_color.w * alpha * mask_value, 1.0)
+    # 计算最终源透明度（纹理alpha * 图层alpha * mask）
+    src_a = ti.min(tex_color.w * alpha * mask_value, 1.0)
+    out = screen_color
 
-    # Alpha 混合 - 标准 Over 操作 (premultiplied alpha)
-    new_color = tex_color
-    if tex_color.w >= 0.999:
-        new_color.w = 1.0
-    elif tex_color.w > 1e-6:
-        # Premultiplied alpha Over: out = tex + screen * (1 - tex_a)
-        new_color.x = tex_color.x + screen_color.x * (1.0 - tex_color.w)
-        new_color.y = tex_color.y + screen_color.y * (1.0 - tex_color.w)
-        new_color.z = tex_color.z + screen_color.z * (1.0 - tex_color.w)
-        new_color.w = tex_color.w + screen_color.w * (1.0 - tex_color.w)
-    else:
-        new_color = screen_color  # 完全透明，保持原色
+    if src_a > 1e-6:
+        # 标准 Over（直通道颜色）
+        dst_a = screen_color.w
+        one_minus_src = 1.0 - src_a
+        out_a = src_a + dst_a * one_minus_src
 
-    return new_color
+        if out_a > 1e-6:
+            out.x = (tex_color.x * src_a + screen_color.x * dst_a * one_minus_src) / out_a
+            out.y = (tex_color.y * src_a + screen_color.y * dst_a * one_minus_src) / out_a
+            out.z = (tex_color.z * src_a + screen_color.z * dst_a * one_minus_src) / out_a
+            out.w = out_a
+        else:
+            out = ti.math.vec4(0.0, 0.0, 0.0, 0.0)
+
+    return out
 
 
 @ti.kernel
@@ -273,8 +274,8 @@ def render_layer_no_mask(
     inv_matrix = build_inverse_affine_matrix(x, y, cx, cy, scale_x, scale_y, rotation)
 
     screen_w, screen_h = screen.shape
-    max_x1 = ti.math.min(max_x, screen_w - 1)
-    max_y1 = ti.math.min(max_y, screen_h - 1)
+    max_x1 = ti.math.min(max_x, screen_w)
+    max_y1 = ti.math.min(max_y, screen_h)
 
     for x_screen, y_screen in ti.ndrange((min_x, max_x1), (min_y, max_y1)):
         # 屏幕坐标 → 纹理坐标
@@ -329,8 +330,8 @@ def render_layer_with_mask(
     inv_matrix = build_inverse_affine_matrix(x, y, cx, cy, scale_x, scale_y, rotation)
 
     screen_w, screen_h = screen.shape
-    max_x1 = ti.math.min(max_x, screen_w - 1)
-    max_y1 = ti.math.min(max_y, screen_h - 1)
+    max_x1 = ti.math.min(max_x, screen_w)
+    max_y1 = ti.math.min(max_y, screen_h)
     for x_screen, y_screen in ti.ndrange((min_x, max_x1), (min_y, max_y1)):
         # 屏幕坐标 → 纹理坐标
         tex_pos = apply_affine_transform(inv_matrix, ti.f32(x_screen), ti.f32(y_screen))

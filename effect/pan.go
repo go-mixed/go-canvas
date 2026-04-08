@@ -61,10 +61,7 @@ func (e *PanEffect) WithEasingName(name string) *PanEffect {
 	return e
 }
 
-func (e *PanEffect) TargetAttributeFn(base *ti.Attribute) *ti.TargetAttribute {
-	if base == nil {
-		base = ti.Attr()
-	}
+func (e *PanEffect) TargetAttributeFn(base ti.Attribute) (*ti.Attribute, *ti.TargetAttribute) {
 	vec := panDirections[e.direction]
 	dx, dy := vec[0], vec[1]
 	maxPanX := float32(base.Width()) * e.panIntensity
@@ -81,5 +78,5 @@ func (e *PanEffect) TargetAttributeFn(base *ti.Attribute) *ti.TargetAttribute {
 		target.SetY(base.Y() + int(math.Round(float64(dy*maxPanY))))
 	}
 	target.SetAlpha(1.0)
-	return target
+	return &base, target
 }

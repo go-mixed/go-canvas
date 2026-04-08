@@ -145,6 +145,13 @@ func (r *RichText) parseAttributes(tag string, opts *RichTextFontStyle) {
 				value = tag[vs:i]
 			}
 		}
+		if len(value) >= 2 {
+			first := value[0]
+			last := value[len(value)-1]
+			if (first == '"' || first == '\'') && first == last {
+				value = value[1 : len(value)-1]
+			}
+		}
 
 		switch key {
 		case "bold":

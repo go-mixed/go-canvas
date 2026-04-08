@@ -38,7 +38,7 @@ func main() {
 	defer stage.Release()
 	fmt.Printf("[2/8] 创建舞台: %v\n", time.Since(t))
 
-	// 3. 创建背景块
+	//3. 创建背景块
 	t = time.Now()
 	background, err := render.NewBlockSprite(stage, ti.Attr().SetRect(rect))
 	if err != nil {
@@ -48,13 +48,13 @@ func main() {
 	fmt.Printf("[3/8] 创建背景块: %v\n", time.Since(t))
 
 	// 4. 创建容器
-	t = time.Now()
-	container, err := render.NewContainer(stage, ti.Attr().SetRect(rect))
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("[4/8] 创建容器: %v\n", time.Since(t))
-
+	//t = time.Now()
+	//container, err := render.NewContainer(stage, ti.Attr().SetRect(rect))
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Printf("[4/8] 创建容器: %v\n", time.Since(t))
+	//
 	fontLibrary, err := font.NewFontLibrary()
 	if err != nil {
 		panic(err)
@@ -62,42 +62,40 @@ func main() {
 
 	// 5. 加载图片
 	t = time.Now()
-	img, err := render.NewImageSprite(container, ti.Attr(), filepath.Join(cd, "examples", "1.jpg"))
+	img, err := render.NewImageSprite(stage, ti.Attr().SetRect(rect), filepath.Join(cd, "examples", "1.jpg"))
 	if err != nil {
 		panic(err)
 	}
-	ti.SaveTiImageToFile(img.Texture(), filepath.Join(misc.GetCurrentDir(), "out1.png"))
 	fmt.Printf("[5/8] 加载图片: %v\n", time.Since(t))
-
+	_ = img
 	// 6. 创建形状遮罩
-	t = time.Now()
-	mask, err := render.NewShapeMask(img, ti.Attr().SetWH(img.Width(), img.Height()))
-	if err != nil {
-		panic(err)
-	}
-	mask.DrawShape(ti.ShapeTypeCircle, 0.5, ti.ShapeOpt())
-	//img.Blur(ti.BlurModeMosaic, 20)
-	fmt.Printf("[6/8] 创建遮罩: %v\n", time.Since(t))
+	//t = time.Now()
+	//mask, err := render.NewShapeMask(img, ti.Attr().SetWH(img.Width(), img.Height()))
+	//if err != nil {
+	//	panic(err)
+	//}
+	//mask.DrawShape(ti.ShapeTypeCircle, 0.5, ti.ShapeOpt())
+	////img.Blur(ti.BlurModeMosaic, 20)
+	//fmt.Printf("[6/8] 创建遮罩: %v\n", time.Since(t))
 
 	// 7. 创建文字精灵 1
 	t = time.Now()
-	text1, err := render.NewTextSprite(container, fontLibrary, ti.Attr().SetWidth(500), font.RTOpt().SetAlign(ti.HAlignCenter, ti.VAlignMiddle))
+	text1, err := render.NewTextSprite(stage, fontLibrary, ti.Attr().SetWidth(500), font.RTOpt().SetAlign(ti.HAlignCenter, ti.VAlignMiddle))
 	if err != nil {
 		panic(err)
 	}
-	text1.SetText("<text font-size=’50’>Hello Hi 123</text>\n <text font-size=’50’ color=’#ffffff’>Interesting</text>\n<text font-size=’60’ color=’#ff0000’>World!</text>")
+	text1.SetText("<text font-size='50'>Hello Hi 123</text>\n <text font-size='50' color='#ffffff'>Interesting</text>\n<text font-size='60' color='#ff0000'>World!</text>")
 	fmt.Printf("[7/9] 创建文字1: %v\n", time.Since(t))
 
 	// 8. 创建文字精灵 2
 	t = time.Now()
-	text2, err := render.NewTextSprite(container, fontLibrary, ti.Attr().SetY(text1.Height()+20).SetWidth(500), font.RTOpt().SetAlign(ti.HAlignCenter, ti.VAlignMiddle))
+	text2, err := render.NewTextSprite(stage, fontLibrary, ti.Attr().SetY(text1.Height()+20).SetWidth(500), font.RTOpt().SetAlign(ti.HAlignCenter, ti.VAlignMiddle))
 	if err != nil {
 		panic(err)
 	}
 
-	text2.SetText("<text font-size=’50’ font-color=’#00ff00’>你们</text>\n<text font-size=’50’ color=’#ffffff’>在那里吃饭。</text>\n<text font-size=’60’ color=’#ff0000’>现在好</text>\n<text  font-color=’#00ff00’>吗？</text>")
+	text2.SetText("<text font-size='50' font-color='#00ff00'>你们</text>\n<text font-size='50' color='#ffffff'>在那里吃饭。</text>\n<text font-size='60' color='#ff0000'>现在好</text>\n<text  font-color='#00ff00'>吗？</text>")
 
-	ti.SaveTiImageToFile(text2.Texture(), filepath.Join(misc.GetCurrentDir(), "out2.png"))
 	fmt.Printf("[8/9] 创建文字2: %v\n", time.Since(t))
 
 	// 9. 渲染
@@ -113,6 +111,14 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("[保存] out.png: %v\n", time.Since(t))
+
+	var buf = make([]uint32, stage.Width()*stage.Height())
+	err = stage.ToBgraImage(buf)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("%x", buf[:16])
 
 	fmt.Printf("\n=== 总耗时: %v ===\n", time.Since(totalStart))
 }

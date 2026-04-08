@@ -20,12 +20,12 @@ func (e *FadeEffect) WithEasingName(name string) *FadeEffect {
 	e.easing = ti.GetEasingFunction(name)
 	return e
 }
-func (e *FadeEffect) TargetAttributeFn(base *ti.Attribute) *ti.TargetAttribute {
+func (e *FadeEffect) TargetAttributeFn(base ti.Attribute) (*ti.Attribute, *ti.TargetAttribute) {
 	target := ti.TargetAttr().SetEasing(e.easing)
 	if e.inOut == EffectOut {
 		target.SetAlpha(0.0)
 	} else {
 		target.SetAlpha(1.0)
 	}
-	return target
+	return &base, target
 }

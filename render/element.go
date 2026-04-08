@@ -41,12 +41,6 @@ func (e *tiElement) IsDirty() bool {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
 
-	//for _, child := range e.children {
-	//	if child.IsDirty() {
-	//		return true
-	//	}
-	//}
-
 	return e.dirty
 }
 
@@ -80,7 +74,7 @@ func (e *tiElement) MoveTo(x int, y int) {
 	e.LockForUpdate(func() {
 		e.attribute.MoveTo(x, y)
 	}, func() bool {
-		return misc.NumberEqual(e.attribute.X(), x, misc.Epsilon) && misc.NumberEqual(e.attribute.Y(), y, misc.Epsilon)
+		return !misc.NumberEqual(e.attribute.X(), x, misc.Epsilon) || !misc.NumberEqual(e.attribute.Y(), y, misc.Epsilon)
 	})
 }
 
@@ -100,7 +94,7 @@ func (e *tiElement) SetScale(scaleX, scaleY float32) {
 	e.LockForUpdate(func() {
 		e.attribute.SetScale(scaleX, scaleY)
 	}, func() bool {
-		return !misc.NumberEqual(e.attribute.ScaleX(), scaleX, misc.Epsilon) && misc.NumberEqual(e.attribute.ScaleY(), scaleY, misc.Epsilon)
+		return !misc.NumberEqual(e.attribute.ScaleX(), scaleX, misc.Epsilon) || !misc.NumberEqual(e.attribute.ScaleY(), scaleY, misc.Epsilon)
 	})
 }
 
