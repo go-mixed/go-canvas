@@ -57,16 +57,21 @@ type ShapeOptions struct {
 	Color     color.Color
 }
 
-func WithShapeDirection(direction Direction) func(*ShapeOptions) {
-	return func(opts *ShapeOptions) {
-		opts.Direction = direction
+func ShapeOpt() *ShapeOptions {
+	return &ShapeOptions{
+		Direction: DirectionCenter,
+		Color:     color.Black,
 	}
 }
 
-func WithShapeColor(color color.Color) func(*ShapeOptions) {
-	return func(opts *ShapeOptions) {
-		opts.Color = color
-	}
+func (o *ShapeOptions) SetDirection(direction Direction) *ShapeOptions {
+	o.Direction = direction
+	return o
+}
+
+func (o *ShapeOptions) SetColor(c color.Color) *ShapeOptions {
+	o.Color = c
+	return o
 }
 
 // FeatherMode 羽化模式
@@ -78,3 +83,51 @@ const (
 	FeatherModeSmoothstep FeatherMode = 2
 	FeatherModeSigmoid    FeatherMode = 3
 )
+
+type ShapeMaskOptions struct {
+	*ShapeOptions
+
+	ShapeType ShapeType
+
+	StartT float32
+	EndT   float32
+
+	FeatherRadius uint32
+	FeatherMode   FeatherMode
+}
+
+func ShapeMaskOpt() *ShapeMaskOptions {
+	return &ShapeMaskOptions{
+		ShapeOptions: ShapeOpt(),
+		ShapeType:    ShapeTypeRectangle,
+		StartT:       0.0,
+		EndT:         2.0,
+	}
+}
+
+func (o *ShapeMaskOptions) SetShapeType(shapeType ShapeType) *ShapeMaskOptions {
+	o.ShapeType = shapeType
+	return o
+}
+
+func (o *ShapeMaskOptions) SetDirection(direction Direction) *ShapeMaskOptions {
+	o.Direction = direction
+	return o
+}
+
+func (o *ShapeMaskOptions) SetColor(c color.Color) *ShapeMaskOptions {
+	o.Color = c
+	return o
+}
+
+func (o *ShapeMaskOptions) SetTRange(startT, endT float32) *ShapeMaskOptions {
+	o.StartT = startT
+	o.EndT = endT
+	return o
+}
+
+func (o *ShapeMaskOptions) SetFeather(radius uint32, mode FeatherMode) *ShapeMaskOptions {
+	o.FeatherRadius = radius
+	o.FeatherMode = mode
+	return o
+}

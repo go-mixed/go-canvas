@@ -55,7 +55,10 @@ func main() {
 	}
 	fmt.Printf("[4/8] 创建容器: %v\n", time.Since(t))
 
-	fontLibrary := font.NewFontLibrary()
+	fontLibrary, err := font.NewFontLibrary()
+	if err != nil {
+		panic(err)
+	}
 
 	// 5. 加载图片
 	t = time.Now()
@@ -72,7 +75,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	mask.DrawShape(ti.ShapeTypeCircle, 0.5)
+	mask.DrawShape(ti.ShapeTypeCircle, 0.5, ti.ShapeOpt())
 	//img.Blur(ti.BlurModeMosaic, 20)
 	fmt.Printf("[6/8] 创建遮罩: %v\n", time.Since(t))
 
@@ -99,7 +102,7 @@ func main() {
 
 	// 9. 渲染
 	t = time.Now()
-	stage.Render()
+	stage.Render(0)
 	fmt.Printf("[9/9] 渲染: %v\n", time.Since(t))
 
 	// 保存

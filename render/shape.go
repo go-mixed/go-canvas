@@ -15,6 +15,8 @@ type ShapeSprite struct {
 	dx, dy *taichi.NdArray
 }
 
+var _ IShapeSprite = (*ShapeSprite)(nil)
+
 func NewShapeSprite(parent IParent, attribute *ti.Attribute) (*ShapeSprite, error) {
 
 	width, height := uint32(attribute.Width()), uint32(attribute.Height())
@@ -49,19 +51,12 @@ func NewShapeSprite(parent IParent, attribute *ti.Attribute) (*ShapeSprite, erro
 // shapeType: 形状类型 (linear, circle, diamond, rectangle, triangle, star5, heart, cross)
 // size: 大小参数 0.0-2.0，1.0 表示填充整个屏幕
 // fns: 可选参数，如 ti.WithShapeDirection, ti.WithShapeColor
-func (s *ShapeSprite) DrawShape(shapeType ti.ShapeType, tVal float32, fns ...func(option *ti.ShapeOptions)) ISprite {
+func (s *ShapeSprite) DrawShape(shapeType ti.ShapeType, tVal float32, options *ti.ShapeOptions) {
 	s.Fill(color.Transparent)
-	options := &ti.ShapeOptions{
-		Direction: ti.DirectionCenter,
-		Color:     color.Black,
-	}
-
-	for _, fn := range fns {
-		fn(options)
+	if options == nil {
+		options = ti.ShapeOpt()
 	}
 
 	data := s.Texture()
 	s.Renderer().Module().ComputeShape(data, s.dx, s.dy, shapeType, tVal, options.Direction, options.Color)
-
-	return s
 }

@@ -72,10 +72,14 @@ type ISprite interface {
 
 	RemoveFromParent()
 	Render(frameIndex int)
-	Animate(target ti.TargetAttribute, startAtFrame, durationFrame int) ISprite
+	Animate(targetFn ti.TargetAttributeFn, startAtFrame, durationFrame int) ISprite
 	ClearAnimations() ISprite
 	StopAnimation(reset bool) ISprite
 	TickAnimation(frameIndex int) bool
+}
+
+type IShapeSprite interface {
+	DrawShape(shapeType ti.ShapeType, tVal float32, options *ti.ShapeOptions)
 }
 
 // IContainer 容器接口

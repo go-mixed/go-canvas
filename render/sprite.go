@@ -105,8 +105,8 @@ func (s *Sprite) Render(frameIndex int) {
 	}()
 }
 
-func (s *Sprite) Animate(target ti.TargetAttribute, startAtFrame, durationFrame int) ISprite {
-	s.animator.enqueue(target, startAtFrame, durationFrame)
+func (s *Sprite) Animate(targetFn ti.TargetAttributeFn, startAtFrame, durationFrame int) ISprite {
+	s.animator.enqueue(targetFn, startAtFrame, durationFrame)
 
 	return s
 }

@@ -90,6 +90,7 @@ func (m *ShapeMask) RemoveMask(mask IMask) {
 
 var _ IMask = (*ShapeMask)(nil)
 var _ IElement = (*ShapeMask)(nil)
+var _ IShapeSprite = (*ShapeMask)(nil)
 
 func NewShapeMask(parent IMaskParent, attribute *ti.Attribute) (*ShapeMask, error) {
 
@@ -113,7 +114,6 @@ func NewShapeMask(parent IMaskParent, attribute *ti.Attribute) (*ShapeMask, erro
 			featherMode:   ti.FeatherModeLinear,
 		}, nil
 	})
-
 }
 
 func (m *ShapeMask) SetFeather(radius uint32, featherMode ti.FeatherMode) {
@@ -121,8 +121,8 @@ func (m *ShapeMask) SetFeather(radius uint32, featherMode ti.FeatherMode) {
 	m.featherMode = featherMode
 }
 
-func (m *ShapeMask) DrawShape(shapeType ti.ShapeType, tVal float32, fns ...func(option *ti.ShapeOptions)) {
-	m.ShapeSprite.DrawShape(shapeType, tVal, fns...)
+func (m *ShapeMask) DrawShape(shapeType ti.ShapeType, tVal float32, options *ti.ShapeOptions) {
+	m.ShapeSprite.DrawShape(shapeType, tVal, options)
 	m.Mask.FillWithTexture(m.ShapeSprite.Texture())
 	if m.featherRadius > 0 {
 		m.Mask.ApplyFeather(m.featherRadius, m.featherMode)
