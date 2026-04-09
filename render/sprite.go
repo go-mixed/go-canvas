@@ -99,16 +99,54 @@ func NewBlockSprite(parent IParent, attribute *ti.Attribute) (*Sprite, error) {
 	})
 }
 
+func (s *Sprite) SetDirty(val bool) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.dirty = val
+}
+
+func (s *Sprite) IsDirty() bool {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	if s.dirty {
+		return true
+	}
+
+	// 检测mask是否 dirty
+	for _, mask := range s.masks.Range() {
+		if mask.IsDirty() {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (s *Sprite) Render(frameIndex int) {
 	defer func() {
 		s.SetDirty(false)
 	}()
+
+	for _, mask := range s.masks.Range() {
+		mask.Render(frameIndex)
+	}
 }
 
 // HasAnimationAt returns true when an animation segment should be evaluated
 // at the given absolute frame.
 func (s *Sprite) HasAnimationAt(frameIndex int) bool {
-	return s.animator.hasAnimationAt(frameIndex)
+	if s.animator.hasAnimationAt(frameIndex) {
+		return true
+	}
+
+	for _, mask := range s.masks.Range() {
+		_maskSprite, ok := mask.(IAnimation)
+		if ok && _maskSprite.HasAnimationAt(frameIndex) {
+			return true
+		}
+	}
+	return false
 }
 
 // Animate 向当前精灵追加一段动画。
@@ -133,12 +171,29 @@ func (s *Sprite) StopAnimation(reset bool) ISprite {
 
 // TickAnimation 按绝对帧号推进动画。
 func (s *Sprite) TickAnimation(frameIndex int) bool {
-	return s.animator.tick(frameIndex)
+	v := s.animator.tick(frameIndex)
+	for _, mask := range s.masks.Range() {
+		_maskSprite, ok := mask.(IAnimation)
+		if ok && _maskSprite.TickAnimation(frameIndex) {
+			v = true
+		}
+	}
+	return v
 }
 
 // RemoveFromParent 从父级移除精灵
 func (s *Sprite) RemoveFromParent() {
 	s.parent.RemoveChild(s.instance)
+}
+
+// SetInstance 设置实例
+func (s *Sprite) SetInstance(m ISprite) {
+	s.LockForUpdate(func() {
+		s.instance = m
+		s.animator.setSprite(m)
+	}, func() bool {
+		return s.instance != m
+	})
 }
 
 func (s *Sprite) Release() {
@@ -151,6 +206,8 @@ func (s *Sprite) Release() {
 	for _, mask := range s.masks.Range() {
 		mask.Release()
 	}
+
+	s.ReleaseGarbageTextures()
 
 	s.mutex.Lock()
 	defer s.mutex.Unlock()

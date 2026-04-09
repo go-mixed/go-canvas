@@ -62,6 +62,10 @@ func (s *Stage) Render(frameIndex int) {
 	}
 
 	s.renderer.runtime.Wait()
+
+	// 每帧渲染结束后，释放垃圾纹理
+	// 后置释放，这样可以让Resize、Blur等方法异步执行
+	s.container.ReleaseGarbageTextures()
 }
 
 func (s *Stage) IsDirty() bool {

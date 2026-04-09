@@ -10,7 +10,7 @@ func (m *AotModule) AsyncComputeNormalizedCoords(dx, dy *TiGrid, cx, cy float32)
 		ArgNdArray(dy).
 		ArgFloat32(cx).
 		ArgFloat32(cy).
-		Run()
+		RunAsync()
 }
 
 func (m *AotModule) ComputeNormalizedCoords(dx, dy *TiGrid, cx, cy float32) {
@@ -27,7 +27,7 @@ func (m *AotModule) AsyncComputeCircle(data *TiImage, dx, dy *TiGrid, tVal float
 		ArgNdArray(dy).
 		ArgFloat32(tVal).
 		ArgVectorFloat32(Color2TiColor(color)...).
-		Run()
+		RunAsync()
 }
 
 func (m *AotModule) ComputeCircle(data *TiImage, dx, dy *TiGrid, tVal float32, color color.Color) {
@@ -44,7 +44,7 @@ func (m *AotModule) AsyncComputeDiamond(data *TiImage, dx, dy *TiGrid, tVal floa
 		ArgNdArray(dy).
 		ArgFloat32(tVal).
 		ArgVectorFloat32(Color2TiColor(color)...).
-		Run()
+		RunAsync()
 }
 
 func (m *AotModule) ComputeDiamond(data *TiImage, dx, dy *TiGrid, tVal float32, color color.Color) {
@@ -63,7 +63,7 @@ func (m *AotModule) AsyncComputeRect(data *TiImage, dx, dy *TiGrid, tVal float32
 		ArgFloat32(tVal).
 		ArgInt32(dirVal).
 		ArgVectorFloat32(Color2TiColor(color)...).
-		Run()
+		RunAsync()
 }
 
 func (m *AotModule) ComputeRect(data *TiImage, dx, dy *TiGrid, tVal float32, dirVal int32, color color.Color) {
@@ -88,7 +88,7 @@ func (m *AotModule) AsyncComputeDirectional(data *TiImage, dx, dy *TiGrid, tVal,
 		ArgFloat32(manhattanWeight).
 		ArgFloat32(chebyshevWeight).
 		ArgVectorFloat32(Color2TiColor(color)...).
-		Run()
+		RunAsync()
 }
 
 func (m *AotModule) ComputeDirectional(data *TiImage, dx, dy *TiGrid, tVal, dirX, dirY, useRadial, manhattanWeight, chebyshevWeight float32, color color.Color) {
@@ -105,7 +105,7 @@ func (m *AotModule) AsyncComputeTriangle(data *TiImage, dx, dy *TiGrid, tVal flo
 		ArgNdArray(dy).
 		ArgFloat32(tVal).
 		ArgVectorFloat32(Color2TiColor(color)...).
-		Run()
+		RunAsync()
 }
 
 func (m *AotModule) ComputeTriangle(data *TiImage, dx, dy *TiGrid, tVal float32, color color.Color) {
@@ -122,7 +122,7 @@ func (m *AotModule) AsyncComputeStar(data *TiImage, dx, dy *TiGrid, tVal float32
 		ArgNdArray(dy).
 		ArgFloat32(tVal).
 		ArgVectorFloat32(Color2TiColor(color)...).
-		Run()
+		RunAsync()
 }
 
 func (m *AotModule) ComputeStar(data *TiImage, dx, dy *TiGrid, tVal float32, color color.Color) {
@@ -139,7 +139,7 @@ func (m *AotModule) AsyncComputeHeart(data *TiImage, dx, dy *TiGrid, tVal float3
 		ArgNdArray(dy).
 		ArgFloat32(tVal).
 		ArgVectorFloat32(Color2TiColor(color)...).
-		Run()
+		RunAsync()
 }
 
 func (m *AotModule) ComputeHeart(data *TiImage, dx, dy *TiGrid, tVal float32, color color.Color) {
@@ -156,7 +156,7 @@ func (m *AotModule) AsyncComputeCross(data *TiImage, dx, dy *TiGrid, tVal float3
 		ArgNdArray(dy).
 		ArgFloat32(tVal).
 		ArgVectorFloat32(Color2TiColor(color)...).
-		Run()
+		RunAsync()
 }
 
 func (m *AotModule) ComputeCross(data *TiImage, dx, dy *TiGrid, tVal float32, color color.Color) {

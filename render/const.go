@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-mixed/go-canvas/misc"
 	"github.com/go-mixed/go-canvas/ti"
+	"github.com/go-mixed/go-taichi/taichi"
 )
 
 type IAttribute interface {
@@ -34,45 +35,40 @@ type IAttribute interface {
 }
 
 type IElementOperation interface {
-
 	// Blur 模糊纹理（马赛克/高斯/普通）
 	Blur(mode ti.BlurMode, radius int32) error
 	// Fill 所有像素填充同一个颜色
 	Fill(rgba color.Color)
 }
 
+type IDirty interface {
+	IsDirty() bool
+	SetDirty(val bool)
+}
+
+type ITexture interface {
+	Texture() *taichi.NdArray
+}
+
+type IRelease interface {
+	// Release 释放资源（必须调用，不然GPU显存泄漏）
+	Release()
+}
+
 // IElement 精灵操作接口，主要是Set/Get，没有复杂操作
 type IElement interface {
 	IAttribute
+	IElementOperation
 
 	Attribute() *ti.Attribute
-
-	Texture() *ti.TiImage
 
 	// ClientRect 获取元素自身旋转+缩放后的边界
 	ClientRect() ti.Rectangle[int]
 
-	IsDirty() bool
-	SetDirty(val bool)
 	//LockForUpdate(updateFn func(), triggerDirty func() bool)
-
-	// Release 释放资源（必须调用，不然GPU显存泄漏）
-	Release()
-
-	Renderer() *Renderer
-
-	IElementOperation
 }
 
-// ISprite 精灵接口，包含操作接口，以及复杂的操作
-type ISprite interface {
-	IElement
-
-	IMaskParent
-
-	IAnimation
-
-	RemoveFromParent()
+type IRender interface {
 	Render(frameIndex int)
 }
 
@@ -90,25 +86,54 @@ type IAnimation interface {
 	TickAnimation(frameIndex int) bool
 }
 
-type IShapeSprite interface {
+type IShape interface {
 	DrawShape(shapeType ti.ShapeType, tVal float32, options *ti.ShapeOptions)
+}
+
+type IGarbage interface {
+	AddGarbageTexture(texture *taichi.NdArray)
+	ReleaseGarbageTextures()
+}
+
+// ISprite 精灵接口，包含操作接口，以及复杂的操作
+type ISprite interface {
+	IElement
+	IAnimation
+	IRender
+	IDirty
+	ITexture
+	IRelease
+	IGarbage
+
+	IMaskParent
+
+	RemoveFromParent()
 }
 
 // IContainer 容器接口
 type IContainer interface {
-	ISprite
+	IElement
+	IAnimation
+	IRender
+	IDirty
+	ITexture
+	IRelease
+	IGarbage
 
 	IParent
-
 	ScrollTop(y int)
 	ScrollLeft(x int)
 }
 
 type IMask interface {
 	FillWithTexture(texture *ti.TiImage)
-	ApplyFeather(featherRadius uint32, featherMode ti.FeatherMode)
-	Release()
-	Texture() *ti.TiMask
+	SetFeather(featherRadius uint32, featherMode ti.FeatherMode)
+	RemoveFromParent()
+
+	IDirty
+	IRender
+	ITexture
+	IRelease
 }
 
 type IParent interface {

@@ -12,6 +12,10 @@ type Mask struct {
 	parent    IMaskParent
 	// 真实的实例
 	instance IMask
+	isDirty  bool
+
+	featherRadius uint32
+	featherMode   ti.FeatherMode
 }
 
 var _ IMask = (*Mask)(nil)
@@ -29,6 +33,9 @@ func BuildMask[T IMask](parent IMaskParent, texture *ti.TiMask, instanceCreator 
 		texture:   texture,
 		distField: distField,
 		parent:    parent,
+
+		featherRadius: 0,
+		featherMode:   ti.FeatherModeLinear,
 	}
 
 	instance, err := instanceCreator(m)
@@ -40,18 +47,56 @@ func BuildMask[T IMask](parent IMaskParent, texture *ti.TiMask, instanceCreator 
 	return instance, nil
 }
 
+func (m *Mask) SetInstance(instance IMask) {
+	m.instance = instance
+}
+
+func (m *Mask) IsDirty() bool {
+	return m.isDirty
+}
+
+func (m *Mask) SetDirty(val bool) {
+	m.isDirty = val
+}
+
 // FillWithTexture 将纹理填充到 Mask
 func (m *Mask) FillWithTexture(texture *ti.TiImage) {
 	//  将图像转换为遮罩（提取 alpha 通道）
-	m.parent.Renderer().Module().ImageToMask(texture, m.texture)
+	m.parent.Renderer().Module().AsyncImageToMask(texture, m.texture)
+	m.isDirty = true
 }
 
-func (m *Mask) ApplyFeather(featherRadius uint32, featherMode ti.FeatherMode) {
-	// 计算距离场（使用复用的 distField）
-	m.parent.Renderer().Module().ComputeDistanceField(m.texture, m.distField)
+func (m *Mask) SetFeather(featherRadius uint32, featherMode ti.FeatherMode) {
+	m.featherRadius = featherRadius
+	m.featherMode = featherMode
+	m.isDirty = true
+}
 
-	// 应用羽化
-	m.parent.Renderer().Module().ComputeFeather(m.distField, m.texture, float32(featherRadius), featherMode)
+func (m *Mask) Render(frameIndex int) {
+	defer func() {
+		m.SetDirty(false)
+	}()
+
+	if !m.IsDirty() {
+		return
+	}
+
+	if m.featherRadius > 0 {
+		// 计算距离场（使用复用的 distField）
+		m.parent.Renderer().Module().AsyncComputeDistanceField(m.texture, m.distField)
+		// 应用羽化
+		m.parent.Renderer().Module().AsyncComputeFeather(m.distField, m.texture, float32(m.featherRadius), m.featherMode)
+	}
+}
+
+func (m *Mask) RemoveFromParent() {
+	if m.instance != nil {
+		m.parent.RemoveMask(m.instance)
+	}
+}
+
+func (m *Mask) Texture() *taichi.NdArray {
+	return m.texture
 }
 
 func (m *Mask) Release() {
@@ -65,32 +110,14 @@ func (m *Mask) Release() {
 	}
 }
 
-func (m *Mask) Texture() *taichi.NdArray {
-	return m.texture
-}
-
-func (m *Mask) RemoveFromParent() {
-	if m.instance != nil {
-		m.parent.RemoveMask(m.instance)
-	}
-}
-
 type ShapeMask struct {
-	*Mask
+	mask *Mask
 	*ShapeSprite
-
-	featherRadius uint32
-	featherMode   ti.FeatherMode
-}
-
-func (m *ShapeMask) RemoveMask(mask IMask) {
-	//TODO implement me
-	panic("implement me")
 }
 
 var _ IMask = (*ShapeMask)(nil)
 var _ IElement = (*ShapeMask)(nil)
-var _ IShapeSprite = (*ShapeMask)(nil)
+var _ IShape = (*ShapeMask)(nil)
 
 func NewShapeMask(parent IMaskParent, attribute *ti.Attribute) (*ShapeMask, error) {
 
@@ -106,37 +133,52 @@ func NewShapeMask(parent IMaskParent, attribute *ti.Attribute) (*ShapeMask, erro
 			return nil, err
 		}
 
-		return &ShapeMask{
-			Mask:        mask,
+		m := &ShapeMask{
+			mask:        mask,
 			ShapeSprite: shapeSprite,
-
-			featherRadius: 0,
-			featherMode:   ti.FeatherModeLinear,
-		}, nil
+		}
+		// 重新设置示例
+		shapeSprite.SetInstance(m)
+		return m, nil
 	})
 }
 
-func (m *ShapeMask) SetFeather(radius uint32, featherMode ti.FeatherMode) {
-	m.featherRadius = radius
-	m.featherMode = featherMode
+// IsDirty 覆盖父类 IsDirty 方法
+func (m *ShapeMask) IsDirty() bool {
+	return m.mask.IsDirty() || m.ShapeSprite.IsDirty()
 }
 
-func (m *ShapeMask) DrawShape(shapeType ti.ShapeType, tVal float32, options *ti.ShapeOptions) {
-	m.ShapeSprite.DrawShape(shapeType, tVal, options)
-	m.Mask.FillWithTexture(m.ShapeSprite.Texture())
-	if m.featherRadius > 0 {
-		m.Mask.ApplyFeather(m.featherRadius, m.featherMode)
+// Render 覆盖父类 Render 方法
+func (m *ShapeMask) Render(frameIndex int) {
+	if !m.IsDirty() {
+		return
 	}
+
+	m.ShapeSprite.Render(frameIndex)
+
+	// FillWithTexture 会触发mask的dirty，下面的Render才会真正执行
+	m.mask.FillWithTexture(m.ShapeSprite.Texture())
+	m.mask.Render(frameIndex)
 }
 
+func (m *ShapeMask) SetFeather(radius uint32, featherMode ti.FeatherMode) {
+	m.mask.SetFeather(radius, featherMode)
+}
+
+func (m *ShapeMask) FillWithTexture(texture *ti.TiImage) {
+	m.mask.FillWithTexture(texture)
+}
+
+// Texture 覆盖父类 Texture 方法
 func (m *ShapeMask) Texture() *ti.TiMask {
-	return m.Mask.Texture()
+	return m.mask.Texture()
 }
 
-func (m *ShapeMask) release() {
-	if m.Mask != nil {
-		m.Mask.Release()
-		m.Mask = nil
+// Release 覆盖父类 Release 方法
+func (m *ShapeMask) Release() {
+	if m.mask != nil {
+		m.mask.Release()
+		m.mask = nil
 	}
 	if m.ShapeSprite != nil {
 		m.ShapeSprite.Release()

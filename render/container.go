@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-mixed/go-canvas/misc"
 	"github.com/go-mixed/go-canvas/ti"
+	"github.com/go-mixed/go-taichi/taichi"
 )
 
 type Container struct {
@@ -41,7 +42,7 @@ func (c *Container) AddChild(sprite ISprite) {
 
 		if c.children.Index(func(item ISprite) bool {
 			return item == sprite
-		}) > 0 {
+		}) >= 0 {
 			return
 		}
 
@@ -208,6 +209,18 @@ func (c *Container) Release() {
 	c.children.Clear()
 }
 
+func (c *Container) AddGarbageTexture(texture *taichi.NdArray) {
+	c.Sprite.AddGarbageTexture(texture)
+}
+
+func (c *Container) ReleaseGarbageTextures() {
+	c.Sprite.ReleaseGarbageTextures()
+
+	for _, child := range c.children.Range() {
+		child.ReleaseGarbageTextures()
+	}
+}
+
 func (c *Container) ScrollTop(y int) {
 	c.LockForUpdate(func() {
 		if y < 0 {
@@ -215,7 +228,7 @@ func (c *Container) ScrollTop(y int) {
 		}
 
 		cr := c.ClientRect()
-		ch := int(cr.Height())
+		ch := cr.Height()
 		if y > ch {
 			y = ch
 		}

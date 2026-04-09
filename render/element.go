@@ -3,10 +3,12 @@ package render
 import (
 	"image/color"
 	"math"
+	"slices"
 	"sync"
 
 	"github.com/go-mixed/go-canvas/misc"
 	"github.com/go-mixed/go-canvas/ti"
+	"github.com/go-mixed/go-taichi/taichi"
 	"github.com/pkg/errors"
 )
 
@@ -19,6 +21,8 @@ type tiElement struct {
 	renderer *Renderer
 
 	dirty bool
+
+	garbageTextures []*taichi.NdArray
 }
 
 func (e *tiElement) initial(renderer *Renderer) *tiElement {
@@ -37,17 +41,40 @@ func (e *tiElement) LockForUpdate(updateFn func(), triggerDirty func() bool) {
 	updateFn()
 }
 
-func (e *tiElement) IsDirty() bool {
-	e.mutex.RLock()
-	defer e.mutex.RUnlock()
-
-	return e.dirty
+// AddGarbageTexture 添加待回收的纹理
+func (e *tiElement) AddGarbageTexture(texture *taichi.NdArray) {
+	if texture == nil {
+		return
+	}
+	e.LockForUpdate(func() {
+		e.addGarbageTexture(texture)
+	}, func() bool { return false })
 }
 
-func (e *tiElement) SetDirty(val bool) {
+func (e *tiElement) addGarbageTexture(texture *taichi.NdArray) {
+	if texture == nil {
+		return
+	}
+	if slices.Index(e.garbageTextures, texture) >= 0 {
+		return
+	}
+	e.garbageTextures = append(e.garbageTextures, texture)
+}
+
+// ReleaseGarbageTextures 释放垃圾纹理
+func (e *tiElement) ReleaseGarbageTextures() {
+	if e.garbageTextures == nil {
+		return
+	}
+	e.mutex.RLock()
+	for _, texture := range e.garbageTextures {
+		texture.Release()
+	}
+	e.mutex.RUnlock()
+
 	e.mutex.Lock()
-	defer e.mutex.Unlock()
-	e.dirty = val
+	e.garbageTextures = nil
+	e.mutex.Unlock()
 }
 
 func (e *tiElement) SetX(x int) {
@@ -173,8 +200,8 @@ func (e *tiElement) Attribute() *ti.Attribute {
 // Fill 填充纯色
 func (e *tiElement) Fill(color color.Color) {
 	e.LockForUpdate(func() {
-		e.Renderer().Module().FillColor(e.texture, color)
-	}, func() bool { return false })
+		e.Renderer().Module().AsyncFillColor(e.texture, color)
+	}, func() bool { return true })
 }
 
 func (e *tiElement) Texture() *ti.TiImage {
@@ -207,9 +234,9 @@ func (e *tiElement) Resize(width, height int) error {
 			return
 		}
 
-		e.Renderer().Module().Resize(e.texture, newTexture, e.attribute.ResizeOptions())
+		e.Renderer().Module().AsyncResize(e.texture, newTexture, e.attribute.ResizeOptions())
 
-		e.texture.Release()
+		e.addGarbageTexture(e.texture) // 将原来的纹理加入垃圾纹理列表
 		e.texture = newTexture
 		e.attribute.SetWH(nW, nH)
 		e.attribute.SetCxy(width/2, height/2)
@@ -240,8 +267,8 @@ func (e *tiElement) Blur(mode ti.BlurMode, radius int32) error {
 			return
 		}
 
-		e.Renderer().Module().Blur(e.texture, newTexture, mode, radius)
-		e.texture.Release()
+		e.Renderer().Module().AsyncBlur(e.texture, newTexture, mode, radius)
+		e.addGarbageTexture(e.texture) // 将原来的纹理加入垃圾纹理列表
 		e.texture = newTexture
 	}, func() bool { return true })
 

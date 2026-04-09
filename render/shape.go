@@ -15,7 +15,7 @@ type ShapeSprite struct {
 	dx, dy *taichi.NdArray
 }
 
-var _ IShapeSprite = (*ShapeSprite)(nil)
+var _ IShape = (*ShapeSprite)(nil)
 
 func NewShapeSprite(parent IParent, attribute *ti.Attribute) (*ShapeSprite, error) {
 
@@ -37,7 +37,7 @@ func NewShapeSprite(parent IParent, attribute *ti.Attribute) (*ShapeSprite, erro
 			return nil, err
 		}
 
-		parent.Renderer().Module().ComputeNormalizedCoords(dx, dy, float32(attribute.Cx()), float32(attribute.Cy()))
+		parent.Renderer().Module().AsyncComputeNormalizedCoords(dx, dy, float32(attribute.Cx()), float32(attribute.Cy()))
 
 		return &ShapeSprite{
 			Sprite: sprite,
@@ -57,6 +57,5 @@ func (s *ShapeSprite) DrawShape(shapeType ti.ShapeType, tVal float32, options *t
 		options = ti.ShapeOpt()
 	}
 
-	data := s.Texture()
-	s.Renderer().Module().ComputeShape(data, s.dx, s.dy, shapeType, tVal, options.Direction, options.Color)
+	s.Renderer().Module().AsyncComputeShape(s.texture, s.dx, s.dy, shapeType, tVal, options.Direction, options.Color)
 }
