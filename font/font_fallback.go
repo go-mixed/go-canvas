@@ -13,15 +13,25 @@ func (fs *FontLibrary) initFallbackPaths() error {
 	if fs.fallbackLoaded {
 		return nil
 	}
-	base, err := fs.mustSystemFallbackBase()
+
+	locale := systemLanguage()
+	preferred := preferredUnicodeRangesForLocale(locale)
+
+	var err error
+	fs.fallbackRegularInfo, err = fs.findFontByLocale(locale, preferred, FontWeightRegular)
 	if err != nil {
 		return err
 	}
-	locale := normalizeLocale(detectSystemLanguage())
-	preferred := preferredUnicodeRangesForLocale(locale)
-	fs.fallbackRegularInfo = fs.selectFallbackFontByCoverage(FontWeightRegular, preferred, base)
-	fs.fallbackBoldInfo = fs.selectFallbackFontByCoverage(FontWeightBold, preferred, base)
-	fs.fallbackLightInfo = fs.selectFallbackFontByCoverage(FontWeightLight, preferred, base)
+	fs.fallbackBoldInfo, err = fs.findFontByLocale(locale, preferred, FontWeightBold)
+	if err != nil {
+		return err
+	}
+	fs.fallbackLightInfo, err = fs.findFontByLocale(locale, preferred, FontWeightLight)
+	// Light 失败时回退到 Regular，避免初始化中断。
+	if err != nil {
+		fs.fallbackLightInfo = fs.fallbackRegularInfo
+	}
+
 	fs.fallbackLoaded = true
 	return nil
 }
@@ -38,9 +48,10 @@ func (fs *FontLibrary) fallbackFontInfo(weight FontWeight) *FontInfo {
 	return fs.fallbackLightInfo
 }
 
-// normalizeLocale 标准化 locale（小写、去掉编码与修饰符、统一分隔符）。
-// normalizeLocale normalizes locale string to lowercase canonical form.
-func normalizeLocale(v string) string {
+// systemLanguage 读取系统语言并标准化 locale（小写、去掉编码与修饰符、统一分隔符）。
+// systemLanguage normalizes locale string to lowercase canonical form.
+func systemLanguage() string {
+	v := detectSystemLanguage()
 	v = strings.ToLower(strings.TrimSpace(v))
 	if v == "" {
 		return ""
@@ -52,6 +63,31 @@ func normalizeLocale(v string) string {
 		v = v[:i]
 	}
 	return strings.ReplaceAll(v, "-", "_")
+}
+
+// findFontByLocale 按顺序选择 fallback：
+// 1) locale 对应家族表
+// 2) coverage 评分
+// 3) systemFallbackFamilies 兜底
+func (fs *FontLibrary) findFontByLocale(locale string, preferred unicodeRanges, fontWeight FontWeight) (*FontInfo, error) {
+	families := localeFallbackFamilyTable(locale)
+	fi := fs.findFontByFamilies(families, fontWeight)
+	if fi != nil {
+		return fi, nil
+	}
+
+	fi = fs.selectFallbackFontByCoverage(preferred, fontWeight)
+	if fi != nil {
+		return fi, nil
+	}
+
+	families = systemFallbackFamilies()
+	fi = fs.findFontByFamilies(families, fontWeight)
+	if fi != nil {
+		return fi, nil
+	}
+
+	return nil, fmt.Errorf("system font invalid")
 }
 
 // preferredUnicodeRangesForLocale 返回 locale 对应的优先脚本区间。
@@ -81,9 +117,7 @@ func preferredUnicodeRangesForLocale(locale string) unicodeRanges {
 			{start: 0xAC00, end: 0xD7AF}, // Hangul Syllables
 		}
 	case strings.HasPrefix(locale, "th"):
-		return unicodeRanges{
-			{start: 0x0E00, end: 0x0E7F}, // Thai
-		}
+		return unicodeRanges{{start: 0x0E00, end: 0x0E7F}} // Thai
 	case strings.HasPrefix(locale, "ar"), strings.HasPrefix(locale, "fa"), strings.HasPrefix(locale, "ur"):
 		return unicodeRanges{
 			{start: 0x0600, end: 0x06FF}, // Arabic
@@ -92,7 +126,25 @@ func preferredUnicodeRangesForLocale(locale string) unicodeRanges {
 			{start: 0xFB50, end: 0xFDFF}, // Arabic Presentation Forms-A
 			{start: 0xFE70, end: 0xFEFF}, // Arabic Presentation Forms-B
 		}
-	case strings.HasPrefix(locale, "ru"):
+	case strings.HasPrefix(locale, "he"):
+		return unicodeRanges{{start: 0x0590, end: 0x05FF}} // Hebrew
+	case strings.HasPrefix(locale, "hi"), strings.HasPrefix(locale, "mr"):
+		return unicodeRanges{{start: 0x0900, end: 0x097F}} // Devanagari
+	case strings.HasPrefix(locale, "bn"):
+		return unicodeRanges{{start: 0x0980, end: 0x09FF}} // Bengali
+	case strings.HasPrefix(locale, "pa"):
+		return unicodeRanges{{start: 0x0A00, end: 0x0A7F}} // Gurmukhi
+	case strings.HasPrefix(locale, "gu"):
+		return unicodeRanges{{start: 0x0A80, end: 0x0AFF}} // Gujarati
+	case strings.HasPrefix(locale, "ta"):
+		return unicodeRanges{{start: 0x0B80, end: 0x0BFF}} // Tamil
+	case strings.HasPrefix(locale, "te"):
+		return unicodeRanges{{start: 0x0C00, end: 0x0C7F}} // Telugu
+	case strings.HasPrefix(locale, "ml"):
+		return unicodeRanges{{start: 0x0D00, end: 0x0D7F}} // Malayalam
+	case strings.HasPrefix(locale, "el"):
+		return unicodeRanges{{start: 0x0370, end: 0x03FF}} // Greek
+	case strings.HasPrefix(locale, "ru"), strings.HasPrefix(locale, "uk"), strings.HasPrefix(locale, "bg"), strings.HasPrefix(locale, "sr"):
 		return unicodeRanges{
 			{start: 0x0400, end: 0x04FF}, // Cyrillic
 			{start: 0x0500, end: 0x052F}, // Cyrillic Supplement
@@ -108,16 +160,16 @@ func preferredUnicodeRangesForLocale(locale string) unicodeRanges {
 
 // selectFallbackFontByCoverage 在可用字体中按覆盖区间与字重评分选 fallback。
 // selectFallbackFontByCoverage picks fallback by coverage and weight score.
-func (fs *FontLibrary) selectFallbackFontByCoverage(target FontWeight, preferred unicodeRanges, base *FontInfo) *FontInfo {
-	best := base
-	bestScore := fs.coverageFallbackScore(base, target, preferred)
+func (fs *FontLibrary) selectFallbackFontByCoverage(preferred unicodeRanges, fontWeight FontWeight) *FontInfo {
+	var best *FontInfo = nil
+	bestScore := -1
 
 	for _, fonts := range fs.fonts {
 		for _, fi := range fonts {
 			if fi == nil || fi.FontPath == "" {
 				continue
 			}
-			score := fs.coverageFallbackScore(fi, target, preferred)
+			score := fs.coverageFallbackScore(fi, preferred, fontWeight)
 			if fi.Italic {
 				score -= 20000
 			}
@@ -127,62 +179,17 @@ func (fs *FontLibrary) selectFallbackFontByCoverage(target FontWeight, preferred
 			}
 		}
 	}
-	if best != nil {
-		return best
-	}
-	return base
+	return best
 }
 
 // coverageFallbackScore 计算 fallback 候选评分。
 // coverageFallbackScore computes score for fallback candidate selection.
-func (fs *FontLibrary) coverageFallbackScore(fi *FontInfo, target FontWeight, preferred unicodeRanges) int {
+func (fs *FontLibrary) coverageFallbackScore(fi *FontInfo, preferred unicodeRanges, fontWeight FontWeight) int {
 	preferredCoverage := fi.coverageRanges.IntersectionCount(preferred)
 	breadthScore := len(fi.coverageRanges) * 10
-	weightScore := int(2000 - misc.Abs(fi.Bold-target))
+	weightScore := int(2000 - misc.Abs(fi.Bold-fontWeight))
 	if weightScore < 0 {
 		weightScore = 0
 	}
 	return preferredCoverage + breadthScore + weightScore
-}
-
-// mustSystemFallbackBase 从系统保底 family 中找到一个可用字体，找不到返回 error。
-// mustSystemFallbackBase finds one available font from system fallback families.
-func (fs *FontLibrary) mustSystemFallbackBase() (*FontInfo, error) {
-	for _, family := range systemFallbackFamilies() {
-		if fi := fs.findFamilyFallbackFont(family); fi != nil {
-			return fi, nil
-		}
-	}
-	return nil, fmt.Errorf("system fallback fonts not found in scanned list: %v", systemFallbackFamilies())
-}
-
-// findFamilyFallbackFont 在已扫描字体中按 family 找到最合适的 regular 近似字体。
-// findFamilyFallbackFont finds a regular-like font by exact normalized family match.
-func (fs *FontLibrary) findFamilyFallbackFont(family string) *FontInfo {
-	want := normalizeFamilyName(family)
-	if want == "" {
-		return nil
-	}
-
-	fonts := fs.fonts[want]
-	if len(fonts) == 0 {
-		return nil
-	}
-
-	var best *FontInfo
-	bestScore := -1
-	for _, fi := range fonts {
-		if fi == nil || fi.FontPath == "" {
-			continue
-		}
-		score := int(1000 - misc.Abs(fi.Bold-FontWeightRegular))
-		if fi.Italic {
-			score -= 100
-		}
-		if score > bestScore {
-			best = fi
-			bestScore = score
-		}
-	}
-	return best
 }

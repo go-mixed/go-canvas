@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"path/filepath"
 	"time"
 
@@ -55,7 +56,7 @@ func main() {
 	//}
 	//fmt.Printf("[4/8] 创建容器: %v\n", time.Since(t))
 	//
-	fontLibrary, err := font.NewFontLibrary()
+	fontLibrary, err := font.NewFontLibrary(log.Default())
 	if err != nil {
 		panic(err)
 	}

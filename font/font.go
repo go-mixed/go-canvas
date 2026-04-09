@@ -34,15 +34,18 @@ type FontLibrary struct {
 	fallbackBoldInfo    *FontInfo
 	fallbackLightInfo   *FontInfo
 
+	logger misc.Logger
+
 	mutex *sync.RWMutex
 }
 
-func NewFontLibrary(paths ...string) (*FontLibrary, error) {
+func NewFontLibrary(logger misc.Logger, paths ...string) (*FontLibrary, error) {
 	fs := &FontLibrary{
 		fonts:      make(map[string][]*FontInfo),
 		matchCache: make(map[string]fontCollection),
 		faceCache:  make(map[string]xfont.Face),
 		mutex:      &sync.RWMutex{},
+		logger:     logger,
 	}
 	fs.fonts = fs.loadFonts(paths...)
 	if len(fs.fonts) == 0 {
@@ -56,6 +59,12 @@ type fontScore struct {
 	familyScore float32
 	weightScore float32
 	italicScore float32
+}
+
+func (fs *FontLibrary) logf(format string, args ...any) {
+	if fs.logger != nil {
+		fs.logger.Printf(format, args...)
+	}
 }
 
 // MatchOrFeedback 从字体列表中匹配最合适的字体
@@ -297,4 +306,44 @@ func (fs *FontLibrary) CreateFace(fi *FontInfo, fontSize int) xfont.Face {
 		return nil
 	}
 	return face
+}
+
+func (fs *FontLibrary) findFontByFamilies(families []string, fontWeight FontWeight) *FontInfo {
+	for _, family := range families {
+		if fi := fs.findFontByWeight(family, fontWeight); fi != nil {
+			return fi
+		}
+	}
+	return nil
+}
+
+// findFontByWeight 在已扫描字体中按 family 找到最接近目标字重的字体。
+// findFontByWeight finds the closest face to the target weight by exact normalized family match.
+func (fs *FontLibrary) findFontByWeight(family string, fontWeight FontWeight) *FontInfo {
+	want := normalizeFamilyName(family)
+	if want == "" {
+		return nil
+	}
+
+	fonts := fs.fonts[want]
+	if len(fonts) == 0 {
+		return nil
+	}
+
+	var best *FontInfo
+	bestScore := -1
+	for _, fi := range fonts {
+		if fi == nil || fi.FontPath == "" {
+			continue
+		}
+		score := int(1000 - misc.Abs(fi.Bold-fontWeight))
+		if fi.Italic {
+			score -= 100
+		}
+		if score > bestScore {
+			best = fi
+			bestScore = score
+		}
+	}
+	return best
 }

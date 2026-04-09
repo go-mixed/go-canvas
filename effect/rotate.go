@@ -19,7 +19,7 @@ func Rotate(inOut EffectInOut) *RotateEffect {
 		inOut:      inOut,
 		angleStart: 0,
 		angleEnd:   360,
-		scaleStart: 0.5,
+		scaleStart: 0.1,
 		scaleEnd:   1,
 		easing:     ti.DefaultEasingFunction,
 	}

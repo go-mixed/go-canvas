@@ -53,6 +53,8 @@ func (fs *FontLibrary) loadFonts(userFontPaths ...string) map[string][]*FontInfo
 			continue
 		}
 
+		fs.logf("[font-library]load font: %s", path)
+
 		if cachedEntries, ok := cache.Entries[path]; ok &&
 			len(cachedEntries) > 0 &&
 			cachedEntries[0].Size == stat.Size() &&
@@ -530,6 +532,7 @@ func (fs *FontLibrary) ReadTTCFontInfos(path string) ([]*FontInfo, error) {
 			info.coverageRanges = nil
 		}
 		infos = append(infos, info)
+		fs.logf("[font-library]read %s from %s", info.Family, path)
 	}
 	if len(infos) == 0 {
 		return nil, os.ErrInvalid

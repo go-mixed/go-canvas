@@ -4,6 +4,7 @@ package font
 
 import (
 	"os"
+	"strings"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -39,5 +40,51 @@ func userDefaultLocaleName() string {
 }
 
 func systemFallbackFamilies() []string {
-	return []string{"Arial"}
+	return []string{"Segoe UI", "Arial", "Tahoma"}
+}
+
+func localeFallbackFamilyTable(locale string) []string {
+	var table = map[string][]string{
+		"zh_cn":   {"Microsoft YaHei UI", "Microsoft YaHei", "DengXian", "SimSun", "NSimSun"},
+		"zh_sg":   {"Microsoft YaHei UI", "Microsoft YaHei", "DengXian", "SimSun", "NSimSun"},
+		"zh_tw":   {"Microsoft JhengHei UI", "Microsoft JhengHei", "PMingLiU", "MingLiU"},
+		"zh_hk":   {"Microsoft JhengHei UI", "Microsoft JhengHei", "MingLiU_HKSCS", "MingLiU"},
+		"zh_hant": {"Microsoft JhengHei UI", "Microsoft JhengHei", "PMingLiU", "MingLiU"},
+		"zh_hans": {"Microsoft YaHei UI", "Microsoft YaHei", "DengXian", "SimSun", "NSimSun"},
+		"ja_jp":   {"Yu Gothic UI", "Meiryo", "MS UI Gothic"},
+		"ko_kr":   {"Malgun Gothic", "Gulim", "Dotum"},
+		"ar":      {"Segoe UI", "Tahoma", "Arial"},
+		"he":      {"Segoe UI", "Arial", "Tahoma"},
+		"th":      {"Leelawadee UI", "Tahoma", "Segoe UI"},
+		"hi":      {"Nirmala UI", "Mangal", "Segoe UI"},
+		"bn":      {"Nirmala UI", "Vrinda", "Segoe UI"},
+		"ta":      {"Nirmala UI", "Latha", "Segoe UI"},
+		"te":      {"Nirmala UI", "Gautami", "Segoe UI"},
+		"ml":      {"Nirmala UI", "Kartika", "Segoe UI"},
+		"gu":      {"Nirmala UI", "Shruti", "Segoe UI"},
+		"pa":      {"Nirmala UI", "Raavi", "Segoe UI"},
+		"mr":      {"Nirmala UI", "Mangal", "Segoe UI"},
+		"ru":      {"Segoe UI", "Arial", "Tahoma"},
+		"uk":      {"Segoe UI", "Arial", "Tahoma"},
+		"bg":      {"Segoe UI", "Arial", "Tahoma"},
+		"sr":      {"Segoe UI", "Arial", "Tahoma"},
+		"el":      {"Segoe UI", "Arial", "Tahoma"},
+		"vi":      {"Segoe UI", "Arial", "Tahoma"},
+		"tr":      {"Segoe UI", "Arial", "Tahoma"},
+		"pl":      {"Segoe UI", "Arial", "Tahoma"},
+		"cs":      {"Segoe UI", "Arial", "Tahoma"},
+		"hu":      {"Segoe UI", "Arial", "Tahoma"},
+		"ro":      {"Segoe UI", "Arial", "Tahoma"},
+		"id":      {"Segoe UI", "Arial", "Tahoma"},
+		"ms":      {"Segoe UI", "Arial", "Tahoma"},
+		"en":      {"Segoe UI", "Arial", "Tahoma"},
+	}
+
+	v, ok := table[locale]
+	if !ok {
+		if i := strings.IndexByte(locale, '_'); i > 0 {
+			return table[locale[:i]]
+		}
+	}
+	return v
 }
