@@ -35,6 +35,10 @@ func BuildRichTextLines(fs *FontLibrary, opts *RichTextOptions) *RichText {
 	if opts == nil {
 		opts = RTOpt()
 	}
+	if opts.logger == nil {
+		opts.SetLogger(fs.logger)
+	}
+
 	return &RichText{
 		fontLibrary: fs,
 		lines:       misc.NewList[TextSegments](),

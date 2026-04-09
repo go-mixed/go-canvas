@@ -16,17 +16,20 @@ func (fs *FontLibrary) initFallbackPaths() error {
 
 	locale := systemLanguage()
 	preferred := preferredUnicodeRangesForLocale(locale)
+	systemFamilies := localeFallbackFamilyTable(locale)
+
+	fs.logf("[font-library]locale \"%s\", font families: %v", locale, systemFamilies)
 
 	var err error
-	fs.fallbackRegularInfo, err = fs.findFontByLocale(locale, preferred, FontWeightRegular)
+	fs.fallbackRegularInfo, err = fs.findFallbackFont(systemFamilies, preferred, FontWeightRegular)
 	if err != nil {
 		return err
 	}
-	fs.fallbackBoldInfo, err = fs.findFontByLocale(locale, preferred, FontWeightBold)
+	fs.fallbackBoldInfo, err = fs.findFallbackFont(systemFamilies, preferred, FontWeightBold)
 	if err != nil {
 		return err
 	}
-	fs.fallbackLightInfo, err = fs.findFontByLocale(locale, preferred, FontWeightLight)
+	fs.fallbackLightInfo, err = fs.findFallbackFont(systemFamilies, preferred, FontWeightLight)
 	// Light 失败时回退到 Regular，避免初始化中断。
 	if err != nil {
 		fs.fallbackLightInfo = fs.fallbackRegularInfo
@@ -65,25 +68,27 @@ func systemLanguage() string {
 	return strings.ReplaceAll(v, "-", "_")
 }
 
-// findFontByLocale 按顺序选择 fallback：
+// findFallbackFont 按顺序选择 fallback：
 // 1) locale 对应家族表
 // 2) coverage 评分
 // 3) systemFallbackFamilies 兜底
-func (fs *FontLibrary) findFontByLocale(locale string, preferred unicodeRanges, fontWeight FontWeight) (*FontInfo, error) {
-	families := localeFallbackFamilyTable(locale)
-	fi := fs.findFontByFamilies(families, fontWeight)
+func (fs *FontLibrary) findFallbackFont(systemFamilies []string, preferred unicodeRanges, fontWeight FontWeight) (*FontInfo, error) {
+	fi := fs.findFontByFamilies(systemFamilies, fontWeight)
 	if fi != nil {
+		fs.logf("[font-library]set fallback %d font: [%s] from system locale", fontWeight, fi.Family)
 		return fi, nil
 	}
 
 	fi = fs.selectFallbackFontByCoverage(preferred, fontWeight)
 	if fi != nil {
+		fs.logf("[font-library]set fallback %d font: [%s] from coverage", fontWeight, fi.Family)
 		return fi, nil
 	}
 
-	families = systemFallbackFamilies()
-	fi = fs.findFontByFamilies(families, fontWeight)
+	systemFamilies = systemFallbackFamilies()
+	fi = fs.findFontByFamilies(systemFamilies, fontWeight)
 	if fi != nil {
+		fs.logf("[font-library]set fallback %d font: [%s] from system fallback", fontWeight, fi.Family)
 		return fi, nil
 	}
 

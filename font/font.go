@@ -130,8 +130,12 @@ func (fs *FontLibrary) MatchRuneOrFeedback(base *FontInfo, rn rune) *FontInfo {
 
 }
 
-// rankFonts 为主字体匹配排序：家族优先，其次粗细和斜体。
-// rankFonts ranks base font candidates: family first, then weight/italic.
+// rankFonts 为候选字体做排序匹配：
+// - rn == 0：用于常规匹配（不做字符覆盖校验），按 family/weight/italic 排序。
+// - rn != 0：用于缺字补字（必须覆盖该 rune），再按 weight/italic/family 排序。
+// rankFonts ranks candidates for two paths:
+// - rn == 0: base matching without glyph-coverage filtering.
+// - rn != 0: rune-aware fallback matching that requires coverage for the rune.
 func (fs *FontLibrary) rankFonts(fontFamily string, weight FontWeight, italic bool, rn rune) []fontScore {
 	var matches []fontScore
 
@@ -317,8 +321,10 @@ func (fs *FontLibrary) findFontByFamilies(families []string, fontWeight FontWeig
 	return nil
 }
 
-// findFontByWeight 在已扫描字体中按 family 找到最接近目标字重的字体。
-// findFontByWeight finds the closest face to the target weight by exact normalized family match.
+// findFontByWeight 是 family 内精准匹配入口：
+// 仅在指定 family 中按目标字重挑选最接近字体，不参与 rune 覆盖判断与全局排序。
+// findFontByWeight is the precise family-local matcher:
+// it picks the closest weight inside one family only, without rune coverage checks.
 func (fs *FontLibrary) findFontByWeight(family string, fontWeight FontWeight) *FontInfo {
 	want := normalizeFamilyName(family)
 	if want == "" {
