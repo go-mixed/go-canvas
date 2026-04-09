@@ -62,7 +62,7 @@ func (fs *FontLibrary) loadFonts(userFontPaths ...string) map[string][]*FontInfo
 			cachedEntries[0].Family != "" {
 			for _, entry := range cachedEntries {
 				info := fs.fontInfoFromEntry(entry)
-				key := normalizeFamilyName(info.Family)
+				key := info.Family
 				if key == "" {
 					key = info.Family
 				}
@@ -83,7 +83,7 @@ func (fs *FontLibrary) loadFonts(userFontPaths ...string) map[string][]*FontInfo
 		}
 		entries := make([]fontIndexEntry, 0, len(infos))
 		for _, info := range infos {
-			key := normalizeFamilyName(info.Family)
+			key := info.Family
 			if key == "" {
 				key = info.Family
 			}
@@ -512,7 +512,7 @@ func (fs *FontLibrary) ReadTTCFontInfos(path string) ([]*FontInfo, error) {
 		info.FaceIndex = sf.faceIndex
 		// 从 name table 中选择最可靠的 Family 名称，并过滤乱码候选。
 		// Pick the most reliable family name from name table and filter mojibake-like candidates.
-		info.Family = pickFontFamilyName(sf.font, path)
+		info.Family = normalizeFamilyName(pickFontFamilyName(sf.font, path))
 
 		// 判断粗体和斜体（优先 PreferredSubfamily）
 		// Determine weight/italic by subfamily (prefer PreferredSubfamily).

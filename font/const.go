@@ -1,6 +1,9 @@
 package font
 
-import "sort"
+import (
+	"sort"
+	"strings"
+)
 
 type FontWeight int16
 
@@ -140,4 +143,20 @@ func (c fontCollection) matchRuneFont(rn rune) *FontInfo {
 
 func (c fontCollection) appendRuneFont(font *FontInfo) {
 	c.runeFonts = append(c.runeFonts, font)
+}
+
+func normalizeFamilyNames(ss []string) []string {
+	var result []string = make([]string, len(ss))
+	for i, s := range ss {
+		result[i] = normalizeFamilyName(s)
+	}
+	return result
+}
+
+func normalizeFamilyName(s string) string {
+	fields := strings.Fields(strings.ToLower(strings.TrimSpace(s)))
+	if len(fields) == 0 {
+		return ""
+	}
+	return strings.Join(fields, " ")
 }

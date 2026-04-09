@@ -209,8 +209,8 @@ func (fs *FontLibrary) rankFonts(fontFamily string, weight FontWeight, italic bo
 }
 
 func fontFamilySimilarity(family1, family2 string) float32 {
-	n1 := normalizeFamilyName(family1)
-	n2 := normalizeFamilyName(family2)
+	n1 := family1
+	n2 := family2
 	if n1 == "" || n2 == "" {
 		return 0
 	}
@@ -247,14 +247,6 @@ func fontFamilySimilarity(family1, family2 string) float32 {
 		return 0.3
 	}
 	return 0
-}
-
-func normalizeFamilyName(s string) string {
-	fields := strings.Fields(strings.ToLower(strings.TrimSpace(s)))
-	if len(fields) == 0 {
-		return ""
-	}
-	return strings.Join(fields, " ")
 }
 
 func familyAncestors(normalized string) []string {
@@ -326,7 +318,7 @@ func (fs *FontLibrary) findFontByFamilies(families []string, fontWeight FontWeig
 // findFontByWeight is the precise family-local matcher:
 // it picks the closest weight inside one family only, without rune coverage checks.
 func (fs *FontLibrary) findFontByWeight(family string, fontWeight FontWeight) *FontInfo {
-	want := normalizeFamilyName(family)
+	want := family
 	if want == "" {
 		return nil
 	}

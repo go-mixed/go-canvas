@@ -169,7 +169,7 @@ func (r *RichText) parseAttributes(tag string, opts *RichTextFontStyle) {
 				opts.FontSize = int(size)
 			}
 		case "font-family":
-			opts.FontFamily = value
+			opts.FontFamily = normalizeFamilyName(value)
 		}
 	}
 }
@@ -199,9 +199,9 @@ func (r *RichText) createSegment(text string, opts RichTextFontStyle) *TextSegme
 		weight = FontWeightBold
 	}
 	fi := r.fontLibrary.MatchOrFeedback(opts.FontFamily, weight, opts.Italic)
-	if normalizeFamilyName(opts.FontFamily) != normalizeFamilyName(fi.Family) {
+	if opts.FontFamily != fi.Family {
 		r.logf(
-			"[richtext.fallback.base] req=%q got=%q bold=%d italic=%t text=%q",
+			"[richtext.fallback] req=%q got=%q bold=%d italic=%t text=%q",
 			opts.FontFamily, fi.Family, weight, opts.Italic, summarizeTextForLog(text),
 		)
 	}

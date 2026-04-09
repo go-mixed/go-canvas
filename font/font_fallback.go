@@ -16,9 +16,9 @@ func (fs *FontLibrary) initFallbackPaths() error {
 
 	locale := systemLanguage()
 	preferred := preferredUnicodeRangesForLocale(locale)
-	systemFamilies := localeFallbackFamilyTable(locale)
+	systemFamilies := normalizeFamilyNames(localeFallbackFamilyTable(locale))
 
-	fs.logf("[font-library]locale \"%s\", font families: %v", locale, systemFamilies)
+	fs.logf("[font-library]locale \"%s\", font families: %q", locale, systemFamilies)
 
 	var err error
 	fs.fallbackRegularInfo, err = fs.findFallbackFont(systemFamilies, preferred, FontWeightRegular)
@@ -85,7 +85,7 @@ func (fs *FontLibrary) findFallbackFont(systemFamilies []string, preferred unico
 		return fi, nil
 	}
 
-	systemFamilies = systemFallbackFamilies()
+	systemFamilies = normalizeFamilyNames(systemFallbackFamilies())
 	fi = fs.findFontByFamilies(systemFamilies, fontWeight)
 	if fi != nil {
 		fs.logf("[font-library]set fallback %d font: [%s] from system fallback", fontWeight, fi.Family)
