@@ -13,8 +13,8 @@ type RenderLayerOptions struct {
 	MinY, MaxY     int32   // 包围盒 y 范围
 }
 
-// RenderLayerNoMask 渲染层（无遮罩）
-func (m *AotModule) RenderLayerNoMask(texture *TiImage, screen *TiImage, opts RenderLayerOptions) {
+// AsyncRenderLayerNoMask 渲染层（无遮罩）
+func (m *AotModule) AsyncRenderLayerNoMask(texture *TiImage, screen *TiImage, opts RenderLayerOptions) {
 	kernel := m.getCache("render_layer_no_mask")
 	kernel.Launch().
 		ArgNdArray(texture).
@@ -24,11 +24,16 @@ func (m *AotModule) RenderLayerNoMask(texture *TiImage, screen *TiImage, opts Re
 		ArgFloat32(opts.Width).ArgFloat32(opts.Height).
 		ArgInt32(opts.MinX).ArgInt32(opts.MaxX).ArgInt32(opts.MinY).ArgInt32(opts.MaxY).
 		ArgNdArray(screen).
-		Run()
+		RunAsync()
 }
 
-// RenderLayerWithMask 渲染层（带遮罩）
-func (m *AotModule) RenderLayerWithMask(texture, mask, screen *TiImage, opts RenderLayerOptions) {
+func (m *AotModule) RenderLayerNoMask(texture *TiImage, screen *TiImage, opts RenderLayerOptions) {
+	m.AsyncRenderLayerNoMask(texture, screen, opts)
+	m.runtime.Wait()
+}
+
+// AsyncRenderLayerWithMask 渲染层（带遮罩）
+func (m *AotModule) AsyncRenderLayerWithMask(texture, mask, screen *TiImage, opts RenderLayerOptions) {
 	kernel := m.getCache("render_layer_with_mask")
 	kernel.Launch().
 		ArgNdArray(texture).
@@ -39,5 +44,10 @@ func (m *AotModule) RenderLayerWithMask(texture, mask, screen *TiImage, opts Ren
 		ArgInt32(opts.MinX).ArgInt32(opts.MaxX).ArgInt32(opts.MinY).ArgInt32(opts.MaxY).
 		ArgNdArray(mask).
 		ArgNdArray(screen).
-		Run()
+		RunAsync()
+}
+
+func (m *AotModule) RenderLayerWithMask(texture, mask, screen *TiImage, opts RenderLayerOptions) {
+	m.AsyncRenderLayerWithMask(texture, mask, screen, opts)
+	m.runtime.Wait()
 }

@@ -2,6 +2,8 @@ package ti
 
 import (
 	"image/color"
+
+	"github.com/go-mixed/go-taichi/f16"
 )
 
 // BGR 0xBBGGRR
@@ -25,6 +27,16 @@ func f32ColorToU8(v float32) uint32 {
 		return 0
 	}
 	return uint32(v * 255)
+}
+
+func f16ColorToU8(v f16.Float16) uint32 {
+	vv := v.Float32()
+	if vv > 0.999999 {
+		return 255
+	} else if vv < 0.000001 {
+		return 0
+	}
+	return uint32(vv * 255)
 }
 
 func (C BGR) RGBA() (r, g, b, a uint32) {
@@ -78,20 +90,26 @@ func TiColorToColor(r, g, b, a float32) color.Color {
 	return RGBA(f32ColorToU8(r)<<24 | f32ColorToU8(g)<<16 | f32ColorToU8(b)<<8 | f32ColorToU8(a))
 }
 
-// ExpandFColor 将 Go 颜色转换为 0-1 float 颜色
-func ExpandFColor(color color.Color) (r, g, b, a float32) {
+// ExpandF32Color 将 Go 颜色转换为 0-1 float32 颜色
+func ExpandF32Color(color color.Color) (r, g, b, a float32) {
 	ir, ig, ib, ia := color.RGBA()
 	return float32(ir) / 65535., float32(ig) / 65535., float32(ib) / 65535., float32(ia) / 65535.
 }
 
-// ExpandUColor 将 Go 颜色转换为 0xff 颜色
-func ExpandUColor(color color.Color) (r, g, b, a uint32) {
+// ExpandF16Color 将 Go 颜色转换为 0-1 float16 颜色
+func ExpandF16Color(color color.Color) (r, g, b, a float32) {
+	fr, fg, fb, fa := ExpandF32Color(color)
+	return fr, fg, fb, fa
+}
+
+// ExpandU8Color 将 Go 颜色转换为 0xff 颜色
+func ExpandU8Color(color color.Color) (r, g, b, a uint32) {
 	ir, ig, ib, ia := color.RGBA()
 	return u16ColorTo8(ir), u16ColorTo8(ig), u16ColorTo8(ib), u16ColorTo8(ia)
 }
 
 func Color2TiColor(color color.Color) TiColor {
-	r, g, b, a := ExpandFColor(color)
+	r, g, b, a := ExpandF32Color(color)
 	return TiColor{r, g, b, a}
 }
 

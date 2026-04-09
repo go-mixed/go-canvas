@@ -2,20 +2,30 @@ package ti
 
 import "image/color"
 
-func (m *AotModule) TiImageToBgra(input *TiImage, output *BgraImage) {
+func (m *AotModule) AsyncTiImageToBgra(input *TiImage, output *BgraImage) {
 	kernel := m.getCache("ti_image_to_bgra")
-	kernel.Launch().ArgNdArray(input).ArgNdArray(output).Run()
+	kernel.Launch().ArgNdArray(input).ArgNdArray(output).RunAsync()
 }
 
-// FillColor 填充纹理
-func (m *AotModule) FillColor(texture *TiImage, c color.Color) {
+func (m *AotModule) TiImageToBgra(input *TiImage, output *BgraImage) {
+	m.AsyncTiImageToBgra(input, output)
+	m.runtime.Wait()
+}
+
+// AsyncFillColor 填充纹理
+func (m *AotModule) AsyncFillColor(texture *TiImage, c color.Color) {
 	kernel := m.getCache("fill_color")
 
-	kernel.Launch().ArgNdArray(texture).ArgVectorFloat32(Color2TiColor(c)...).Run()
+	kernel.Launch().ArgNdArray(texture).ArgVectorFloat32(Color2TiColor(c)...).RunAsync()
 }
 
-// Blur 对纹理进行模糊处理
-func (m *AotModule) Blur(input *TiImage, output *TiImage, mode BlurMode, radius int32) {
+func (m *AotModule) FillColor(texture *TiImage, c color.Color) {
+	m.AsyncFillColor(texture, c)
+	m.runtime.Wait()
+}
+
+// AsyncBlur 对纹理进行模糊处理
+func (m *AotModule) AsyncBlur(input *TiImage, output *TiImage, mode BlurMode, radius int32) {
 	var kernelName string
 	switch mode {
 	case BlurModeBox:
@@ -31,5 +41,10 @@ func (m *AotModule) Blur(input *TiImage, output *TiImage, mode BlurMode, radius 
 		ArgNdArray(input).
 		ArgNdArray(output).
 		ArgInt32(radius).
-		Run()
+		RunAsync()
+}
+
+func (m *AotModule) Blur(input *TiImage, output *TiImage, mode BlurMode, radius int32) {
+	m.AsyncBlur(input, output, mode, radius)
+	m.runtime.Wait()
 }

@@ -19,8 +19,9 @@ var cuda []byte
 var vulkan []byte
 
 type AotModule struct {
-	module *taichi.AotModule
-	cache  map[string]*taichi.Kernel
+	module  *taichi.AotModule
+	cache   map[string]*taichi.Kernel
+	runtime *taichi.Runtime
 }
 
 // LoadAotModule 读取 AOT 模块
@@ -79,8 +80,9 @@ func LoadAotModule(runtime *taichi.Runtime) (*AotModule, error) {
 	}
 
 	return &AotModule{
-		module: m,
-		cache:  cache,
+		module:  m,
+		cache:   cache,
+		runtime: runtime,
 	}, nil
 }
 

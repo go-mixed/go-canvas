@@ -44,8 +44,8 @@ func computeResizeScaleAndOffset(srcWidth, srcHeight, dstWidth, dstHeight float3
 	}
 }
 
-// Resize 缩放纹理
-func (m *AotModule) Resize(input *TiImage, output *TiImage, opts ResizeOptions) {
+// AsyncResize 缩放纹理
+func (m *AotModule) AsyncResize(input *TiImage, output *TiImage, opts ResizeOptions) {
 	// 获取源和目标的尺寸
 	srcShape := input.Shape()
 	dstShape := output.Shape()
@@ -78,5 +78,10 @@ func (m *AotModule) Resize(input *TiImage, output *TiImage, opts ResizeOptions) 
 		ArgFloat32(dstWidth).ArgFloat32(dstHeight).
 		ArgFloat32(params.scaleX).ArgFloat32(params.scaleY).
 		ArgFloat32(params.offsetX).ArgFloat32(params.offsetY).
-		Run()
+		RunAsync()
+}
+
+func (m *AotModule) Resize(input *TiImage, output *TiImage, opts ResizeOptions) {
+	m.AsyncResize(input, output, opts)
+	m.runtime.Wait()
 }

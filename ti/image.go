@@ -75,7 +75,7 @@ func UploadImageToTexture(texture *TiImage, img image.Image, imgOffset Point[int
 					continue
 				}
 
-				r, g, b, a := ExpandFColor(img.At(imgX, imgY))
+				r, g, b, a := ExpandF32Color(img.At(imgX, imgY))
 				idx, _ := texture.GetOffset(x, y)
 				data[idx] = r
 				data[idx+1] = g

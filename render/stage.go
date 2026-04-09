@@ -15,15 +15,23 @@ type Stage struct {
 	mutex     *sync.RWMutex
 
 	imageTexture *ti.BgraImage
+
+	options stageOptions
 }
 
 var _ IParent = (*Stage)(nil)
 
 // NewStage 创建舞台，注意：调用 Stage.Release 时，不会释放 Renderer
-func NewStage(renderer *Renderer, width, height int) (*Stage, error) {
+func NewStage(renderer *Renderer, width, height int, opts ...stageOptFunc) (*Stage, error) {
+	options := stageOptions{}
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	s := &Stage{
 		renderer: renderer,
 		mutex:    &sync.RWMutex{},
+		options:  options,
 	}
 
 	container, err := NewContainer(SelfRelease(renderer), ti.Attr().SetWH(width, height))
@@ -32,19 +40,28 @@ func NewStage(renderer *Renderer, width, height int) (*Stage, error) {
 	}
 	s.container = container
 
-	imageTexture, err := ti.NewBgraImage(renderer.Runtime(), uint32(height), uint32(width))
-	if err != nil {
-		return nil, errors.Wrapf(err, "create image texture failed")
+	if options.enabledRAWImage {
+		imageTexture, err := ti.NewBgraImage(renderer.Runtime(), uint32(height), uint32(width))
+		if err != nil {
+			s.container.Release()
+			return nil, errors.Wrapf(err, "create image texture failed")
+		}
+		s.imageTexture = imageTexture
 	}
-
-	s.imageTexture = imageTexture
 
 	return s, nil
 }
 
-// Render 修改之后，需要触发渲染
+// Render 修改之后，需要调用本函数来渲染，之后才能得到渲染结果
 func (s *Stage) Render(frameIndex int) {
 	s.container.Render(frameIndex)
+
+	if s.options.enabledRAWImage {
+		// 将 ti image 转换为 bgra image
+		s.Renderer().Module().TiImageToBgra(s.Texture(), s.imageTexture)
+	}
+
+	s.renderer.runtime.Wait()
 }
 
 func (s *Stage) IsDirty() bool {
@@ -57,10 +74,10 @@ func (s *Stage) HasAnimationAt(frameIndex int) bool {
 	return s.container.HasAnimationAt(frameIndex)
 }
 
-func (s *Stage) ToBgraImage(buffer []uint32) error {
-	// 将 ti image 转换为 bgra image
-	s.Renderer().Module().TiImageToBgra(s.Texture(), s.imageTexture)
-
+func (s *Stage) GetBgraImage(buffer []uint32) error {
+	if s.imageTexture == nil {
+		return errors.New("image texture is nil")
+	}
 	return s.imageTexture.MapUint32(func(data []uint32) error {
 		copy(buffer, data)
 		return nil
@@ -100,7 +117,7 @@ func (s *Stage) Release() {
 		s.container.Release()
 	}
 
-	if s.imageTexture != nil {
+	if s.options.enabledRAWImage {
 		s.imageTexture.Release()
 	}
 }

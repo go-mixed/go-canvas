@@ -32,7 +32,7 @@ func main() {
 
 	// 2. 创建舞台
 	t = time.Now()
-	stage, err := render.NewStage(renderer, rect.Width(), rect.Height())
+	stage, err := render.NewStage(renderer, rect.Width(), rect.Height(), render.WithRawImage(true))
 	if err != nil {
 		panic(err)
 	}
@@ -114,7 +114,7 @@ func main() {
 	fmt.Printf("[保存] out.png: %v\n", time.Since(t))
 
 	var buf = make([]uint32, stage.Width()*stage.Height())
-	err = stage.ToBgraImage(buf)
+	err = stage.GetBgraImage(buf)
 	if err != nil {
 		panic(err)
 	}
