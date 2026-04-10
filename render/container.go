@@ -130,7 +130,7 @@ func (c *Container) Render(frameIndex int) {
 	}
 
 	// 置空为透明
-	c.Renderer().Module().FillColor(c.texture, color.Transparent)
+	c.Renderer().Module().AsyncFillColor(c.texture, color.Transparent)
 
 	w, h := c.attribute.Width(), c.attribute.Height()
 	relativeContainerRect := ti.RectWH(0, 0, w, h)
@@ -178,14 +178,14 @@ func (c *Container) Render(frameIndex int) {
 		}
 
 		if mask != nil {
-			c.parent.Renderer().Module().RenderLayerWithMask(
+			c.parent.Renderer().Module().AsyncRenderLayerWithMask(
 				childTexture,
 				mask.Texture(),
 				c.texture,
 				options,
 			)
 		} else {
-			c.parent.Renderer().Module().RenderLayerNoMask(
+			c.parent.Renderer().Module().AsyncRenderLayerNoMask(
 				childTexture,
 				c.texture,
 				options,

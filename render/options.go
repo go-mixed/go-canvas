@@ -1,7 +1,10 @@
 package render
 
+import "github.com/go-mixed/go-canvas/misc"
+
 type stageOptions struct {
 	enabledRAWImage bool
+	logger          misc.Logger
 }
 
 type stageOptFunc func(o *stageOptions)
@@ -10,5 +13,11 @@ type stageOptFunc func(o *stageOptions)
 func WithRawImage(v bool) stageOptFunc {
 	return func(o *stageOptions) {
 		o.enabledRAWImage = v
+	}
+}
+
+func WithLogger(logger misc.Logger) stageOptFunc {
+	return func(o *stageOptions) {
+		o.logger = logger
 	}
 }

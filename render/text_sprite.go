@@ -79,9 +79,7 @@ func (s *TextSprite) SetText(text string) error {
 			return
 		}
 
-		if s.texture != nil {
-			s.texture.Release()
-		}
+		s.addGarbageTexture(s.texture)
 		s.texture = texture
 		s.attribute.SetWH(width, height)
 		s.attribute.SetCx(width / 2)
