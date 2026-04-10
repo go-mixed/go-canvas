@@ -1,5 +1,7 @@
 package ti
 
+import "github.com/go-mixed/go-canvas/misc"
+
 // RenderLayerOptions 渲染层选项
 type RenderLayerOptions struct {
 	X, Y           float32 // 相对屏幕的偏移
@@ -13,8 +15,27 @@ type RenderLayerOptions struct {
 	MinY, MaxY     int32   // 包围盒 y 范围
 }
 
+func (opts *RenderLayerOptions) isNoAffinePath() bool {
+	return misc.NumberEqual(opts.ScaleX, 1.0, misc.Epsilon) &&
+		misc.NumberEqual(opts.ScaleY, 1.0, misc.Epsilon) &&
+		misc.NumberEqual(opts.Rotation, 0.0, misc.Epsilon)
+}
+
 // AsyncRenderLayerNoMask 渲染层（无遮罩）
 func (m *AotModule) AsyncRenderLayerNoMask(texture *TiImage, screen *TiImage, opts RenderLayerOptions) {
+	if opts.isNoAffinePath() {
+		kernel := m.getCache("render_layer_no_affine")
+		kernel.Launch().
+			ArgNdArray(texture).
+			ArgFloat32(opts.X).ArgFloat32(opts.Y).
+			ArgFloat32(opts.Alpha).
+			ArgFloat32(opts.Width).ArgFloat32(opts.Height).
+			ArgInt32(opts.MinX).ArgInt32(opts.MaxX).ArgInt32(opts.MinY).ArgInt32(opts.MaxY).
+			ArgNdArray(screen).
+			RunAsync()
+		return
+	}
+
 	kernel := m.getCache("render_layer_no_mask")
 	kernel.Launch().
 		ArgNdArray(texture).
@@ -34,6 +55,20 @@ func (m *AotModule) RenderLayerNoMask(texture *TiImage, screen *TiImage, opts Re
 
 // AsyncRenderLayerWithMask 渲染层（带遮罩）
 func (m *AotModule) AsyncRenderLayerWithMask(texture, mask, screen *TiImage, opts RenderLayerOptions) {
+	if opts.isNoAffinePath() {
+		kernel := m.getCache("render_layer_no_affine_with_mask")
+		kernel.Launch().
+			ArgNdArray(texture).
+			ArgFloat32(opts.X).ArgFloat32(opts.Y).
+			ArgFloat32(opts.Alpha).
+			ArgFloat32(opts.Width).ArgFloat32(opts.Height).
+			ArgInt32(opts.MinX).ArgInt32(opts.MaxX).ArgInt32(opts.MinY).ArgInt32(opts.MaxY).
+			ArgNdArray(mask).
+			ArgNdArray(screen).
+			RunAsync()
+		return
+	}
+
 	kernel := m.getCache("render_layer_with_mask")
 	kernel.Launch().
 		ArgNdArray(texture).

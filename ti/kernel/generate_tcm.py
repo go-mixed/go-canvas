@@ -28,7 +28,12 @@ parent_dir = Path(__file__).parent.parent.parent
 if str(parent_dir) not in sys.path:
     sys.path.insert(0, str(parent_dir))
 
-from ti.kernel.layer import render_layer_no_mask, render_layer_with_mask
+from ti.kernel.layer import (
+    render_layer_no_affine,
+    render_layer_no_affine_with_mask,
+    render_layer_no_mask,
+    render_layer_with_mask,
+)
 from ti.kernel.image import (
     ti_image_to_bgra,
     fill_color,
@@ -59,6 +64,8 @@ from ti.kernel.mask import (
 
 # 要导出的 kernel 列表
 kernels = [
+    render_layer_no_affine,
+    render_layer_no_affine_with_mask,
     render_layer_no_mask,
     render_layer_with_mask,
     ti_image_to_bgra,

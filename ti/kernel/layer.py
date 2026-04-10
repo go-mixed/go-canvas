@@ -239,6 +239,73 @@ def render_layer_with_mask1(
         screen[x_screen, y_screen] = new_color
 
 @ti.kernel
+def render_layer_no_affine(
+        texture: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),
+        x: ti.f32, y: ti.f32,
+        alpha: ti.f32,
+        width: ti.f32, height: ti.f32,
+        min_x: ti.i32, max_x: ti.i32,
+        min_y: ti.i32, max_y: ti.i32,
+        screen: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),
+):
+    """
+    渲染层（无遮罩，平移-only fast path，无缩放无旋转）
+    """
+    screen_w, screen_h = screen.shape
+    max_x1 = ti.math.min(max_x, screen_w)
+    max_y1 = ti.math.min(max_y, screen_h)
+
+    for x_screen, y_screen in ti.ndrange((min_x, max_x1), (min_y, max_y1)):
+        tex_x_f = ti.f32(x_screen) - x
+        tex_y_f = ti.f32(y_screen) - y
+
+        if 0 <= tex_x_f < width and 0 <= tex_y_f < height:
+            screen_color = screen[x_screen, y_screen]
+            new_color = sample_and_blend(
+                texture, tex_x_f, tex_y_f, width, height,
+                alpha, 0, screen_color, 1.0
+            )
+            if new_color.w > 0:
+                screen[x_screen, y_screen] = new_color
+
+
+@ti.kernel
+def render_layer_no_affine_with_mask(
+        texture: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),
+        x: ti.f32, y: ti.f32,
+        alpha: ti.f32,
+        width: ti.f32, height: ti.f32,
+        min_x: ti.i32, max_x: ti.i32,
+        min_y: ti.i32, max_y: ti.i32,
+        mask: ti.types.ndarray(dtype=ti.f32, ndim=2),
+        screen: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),
+):
+    """
+    渲染层（带遮罩，平移-only fast path，无缩放无旋转）
+    """
+    screen_w, screen_h = screen.shape
+    max_x1 = ti.math.min(max_x, screen_w)
+    max_y1 = ti.math.min(max_y, screen_h)
+
+    for x_screen, y_screen in ti.ndrange((min_x, max_x1), (min_y, max_y1)):
+        tex_x_f = ti.f32(x_screen) - x
+        tex_y_f = ti.f32(y_screen) - y
+
+        if 0 <= tex_x_f < width and 0 <= tex_y_f < height:
+            screen_color = screen[x_screen, y_screen]
+            tex_x_i = ti.cast(tex_x_f, ti.i32)
+            tex_y_i = ti.cast(tex_y_f, ti.i32)
+            mask_value = mask[tex_x_i, tex_y_i]
+
+            new_color = sample_and_blend(
+                texture, tex_x_f, tex_y_f, width, height,
+                alpha, 0, screen_color, mask_value
+            )
+            if new_color.w > 0:
+                screen[x_screen, y_screen] = new_color
+
+
+@ti.kernel
 def render_layer_no_mask(
         texture: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),
         x: ti.f32, y: ti.f32,

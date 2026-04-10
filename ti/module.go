@@ -52,6 +52,8 @@ func LoadAotModule(runtime *taichi.Runtime) (*AotModule, error) {
 		"resize_nearest", "resize_bilinear", "resize_bicubic", "resize_lanczos",
 		"blur_box", "blur_gaussian", "blur_mosaic",
 
+		"render_layer_no_affine",
+		"render_layer_no_affine_with_mask",
 		"render_layer_no_mask",
 		"render_layer_with_mask",
 		"compute_normalized_coords",
