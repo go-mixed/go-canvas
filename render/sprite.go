@@ -3,7 +3,7 @@ package render
 import (
 	"math"
 
-	"github.com/go-mixed/go-canvas/misc"
+	"github.com/go-mixed/go-canvas/internel/misc"
 	"github.com/go-mixed/go-canvas/ti"
 )
 

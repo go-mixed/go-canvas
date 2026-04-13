@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/go-mixed/go-canvas/font"
-	"github.com/go-mixed/go-canvas/misc"
+	"github.com/go-mixed/go-canvas/internel/misc"
 	"github.com/go-mixed/go-canvas/render"
 	"github.com/go-mixed/go-canvas/ti"
 	"github.com/go-mixed/go-taichi/taichi"

@@ -1,7 +1,7 @@
 package ti
 
 import (
-	"github.com/go-mixed/go-canvas/misc"
+	"github.com/go-mixed/go-canvas/internel/misc"
 )
 
 // EasingFunction 缓动函数类型，接受 [0,1] 范围的输入，返回缓动后的值

@@ -3,6 +3,7 @@ package font
 import (
 	"image/color"
 
+	"github.com/go-mixed/go-canvas/internel/misc"
 	"github.com/go-mixed/go-canvas/ti"
 )
 
@@ -43,7 +44,7 @@ func RTOpt() *RichTextOptions {
 			VAlign: ti.VAlignMiddle,
 		},
 		fontStyle: RichTextFontStyle{
-			FontFamily: "sans-serif",
+			FontFamily: "",
 			FontSize:   16,
 			Color:      color.Black,
 			Bold:       false,
@@ -88,7 +89,7 @@ func (r *RichTextOptions) SetFontSize(fontSize int) *RichTextOptions {
 }
 
 func (r *RichTextOptions) SetFontFamily(fontFamily string) *RichTextOptions {
-	r.fontStyle.FontFamily = fontFamily
+	r.fontStyle.FontFamily = normalizeFamilyName(fontFamily)
 	return r
 }
 
@@ -143,5 +144,12 @@ func (r *RichTextOptions) SetSize(width, height int) *RichTextOptions {
 	}
 	r.width = width
 	r.height = height
+	return r
+}
+
+// SetLogger 设置 RichText 日志器；传 nil 表示关闭日志输出。
+// SetLogger sets RichText logger; nil disables logging.
+func (r *RichTextOptions) SetLogger(logger misc.Logger) *RichTextOptions {
+	r.logger = logger
 	return r
 }

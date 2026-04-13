@@ -4,7 +4,7 @@ import (
 	"image/color"
 	"math"
 
-	"github.com/go-mixed/go-canvas/misc"
+	"github.com/go-mixed/go-canvas/internel/misc"
 )
 
 type Point[T misc.Integer | misc.Float] struct {

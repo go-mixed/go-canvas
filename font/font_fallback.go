@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/go-mixed/go-canvas/misc"
+	"github.com/go-mixed/go-canvas/internel/misc"
 )
 
 // initFallbackPaths 初始化 3 个 fallback 字体（regular/bold/light）。

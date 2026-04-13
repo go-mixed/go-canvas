@@ -1,6 +1,8 @@
 package ti
 
-import "github.com/go-mixed/go-canvas/misc"
+import (
+	"github.com/go-mixed/go-canvas/internel/misc"
+)
 
 // RenderLayerOptions 渲染层选项
 type RenderLayerOptions struct {

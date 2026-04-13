@@ -1,6 +1,8 @@
 package render
 
-import "github.com/go-mixed/go-canvas/misc"
+import (
+	"github.com/go-mixed/go-canvas/internel/misc"
+)
 
 type stageOptions struct {
 	enabledRAWImage bool

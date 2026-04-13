@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/go-mixed/go-canvas/misc"
+	"github.com/go-mixed/go-canvas/internel/misc"
 	xfont "golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
 )
