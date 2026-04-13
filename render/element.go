@@ -314,15 +314,14 @@ func (e *tiElement) ClientRect() ti.Rectangle[int] {
 	cosR := float32(math.Cos(float64(e.attribute.Rotation())))
 	sinR := float32(math.Sin(float64(e.attribute.Rotation())))
 	// Snap trigonometric results near 0/1 to avoid bbox jitter on right angles.
-	const trigEps = 1e-6
-	if math.Abs(float64(cosR)) < trigEps {
+	if misc.NumberEqual(cosR, 0.0, misc.Epsilon) {
 		cosR = 0
-	} else if math.Abs(math.Abs(float64(cosR))-1.0) < trigEps {
+	} else if misc.NumberEqual(misc.Abs(cosR), 1.0, misc.Epsilon) {
 		cosR = float32(math.Copysign(1.0, float64(cosR)))
 	}
-	if math.Abs(float64(sinR)) < trigEps {
+	if misc.NumberEqual(sinR, 0.0, misc.Epsilon) {
 		sinR = 0
-	} else if math.Abs(math.Abs(float64(sinR))-1.0) < trigEps {
+	} else if misc.NumberEqual(misc.Abs(sinR), 1.0, misc.Epsilon) {
 		sinR = float32(math.Copysign(1.0, float64(sinR)))
 	}
 
@@ -351,7 +350,15 @@ func (e *tiElement) ClientRect() ti.Rectangle[int] {
 		}
 	}
 
-	bbox := ti.RectXY(int(minX), int(minY), int(maxX), int(maxY))
+	// Rectangle uses half-open bounds [Min, Max). To avoid dropping edge pixels
+	// when transformed bounds are fractional (especially on negative/top-left side),
+	// use floor for Min and ceil for Max instead of truncation toward zero.
+	bbox := ti.RectXY(
+		misc.Floor[int](minX),
+		misc.Floor[int](minY),
+		misc.Ceil[int](maxX),
+		misc.Ceil[int](maxY),
+	)
 	// Translate local bbox into parent coordinates.
 	// Use Add(x, y) instead of MoveTo(x, y): MoveTo would overwrite Min and
 	// break negative local bounds produced by rotation.

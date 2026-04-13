@@ -7,10 +7,10 @@ import (
 const Epsilon = 1e-6
 
 // NumberEqual 判断两个数字是否相等，考虑浮点数精度问题
-func NumberEqual[A, B Integer | Float](a A, b B, epsilon float32) bool {
+func NumberEqual[A, B Number](a A, b B, epsilon float64) bool {
 	af := float64(a)
 	bf := float64(b)
-	return af == bf || math.Abs(af-bf) <= float64(epsilon)
+	return af == bf || math.Abs(af-bf) <= epsilon
 }
 
 // Clamp 返回值在 [0, 1] 范围内
@@ -36,10 +36,16 @@ func Rad2Deg[V Float](rad V) V {
 	return rad * 180.0 / math.Pi
 }
 
-// FloorToInt 返回 float64 的向下取整整数值。
-// FloorToInt returns floor(v) as int.
-func FloorToInt(v float64) int {
-	return int(math.Floor(v))
+// Floor 返回 向下取整数值。
+// Floor returns floor(v) as T.
+func Floor[T Number, P Number](v P) T {
+	return T(math.Floor(float64(v)))
+}
+
+// Ceil 返回 向上取整数值
+// Ceil returns ceil(v) as T.
+func Ceil[T Number, P Number](v P) T {
+	return T(math.Ceil(float64(v)))
 }
 
 // Lerp performs linear interpolation from a to b by t.

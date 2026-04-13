@@ -188,7 +188,7 @@ func drawShearedMaskNearest(dst *image.RGBA, src image.Image, mask *image.Alpha,
 		return
 	}
 	for y := 0; y < h; y++ {
-		shiftX := misc.FloorToInt(shearX * float64(y))
+		shiftX := misc.Floor[int](shearX * float64(y))
 		dr := image.Rect(offsetX+shiftX, offsetY+y, offsetX+shiftX+w, offsetY+y+1)
 		if dr.Max.Y <= dst.Bounds().Min.Y || dr.Min.Y >= dst.Bounds().Max.Y {
 			continue
