@@ -28,33 +28,28 @@ const (
 	WrapAlgorithmFirstFit
 )
 
-// BidiBaseDirection 定义 BiDi 段落基础方向。
-// BidiBaseDirection defines paragraph base direction for BiDi reordering.
-type BidiBaseDirection uint8
+// BidiDirection 定义 BiDi 段落基础方向。
+// BidiDirection defines paragraph base direction for BiDi reordering.
+type BidiDirection uint8
 
 const (
-	// BidiBaseAuto 自动根据首个强方向字符决定段落方向。
-	// BidiBaseAuto auto-detects paragraph direction from strong characters.
-	BidiBaseAuto BidiBaseDirection = iota
-	// BidiBaseLTR 强制段落基础方向为左到右。
-	// BidiBaseLTR forces paragraph base direction to left-to-right.
-	BidiBaseLTR
-	// BidiBaseRTL 强制段落基础方向为右到左。
-	// BidiBaseRTL forces paragraph base direction to right-to-left.
-	BidiBaseRTL
+	// BidiAuto 自动根据首个强方向字符决定段落方向。
+	// BidiAuto auto-detects paragraph direction from strong characters.
+	BidiAuto BidiDirection = iota
+	// BidiLTR 强制段落基础方向为左到右。
+	// BidiLTR forces paragraph base direction to left-to-right.
+	BidiLTR
+	// BidiRTL 强制段落基础方向为右到左。
+	// BidiRTL forces paragraph base direction to right-to-left.
+	BidiRTL
 )
 
 type RichTextOptions struct {
-	align     ti.Align
-	fontStyle RichTextFontStyle
-	breakMode LineBreakPolicy
-	wrapAlgo  WrapAlgorithm
-	width     int
-	height    int
 	align        ti.Align
 	fontStyle    RichTextFontStyle
 	wordWrapMode WordWrapMode
 	wordWrapAlgo WordWrapAlgorithm
+	bidi         BidiDirection
 	logger       misc.Logger
 
 	width  int
@@ -74,14 +69,11 @@ func RTOpt() *RichTextOptions {
 			Bold:       false,
 			Underline:  false,
 		},
-		breakMode: LineBreakNormal,
-		wrapAlgo:  WrapAlgorithmSmart,
-		width:     0,
-		height:    0,
 		wordWrapMode: BreakNormal,
 		wordWrapAlgo: WrapAlgorithmSmart,
-		width:        0,
-		height:       0,
+		bidi:         BidiAuto,
+		width:        misc.NaNInt,
+		height:       misc.NaNInt,
 	}
 }
 
@@ -138,6 +130,13 @@ func (r *RichTextOptions) SetWordWrap(mode WordWrapMode) *RichTextOptions {
 
 func (r *RichTextOptions) SetWrapAlgorithm(algo WordWrapAlgorithm) *RichTextOptions {
 	r.wordWrapAlgo = algo
+	return r
+}
+
+// SetBidi 设置 BiDi 段落基础方向。
+// SetBidi sets BiDi paragraph base direction.
+func (r *RichTextOptions) SetBidi(bidi BidiDirection) *RichTextOptions {
+	r.bidi = bidi
 	return r
 }
 
