@@ -35,6 +35,15 @@ func BuildRichTextLines(fs *FontLibrary, opts *RichTextOptions) *RichText {
 	if opts == nil {
 		opts = RTOpt()
 	}
+	// 没有被赋值，设置为0
+	if misc.IsNaNInt(opts.width) {
+		opts.width = 0
+	}
+
+	if misc.IsNaNInt(opts.height) {
+		opts.height = 0
+	}
+
 	if opts.logger == nil {
 		opts.SetLogger(fs.logger)
 	}

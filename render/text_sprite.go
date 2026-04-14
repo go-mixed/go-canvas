@@ -17,6 +17,14 @@ type TextSprite struct {
 // NewTextSprite 创建文字精灵
 func NewTextSprite(parent IParent, fontLibrary *font.FontLibrary, attribute *ti.Attribute, opts *font.RichTextOptions) (*TextSprite, error) {
 
+	// richText没有单独设置宽高，则使用attribute的宽高
+	if attribute.Width() != 0 {
+		opts.SetWidthIfNotDefined(attribute.Width())
+	}
+	if attribute.Height() != 0 {
+		opts.SetHeightIfNotDefined(attribute.Height())
+	}
+
 	rt := font.BuildRichTextLines(fontLibrary, opts)
 
 	return BuildSprite(parent, attribute, nil, func(s *Sprite) (*TextSprite, error) {

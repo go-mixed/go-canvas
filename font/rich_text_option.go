@@ -151,6 +151,14 @@ func (r *RichTextOptions) SetWidth(width int) *RichTextOptions {
 	return r
 }
 
+// SetWidthIfNotDefined 仅当当前宽度为默认值时才设置。
+func (r *RichTextOptions) SetWidthIfNotDefined(width int) *RichTextOptions {
+	if misc.IsNaNInt(r.width) {
+		r.SetWidth(width)
+	}
+	return r
+}
+
 // SetHeight 设置渲染高度上限。0 表示不限制高度。
 // SetHeight sets render height limit. 0 means unlimited height.
 func (r *RichTextOptions) SetHeight(height int) *RichTextOptions {
@@ -158,6 +166,15 @@ func (r *RichTextOptions) SetHeight(height int) *RichTextOptions {
 		height = 0
 	}
 	r.height = height
+	return r
+}
+
+// SetHeightIfNotDefined 仅当当前高度为默认值时才设置。
+// SetHeightIfNotDefined sets height if current height is default.
+func (r *RichTextOptions) SetHeightIfNotDefined(height int) *RichTextOptions {
+	if misc.IsNaNInt(r.height) {
+		r.SetHeight(height)
+	}
 	return r
 }
 

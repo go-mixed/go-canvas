@@ -2,7 +2,8 @@ package ti
 
 import (
 	"image/color"
-	"math"
+
+	"github.com/go-mixed/go-canvas/internel/misc"
 )
 
 // FillMode 缩放填充模式
@@ -68,8 +69,8 @@ func Attr() *Attribute {
 		scaleY:   1.0,
 		rotation: 0.0,
 		alpha:    1.0,
-		cx:       math.MaxInt64,
-		cy:       math.MaxInt64,
+		cx:       misc.NaNInt,
+		cy:       misc.NaNInt,
 		resizeOptions: ResizeOptions{
 			FillMode:  FillModeFit,
 			ScaleMode: ScaleModeNearest,
@@ -182,6 +183,14 @@ func (a *Attribute) SetCx(cx int) *Attribute {
 	return a
 }
 
+// SetCxIfNotDefined 仅当未cx设置时，设置中心点x的相对值（0,0)为左上角
+func (a *Attribute) SetCxIfNotDefined(cx int) *Attribute {
+	if misc.IsNaNInt(a.cx) {
+		a.cx = cx
+	}
+	return a
+}
+
 // Cx 中心点x的相对值
 func (a *Attribute) Cx() int {
 	return a.cx
@@ -190,6 +199,14 @@ func (a *Attribute) Cx() int {
 // SetCy 设置中心点y的相对值（0,0)为左上角
 func (a *Attribute) SetCy(cy int) *Attribute {
 	a.cy = cy
+	return a
+}
+
+// SetCyIfNotDefined 仅当未cy设置时，设置中心点y的相对值（0,0)为左上角
+func (a *Attribute) SetCyIfNotDefined(cy int) *Attribute {
+	if misc.IsNaNInt(a.cy) {
+		a.cy = cy
+	}
 	return a
 }
 

@@ -62,3 +62,10 @@ func Lerp[T Number](a, b T, t float32) T {
 		return T(math.Round(v))
 	}
 }
+
+const NaNInt = math.MaxInt
+
+// IsNaNInt 是否未定义int
+func IsNaNInt(v int) bool {
+	return v == NaNInt
+}
