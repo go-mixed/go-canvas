@@ -11,14 +11,14 @@ import (
 
 // isLineBreakNever 判断策略是否为“禁止自动换行”。
 // isLineBreakNever reports whether policy disables auto wrapping.
-func isLineBreakNever(p LineBreakPolicy) bool {
-	return p == LineBreakNoWrap
+func isLineBreakNever(p WordWrapMode) bool {
+	return p == NoWrap
 }
 
 // isLineBreakAlways 判断策略是否为“总是按宽度断行”。
 // isLineBreakAlways reports whether policy forces width-based wrapping.
-func isLineBreakAlways(p LineBreakPolicy) bool {
-	return p == LineBreakAnywhere
+func isLineBreakAlways(p WordWrapMode) bool {
+	return p == BreakAll
 }
 
 // chooseBreakIndex 选择当前行可放下的最佳断点（先估算，再在候选断点上二分）。

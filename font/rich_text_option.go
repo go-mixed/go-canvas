@@ -7,25 +7,41 @@ import (
 	"github.com/go-mixed/go-canvas/ti"
 )
 
-type LineBreakPolicy uint8
+type WordWrapMode uint8
 
 const (
-	// LineBreakNormal 正常换行：仅在超宽时断行，优先语义/合法断点（类似 CSS word-break: normal）。
-	// LineBreakNormal wraps only when necessary, preferring semantic/legal breakpoints.
-	LineBreakNormal LineBreakPolicy = iota
-	// LineBreakNoWrap 不自动换行（类似 CSS white-space: nowrap）。
-	// LineBreakNoWrap disables auto wrapping.
-	LineBreakNoWrap
-	// LineBreakAnywhere 可在任意 cluster 边界断行（类似 CSS overflow-wrap:anywhere）。
-	// LineBreakAnywhere allows break at any cluster boundary.
-	LineBreakAnywhere
+	// BreakNormal 正常换行：仅在超宽时断行，优先语义/合法断点（类似 CSS word-break: normal）。
+	// BreakNormal wraps only when necessary, preferring semantic/legal breakpoints.
+	BreakNormal WordWrapMode = iota
+	// NoWrap 不自动换行（类似 CSS white-space: nowrap）。
+	// NoWrap disables auto wrapping.
+	NoWrap
+	// BreakAll 可在任意 cluster 边界断行（类似 CSS overflow-wrap:anywhere）。
+	// BreakAll allows break at any cluster boundary.
+	BreakAll
 )
 
-type WrapAlgorithm uint8
+type WordWrapAlgorithm uint8
 
 const (
-	WrapAlgorithmSmart WrapAlgorithm = iota
+	WrapAlgorithmSmart WordWrapAlgorithm = iota
 	WrapAlgorithmFirstFit
+)
+
+// BidiBaseDirection 定义 BiDi 段落基础方向。
+// BidiBaseDirection defines paragraph base direction for BiDi reordering.
+type BidiBaseDirection uint8
+
+const (
+	// BidiBaseAuto 自动根据首个强方向字符决定段落方向。
+	// BidiBaseAuto auto-detects paragraph direction from strong characters.
+	BidiBaseAuto BidiBaseDirection = iota
+	// BidiBaseLTR 强制段落基础方向为左到右。
+	// BidiBaseLTR forces paragraph base direction to left-to-right.
+	BidiBaseLTR
+	// BidiBaseRTL 强制段落基础方向为右到左。
+	// BidiBaseRTL forces paragraph base direction to right-to-left.
+	BidiBaseRTL
 )
 
 type RichTextOptions struct {
@@ -35,6 +51,14 @@ type RichTextOptions struct {
 	wrapAlgo  WrapAlgorithm
 	width     int
 	height    int
+	align        ti.Align
+	fontStyle    RichTextFontStyle
+	wordWrapMode WordWrapMode
+	wordWrapAlgo WordWrapAlgorithm
+	logger       misc.Logger
+
+	width  int
+	height int
 }
 
 func RTOpt() *RichTextOptions {
@@ -54,6 +78,10 @@ func RTOpt() *RichTextOptions {
 		wrapAlgo:  WrapAlgorithmSmart,
 		width:     0,
 		height:    0,
+		wordWrapMode: BreakNormal,
+		wordWrapAlgo: WrapAlgorithmSmart,
+		width:        0,
+		height:       0,
 	}
 }
 
@@ -103,13 +131,13 @@ func (r *RichTextOptions) SetFontStyle(font RichTextFontStyle) *RichTextOptions 
 	return r
 }
 
-func (r *RichTextOptions) SetLineBreakPolicy(mode LineBreakPolicy) *RichTextOptions {
-	r.breakMode = mode
+func (r *RichTextOptions) SetWordWrap(mode WordWrapMode) *RichTextOptions {
+	r.wordWrapMode = mode
 	return r
 }
 
-func (r *RichTextOptions) SetWrapAlgorithm(algo WrapAlgorithm) *RichTextOptions {
-	r.wrapAlgo = algo
+func (r *RichTextOptions) SetWrapAlgorithm(algo WordWrapAlgorithm) *RichTextOptions {
+	r.wordWrapAlgo = algo
 	return r
 }
 

@@ -125,11 +125,11 @@ func (r *RichText) SetText(input string) {
 			wrapped = fast
 		}
 		if wrapped == nil {
-			switch r.opts.wrapAlgo {
+			switch r.opts.wordWrapAlgo {
 			case WrapAlgorithmFirstFit:
-				wrapped = r.wrapFirstFit(expanded, maxWidth, r.opts.breakMode)
+				wrapped = r.wrapFirstFit(expanded, maxWidth, r.opts.wordWrapMode)
 			default:
-				wrapped = r.wordWrap(expanded, maxWidth, r.opts.breakMode)
+				wrapped = r.wordWrap(expanded, maxWidth, r.opts.wordWrapMode)
 			}
 		}
 	}

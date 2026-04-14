@@ -11,7 +11,7 @@ import (
 
 // wrapFirstFit: textwrap::wrap_first_fit 风格的贪心分行。
 // 对每段文本按可断点做 first-fit，超长无断点时再回退到 grapheme 强制截断。
-func (r *RichText) wrapFirstFit(in TextSegments, maxWidth int, breakPolicy LineBreakPolicy) TextSegments {
+func (r *RichText) wrapFirstFit(in TextSegments, maxWidth int, breakPolicy WordWrapMode) TextSegments {
 	t0 := time.Now()
 	defer func() {
 		r.logf("[richtext.wrap.first_fit] maxWidth=%d breakPolicy=%d in=%d elapsed=%s", maxWidth, breakPolicy, len(in), time.Since(t0))
