@@ -343,16 +343,25 @@ def render_layer_no_mask(
     screen_w, screen_h = screen.shape
     max_x1 = ti.math.min(max_x, screen_w)
     max_y1 = ti.math.min(max_y, screen_h)
+    # 边界稳定性策略（开始）：
+    # 逆仿射后的 tex 坐标在动画帧间会有子像素抖动，临界时可能落在 (-1, 0) 或 (w, w+1)。
+    # 这里给 1px 容差，避免 top/left 随机漏采样。
+    eps = 1.0001
+    max_tex_x = ti.max(width - 1.0, 0.0)
+    max_tex_y = ti.max(height - 1.0, 0.0)
 
     for x_screen, y_screen in ti.ndrange((min_x, max_x1), (min_y, max_y1)):
         # 屏幕坐标 → 纹理坐标
         tex_pos = apply_affine_transform(inv_matrix, ti.f32(x_screen), ti.f32(y_screen))
 
         # 边界检查
-        if 0 <= tex_pos.x < width and 0 <= tex_pos.y < height:
+        if -eps <= tex_pos.x < width + eps and -eps <= tex_pos.y < height + eps:
+            # 进入容差窗口后再夹到合法纹理范围，确保不会越界访问。
+            tex_x = ti.math.clamp(tex_pos.x, 0.0, max_tex_x)
+            tex_y = ti.math.clamp(tex_pos.y, 0.0, max_tex_y)
             screen_color = screen[x_screen, y_screen]
             new_color = sample_and_blend(
-                texture, tex_pos.x, tex_pos.y, width, height,
+                texture, tex_x, tex_y, width, height,
                 alpha, use_scale, screen_color, 1.0  # mask_value = 1.0
             )
             if new_color.w > 0:  # 只有非透明时才写入
@@ -399,19 +408,28 @@ def render_layer_with_mask(
     screen_w, screen_h = screen.shape
     max_x1 = ti.math.min(max_x, screen_w)
     max_y1 = ti.math.min(max_y, screen_h)
+    # 边界稳定性策略（开始）：
+    # 逆仿射后的 tex 坐标在动画帧间会有子像素抖动，临界时可能落在 (-1, 0) 或 (w, w+1)。
+    # 这里给 1px 容差，避免 top/left 随机漏采样。
+    eps = 1.0001
+    max_tex_x = ti.max(width - 1.0, 0.0)
+    max_tex_y = ti.max(height - 1.0, 0.0)
     for x_screen, y_screen in ti.ndrange((min_x, max_x1), (min_y, max_y1)):
         # 屏幕坐标 → 纹理坐标
         tex_pos = apply_affine_transform(inv_matrix, ti.f32(x_screen), ti.f32(y_screen))
 
         # 边界检查
-        if 0 <= tex_pos.x < width and 0 <= tex_pos.y < height:
+        if -eps <= tex_pos.x < width + eps and -eps <= tex_pos.y < height + eps:
+            # 进入容差窗口后再夹到合法纹理范围，确保 mask/纹理索引都不越界。
+            tex_x = ti.math.clamp(tex_pos.x, 0.0, max_tex_x)
+            tex_y = ti.math.clamp(tex_pos.y, 0.0, max_tex_y)
             screen_color = screen[x_screen, y_screen]
-            tex_x_i = ti.cast(tex_pos.x, ti.i32)
-            tex_y_i = ti.cast(tex_pos.y, ti.i32)
+            tex_x_i = ti.cast(tex_x, ti.i32)
+            tex_y_i = ti.cast(tex_y, ti.i32)
             mask_value = mask[tex_x_i, tex_y_i]
 
             new_color = sample_and_blend(
-                texture, tex_pos.x, tex_pos.y, width, height,
+                texture, tex_x, tex_y, width, height,
                 alpha, use_scale, screen_color, mask_value
             )
             if new_color.w > 0:
