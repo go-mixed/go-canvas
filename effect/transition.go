@@ -15,13 +15,13 @@ func transitionFactory(name string, inOut EffectInOut) ti.TargetAttributeFn {
 		return Pan(inOut).WithDirection(ctypes.DirectionTop).TargetAttributeFn
 	case "pan_bottom":
 		return Pan(inOut).WithDirection(ctypes.DirectionBottom).TargetAttributeFn
-	case "pan_top_left":
+	case "pan_top_left", "pan_left_top":
 		return Pan(inOut).WithDirection(ctypes.DirectionTopLeft).TargetAttributeFn
-	case "pan_top_right":
+	case "pan_top_right", "pan_right_top":
 		return Pan(inOut).WithDirection(ctypes.DirectionTopRight).TargetAttributeFn
-	case "pan_bottom_left":
+	case "pan_bottom_left", "pan_left_bottom":
 		return Pan(inOut).WithDirection(ctypes.DirectionBottomLeft).TargetAttributeFn
-	case "pan_bottom_right":
+	case "pan_bottom_right", "pan_right_bottom":
 		return Pan(inOut).WithDirection(ctypes.DirectionBottomRight).TargetAttributeFn
 	case "pan_center":
 		return Pan(inOut).WithDirection(ctypes.DirectionCenter).TargetAttributeFn

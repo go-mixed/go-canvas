@@ -33,13 +33,13 @@ func DirectionFromString(s string) Direction {
 		return DirectionLeft
 	case "right", "r":
 		return DirectionRight
-	case "top_left", "topleft", "tf":
+	case "top_left", "topleft", "tf", "ft", "left_top", "lefttop":
 		return DirectionTopLeft
-	case "top_right", "topright", "tr":
+	case "top_right", "topright", "tr", "right_top", "righttop", "rt":
 		return DirectionTopRight
-	case "bottom_left", "bottomleft", "bl":
+	case "bottom_left", "bottomleft", "bl", "left_bottom", "leftbottom", "lb":
 		return DirectionBottomLeft
-	case "bottom_right", "bottomright", "br":
+	case "bottom_right", "bottomright", "br", "right_bottom", "rightbottom", "rb":
 		return DirectionBottomRight
 	case "center", "c":
 		return DirectionCenter
