@@ -1,26 +1,27 @@
 package render
 
 import (
+	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/ti"
 	"github.com/go-mixed/go-taichi/taichi"
 )
 
 type Mask struct {
-	rect      ti.Rectangle[float32]
-	texture   *ti.TiMask
-	distField *ti.TiGrid // 距离场
+	rect      ctypes.Rectangle[float32]
+	texture   *ctypes.TiMask
+	distField *ctypes.TiGrid // 距离场
 	parent    IMaskParent
 	// 真实的实例
 	instance IMask
 	isDirty  bool
 
 	featherRadius uint32
-	featherMode   ti.FeatherMode
+	featherMode   ctypes.FeatherMode
 }
 
 var _ IMask = (*Mask)(nil)
 
-func BuildMask[T IMask](parent IMaskParent, texture *ti.TiMask, instanceCreator func(*Mask) (T, error)) (T, error) {
+func BuildMask[T IMask](parent IMaskParent, texture *ctypes.TiMask, instanceCreator func(*Mask) (T, error)) (T, error) {
 	shape := texture.Shape()
 	width, height := shape[0], shape[1]
 	distField, err := ti.NewTiGrid(parent.Renderer().Runtime(), width, height)
@@ -35,7 +36,7 @@ func BuildMask[T IMask](parent IMaskParent, texture *ti.TiMask, instanceCreator 
 		parent:    parent,
 
 		featherRadius: 0,
-		featherMode:   ti.FeatherModeLinear,
+		featherMode:   ctypes.FeatherModeLinear,
 	}
 
 	instance, err := instanceCreator(m)
@@ -60,13 +61,13 @@ func (m *Mask) SetDirty(val bool) {
 }
 
 // FillWithTexture 将纹理填充到 Mask
-func (m *Mask) FillWithTexture(texture *ti.TiImage) {
+func (m *Mask) FillWithTexture(texture *ctypes.TiImage) {
 	//  将图像转换为遮罩（提取 alpha 通道）
 	m.parent.Renderer().Module().AsyncImageToMask(texture, m.texture)
 	m.isDirty = true
 }
 
-func (m *Mask) SetFeather(featherRadius uint32, featherMode ti.FeatherMode) {
+func (m *Mask) SetFeather(featherRadius uint32, featherMode ctypes.FeatherMode) {
 	m.featherRadius = featherRadius
 	m.featherMode = featherMode
 	m.isDirty = true
@@ -119,7 +120,7 @@ var _ IMask = (*ShapeMask)(nil)
 var _ IElement = (*ShapeMask)(nil)
 var _ IShape = (*ShapeMask)(nil)
 
-func NewShapeMask(parent IMaskParent, attribute *ti.Attribute) (*ShapeMask, error) {
+func NewShapeMask(parent IMaskParent, attribute *ctypes.Attribute) (*ShapeMask, error) {
 
 	texture, err := ti.NewTiMask(parent.Renderer().Runtime(), uint32(attribute.Width()), uint32(attribute.Height()))
 	if err != nil {
@@ -161,16 +162,16 @@ func (m *ShapeMask) Render(frameIndex int) {
 	m.mask.Render(frameIndex)
 }
 
-func (m *ShapeMask) SetFeather(radius uint32, featherMode ti.FeatherMode) {
+func (m *ShapeMask) SetFeather(radius uint32, featherMode ctypes.FeatherMode) {
 	m.mask.SetFeather(radius, featherMode)
 }
 
-func (m *ShapeMask) FillWithTexture(texture *ti.TiImage) {
+func (m *ShapeMask) FillWithTexture(texture *ctypes.TiImage) {
 	m.mask.FillWithTexture(texture)
 }
 
 // Texture 覆盖父类 Texture 方法
-func (m *ShapeMask) Texture() *ti.TiMask {
+func (m *ShapeMask) Texture() *ctypes.TiMask {
 	return m.mask.Texture()
 }
 

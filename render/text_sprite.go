@@ -1,6 +1,7 @@
 package render
 
 import (
+	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/font"
 	"github.com/go-mixed/go-canvas/ti"
 )
@@ -15,7 +16,7 @@ type TextSprite struct {
 }
 
 // NewTextSprite 创建文字精灵
-func NewTextSprite(parent IParent, fontLibrary *font.FontLibrary, attribute *ti.Attribute, opts *font.RichTextOptions) (*TextSprite, error) {
+func NewTextSprite(parent IParent, fontLibrary *font.FontLibrary, attribute *ctypes.Attribute, opts *font.RichTextOptions) (*TextSprite, error) {
 
 	// richText没有单独设置宽高，则使用attribute的宽高
 	if attribute.Width() != 0 {
@@ -58,26 +59,26 @@ func (s *TextSprite) SetText(text string) error {
 			height = imgH
 		}
 
-		var texture *ti.TiImage
+		var texture *ctypes.TiImage
 		texture, err = ti.NewTiImage(s.Renderer().Runtime(), uint32(width), uint32(height))
 		if err != nil {
 			return
 		}
 
 		// 加上裁切代码
-		var imgOffset ti.Point[int]
+		var imgOffset ctypes.Point[int]
 		switch s.richText.Align().HAlign {
-		case ti.HAlignCenter:
+		case ctypes.HAlignCenter:
 			imgOffset.X = (width - imgW) / 2
-		case ti.HAlignRight:
+		case ctypes.HAlignRight:
 			imgOffset.X = width - imgW
 		default:
 		}
 
 		switch s.richText.Align().VAlign {
-		case ti.VAlignMiddle:
+		case ctypes.VAlignMiddle:
 			imgOffset.Y = ((height) - (imgH)) / 2
-		case ti.VAlignBottom:
+		case ctypes.VAlignBottom:
 			imgOffset.Y = (height) - (imgH)
 		default:
 		}

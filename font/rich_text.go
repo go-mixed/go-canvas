@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/internel/misc"
-	"github.com/go-mixed/go-canvas/ti"
 	"golang.org/x/image/font"
 )
 
@@ -135,7 +135,7 @@ func (r *RichText) SetText(input string) {
 		}
 		if wrapped == nil {
 			switch r.opts.wordWrapAlgo {
-			case WrapAlgorithmFirstFit:
+			case ctypes.WrapAlgorithmFirstFit:
 				wrapped = r.wrapFirstFit(expanded, maxWidth, r.opts.wordWrapMode)
 			default:
 				wrapped = r.wordWrap(expanded, maxWidth, r.opts.wordWrapMode)
@@ -376,7 +376,7 @@ func (r *RichText) IsEmpty() bool {
 	return r.lines.Len() == 0
 }
 
-func (r *RichText) Align() ti.Align {
+func (r *RichText) Align() ctypes.Align {
 	return r.opts.align
 }
 

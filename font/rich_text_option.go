@@ -3,53 +3,16 @@ package font
 import (
 	"image/color"
 
+	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/internel/misc"
-	"github.com/go-mixed/go-canvas/ti"
-)
-
-type WordWrapMode uint8
-
-const (
-	// BreakNormal 正常换行：仅在超宽时断行，优先语义/合法断点（类似 CSS word-break: normal）。
-	// BreakNormal wraps only when necessary, preferring semantic/legal breakpoints.
-	BreakNormal WordWrapMode = iota
-	// NoWrap 不自动换行（类似 CSS white-space: nowrap）。
-	// NoWrap disables auto wrapping.
-	NoWrap
-	// BreakAll 可在任意 cluster 边界断行（类似 CSS overflow-wrap:anywhere）。
-	// BreakAll allows break at any cluster boundary.
-	BreakAll
-)
-
-type WordWrapAlgorithm uint8
-
-const (
-	WrapAlgorithmSmart WordWrapAlgorithm = iota
-	WrapAlgorithmFirstFit
-)
-
-// BidiDirection 定义 BiDi 段落基础方向。
-// BidiDirection defines paragraph base direction for BiDi reordering.
-type BidiDirection uint8
-
-const (
-	// BidiAuto 自动根据首个强方向字符决定段落方向。
-	// BidiAuto auto-detects paragraph direction from strong characters.
-	BidiAuto BidiDirection = iota
-	// BidiLTR 强制段落基础方向为左到右。
-	// BidiLTR forces paragraph base direction to left-to-right.
-	BidiLTR
-	// BidiRTL 强制段落基础方向为右到左。
-	// BidiRTL forces paragraph base direction to right-to-left.
-	BidiRTL
 )
 
 type RichTextOptions struct {
-	align        ti.Align
+	align        ctypes.Align
 	fontStyle    RichTextFontStyle
-	wordWrapMode WordWrapMode
-	wordWrapAlgo WordWrapAlgorithm
-	bidi         BidiDirection
+	wordWrapMode ctypes.WordWrapMode
+	wordWrapAlgo ctypes.WordWrapAlgorithm
+	bidi         ctypes.BidiDirection
 	logger       misc.Logger
 
 	width  int
@@ -58,9 +21,9 @@ type RichTextOptions struct {
 
 func RTOpt() *RichTextOptions {
 	return &RichTextOptions{
-		align: ti.Align{
-			HAlign: ti.HAlignCenter,
-			VAlign: ti.VAlignMiddle,
+		align: ctypes.Align{
+			HAlign: ctypes.HAlignCenter,
+			VAlign: ctypes.VAlignMiddle,
 		},
 		fontStyle: RichTextFontStyle{
 			FontFamily: "",
@@ -69,20 +32,28 @@ func RTOpt() *RichTextOptions {
 			Bold:       false,
 			Underline:  false,
 		},
-		wordWrapMode: BreakNormal,
-		wordWrapAlgo: WrapAlgorithmSmart,
-		bidi:         BidiAuto,
+		wordWrapMode: ctypes.BreakNormal,
+		wordWrapAlgo: ctypes.WrapAlgorithmSmart,
+		bidi:         ctypes.BidiAuto,
 		width:        misc.NaNInt,
 		height:       misc.NaNInt,
 	}
 }
 
-func (r *RichTextOptions) SetVerticalAlign(vAlign ti.VerticalAlign) *RichTextOptions {
+// SetVerticalAlign 设置垂直对齐方式。
+func (r *RichTextOptions) SetVerticalAlign(vAlign ctypes.VerticalAlign) *RichTextOptions {
 	r.align.VAlign = vAlign
 	return r
 }
 
-func (r *RichTextOptions) SetAlign(hAlign ti.HorizontalAlign, vAlign ti.VerticalAlign) *RichTextOptions {
+// SetHorizontalAlign 设置水平对齐方式。
+func (r *RichTextOptions) SetHorizontalAlign(hAlign ctypes.HorizontalAlign) *RichTextOptions {
+	r.align.HAlign = hAlign
+	return r
+}
+
+// SetAlign 同时设置水平、垂直对齐方式。
+func (r *RichTextOptions) SetAlign(hAlign ctypes.HorizontalAlign, vAlign ctypes.VerticalAlign) *RichTextOptions {
 	r.align.HAlign = hAlign
 	r.align.VAlign = vAlign
 	return r
@@ -123,19 +94,19 @@ func (r *RichTextOptions) SetFontStyle(font RichTextFontStyle) *RichTextOptions 
 	return r
 }
 
-func (r *RichTextOptions) SetWordWrap(mode WordWrapMode) *RichTextOptions {
+func (r *RichTextOptions) SetWordWrap(mode ctypes.WordWrapMode) *RichTextOptions {
 	r.wordWrapMode = mode
 	return r
 }
 
-func (r *RichTextOptions) SetWrapAlgorithm(algo WordWrapAlgorithm) *RichTextOptions {
+func (r *RichTextOptions) SetWrapAlgorithm(algo ctypes.WordWrapAlgorithm) *RichTextOptions {
 	r.wordWrapAlgo = algo
 	return r
 }
 
 // SetBidi 设置 BiDi 段落基础方向。
 // SetBidi sets BiDi paragraph base direction.
-func (r *RichTextOptions) SetBidi(bidi BidiDirection) *RichTextOptions {
+func (r *RichTextOptions) SetBidi(bidi ctypes.BidiDirection) *RichTextOptions {
 	r.bidi = bidi
 	return r
 }

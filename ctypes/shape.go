@@ -1,4 +1,4 @@
-package ti
+package ctypes
 
 import (
 	"image/color"
@@ -35,21 +35,6 @@ func ShapeTypeFromString(s string) ShapeType {
 	}
 
 	return ShapeTypeLinear // Default to linear if no match found
-}
-
-// shapeConfig 形状配置，用于 compute_directional kernel
-type shapeConfig struct {
-	useRadial       float32
-	manhattanWeight float32
-	chebyshevWeight float32
-}
-
-// 形状配置映射
-var shapeConfigs = map[ShapeType]shapeConfig{
-	ShapeTypeLinear:    {useRadial: 0.0, manhattanWeight: 0.0, chebyshevWeight: 0.0},
-	ShapeTypeCircle:    {useRadial: 1.0, manhattanWeight: 0.0, chebyshevWeight: 0.0},
-	ShapeTypeDiamond:   {useRadial: 1.0, manhattanWeight: 1.0, chebyshevWeight: 0.0},
-	ShapeTypeRectangle: {useRadial: 1.0, manhattanWeight: 0.0, chebyshevWeight: 1.0},
 }
 
 type ShapeOptions struct {

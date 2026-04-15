@@ -3,6 +3,7 @@ package render
 import (
 	"image/color"
 
+	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/ti"
 
 	"github.com/go-mixed/go-taichi/taichi"
@@ -17,7 +18,7 @@ type ShapeSprite struct {
 
 var _ IShape = (*ShapeSprite)(nil)
 
-func NewShapeSprite(parent IParent, attribute *ti.Attribute) (*ShapeSprite, error) {
+func NewShapeSprite(parent IParent, attribute *ctypes.Attribute) (*ShapeSprite, error) {
 
 	width, height := uint32(attribute.Width()), uint32(attribute.Height())
 	texture, err := ti.NewTiImage(parent.Renderer().Runtime(), width, height)
@@ -51,10 +52,10 @@ func NewShapeSprite(parent IParent, attribute *ti.Attribute) (*ShapeSprite, erro
 // shapeType: 形状类型 (linear, circle, diamond, rectangle, triangle, star5, heart, cross)
 // size: 大小参数 0.0-2.0，1.0 表示填充整个屏幕
 // fns: 可选参数，如 ti.WithShapeDirection, ti.WithShapeColor
-func (s *ShapeSprite) DrawShape(shapeType ti.ShapeType, tVal float32, options *ti.ShapeOptions) {
+func (s *ShapeSprite) DrawShape(shapeType ctypes.ShapeType, tVal float32, options *ctypes.ShapeOptions) {
 	s.Fill(color.Transparent)
 	if options == nil {
-		options = ti.ShapeOpt()
+		options = ctypes.ShapeOpt()
 	}
 
 	s.Renderer().Module().AsyncComputeShape(s.texture, s.dx, s.dy, shapeType, tVal, options.Direction, options.Color)

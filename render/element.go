@@ -6,6 +6,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/internel/misc"
 	"github.com/go-mixed/go-canvas/ti"
 	"github.com/go-mixed/go-taichi/taichi"
@@ -13,9 +14,9 @@ import (
 )
 
 type tiElement struct {
-	attribute *ti.Attribute
+	attribute *ctypes.Attribute
 
-	texture *ti.TiImage
+	texture *ctypes.TiImage
 
 	mutex    *sync.RWMutex
 	renderer *Renderer
@@ -191,7 +192,7 @@ func (e *tiElement) SetCy(cy int) {
 	}, func() bool { return e.attribute.Cy() != cy })
 }
 
-func (e *tiElement) Attribute() *ti.Attribute {
+func (e *tiElement) Attribute() *ctypes.Attribute {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
 	return e.attribute
@@ -204,7 +205,7 @@ func (e *tiElement) Fill(color color.Color) {
 	}, func() bool { return true })
 }
 
-func (e *tiElement) Texture() *ti.TiImage {
+func (e *tiElement) Texture() *ctypes.TiImage {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
 	return e.texture
@@ -223,7 +224,7 @@ func (e *tiElement) Resize(width, height int) error {
 
 		nW, nH := ti.CalcResizeWH(e.attribute.Width(), e.attribute.Width(), width, height, e.attribute.ResizeOptions())
 
-		var newTexture *ti.TiImage
+		var newTexture *ctypes.TiImage
 		newTexture, err = ti.NewTiImage(e.Renderer().Runtime(), uint32(nW), uint32(nH))
 		if err != nil {
 			return
@@ -251,7 +252,7 @@ func (e *tiElement) Resize(width, height int) error {
 }
 
 // Blur 模糊纹理（马赛克/高斯/普通），原地修改
-func (e *tiElement) Blur(mode ti.BlurMode, radius int32) error {
+func (e *tiElement) Blur(mode ctypes.BlurMode, radius int32) error {
 	var err error
 
 	e.LockForUpdate(func() {
@@ -259,7 +260,7 @@ func (e *tiElement) Blur(mode ti.BlurMode, radius int32) error {
 			return
 		}
 
-		var newTexture *ti.TiImage
+		var newTexture *ctypes.TiImage
 		shape := e.texture.Shape()
 		width, height := shape[0], shape[1]
 		newTexture, err = ti.NewTiImage(e.Renderer().Runtime(), width, height)
@@ -298,7 +299,7 @@ func (e *tiElement) Blur(mode ti.BlurMode, radius int32) error {
 // corners存储角点相对于中心点的偏移量：
 // 左上: (-cx, -cy)，右上: (width-cx, -cy)
 // 右下: (width-cx, height-cy)，左下: (-cx, height-cy)
-func (e *tiElement) ClientRect() ti.Rectangle[int] {
+func (e *tiElement) ClientRect() ctypes.Rectangle[int] {
 	// Local bbox: all computations below assume element origin at (0, 0).
 	// World/parent bbox is obtained by translating local bbox with (attribute.X, attribute.Y).
 	cx, cy := float32(e.attribute.Cx()), float32(e.attribute.Cy())
@@ -353,7 +354,7 @@ func (e *tiElement) ClientRect() ti.Rectangle[int] {
 	// Rectangle uses half-open bounds [Min, Max). To avoid dropping edge pixels
 	// when transformed bounds are fractional (especially on negative/top-left side),
 	// use floor for Min and ceil for Max instead of truncation toward zero.
-	bbox := ti.RectXY(
+	bbox := ctypes.RectXY(
 		misc.Floor[int](minX),
 		misc.Floor[int](minY),
 		misc.Ceil[int](maxX),
@@ -362,7 +363,7 @@ func (e *tiElement) ClientRect() ti.Rectangle[int] {
 	// Translate local bbox into parent coordinates.
 	// Use Add(x, y) instead of MoveTo(x, y): MoveTo would overwrite Min and
 	// break negative local bounds produced by rotation.
-	return bbox.Add(ti.Pt(e.attribute.X(), e.attribute.Y()))
+	return bbox.Add(ctypes.Pt(e.attribute.X(), e.attribute.Y()))
 }
 
 func (e *tiElement) Renderer() *Renderer {

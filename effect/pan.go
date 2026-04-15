@@ -3,24 +3,25 @@ package effect
 import (
 	"math"
 
+	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/ti"
 )
 
-var panDirections = map[ti.Direction][2]float32{
-	ti.DirectionTop:         {0, -1},
-	ti.DirectionBottom:      {0, 1},
-	ti.DirectionLeft:        {-1, 0},
-	ti.DirectionRight:       {1, 0},
-	ti.DirectionTopLeft:     {-1, -1},
-	ti.DirectionTopRight:    {1, -1},
-	ti.DirectionBottomLeft:  {-1, 1},
-	ti.DirectionBottomRight: {1, 1},
-	ti.DirectionCenter:      {0, 0},
+var panDirections = map[ctypes.Direction][2]float32{
+	ctypes.DirectionTop:         {0, -1},
+	ctypes.DirectionBottom:      {0, 1},
+	ctypes.DirectionLeft:        {-1, 0},
+	ctypes.DirectionRight:       {1, 0},
+	ctypes.DirectionTopLeft:     {-1, -1},
+	ctypes.DirectionTopRight:    {1, -1},
+	ctypes.DirectionBottomLeft:  {-1, 1},
+	ctypes.DirectionBottomRight: {1, 1},
+	ctypes.DirectionCenter:      {0, 0},
 }
 
 type PanEffect struct {
 	inOut        EffectInOut
-	direction    ti.Direction
+	direction    ctypes.Direction
 	panIntensity float32
 	zoomStart    float32
 	zoomEnd      float32
@@ -30,7 +31,7 @@ type PanEffect struct {
 func Pan(inOut EffectInOut) *PanEffect {
 	return &PanEffect{
 		inOut:        inOut,
-		direction:    ti.DirectionCenter,
+		direction:    ctypes.DirectionCenter,
 		panIntensity: 0.1,
 		zoomStart:    1.0,
 		zoomEnd:      1.2,
@@ -38,7 +39,7 @@ func Pan(inOut EffectInOut) *PanEffect {
 	}
 }
 
-func (e *PanEffect) WithDirection(direction ti.Direction) *PanEffect {
+func (e *PanEffect) WithDirection(direction ctypes.Direction) *PanEffect {
 	e.direction = direction
 	return e
 }
@@ -61,7 +62,7 @@ func (e *PanEffect) WithEasingName(name string) *PanEffect {
 	return e
 }
 
-func (e *PanEffect) TargetAttributeFn(base ti.Attribute) (*ti.Attribute, *ti.TargetAttribute) {
+func (e *PanEffect) TargetAttributeFn(base ctypes.Attribute) (*ctypes.Attribute, *ti.TargetAttribute) {
 	vec := panDirections[e.direction]
 	dx, dy := vec[0], vec[1]
 	maxPanX := float32(base.Width()) * e.panIntensity

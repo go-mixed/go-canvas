@@ -1,6 +1,7 @@
 package ti
 
 import (
+	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/internel/misc"
 )
 
@@ -24,7 +25,7 @@ func (opts *RenderLayerOptions) isNoAffinePath() bool {
 }
 
 // AsyncRenderLayerNoMask 渲染层（无遮罩）
-func (m *AotModule) AsyncRenderLayerNoMask(texture *TiImage, screen *TiImage, opts RenderLayerOptions) {
+func (m *AotModule) AsyncRenderLayerNoMask(texture *ctypes.TiImage, screen *ctypes.TiImage, opts RenderLayerOptions) {
 	if opts.isNoAffinePath() {
 		kernel := m.getCache("render_layer_no_affine")
 		kernel.Launch().
@@ -50,13 +51,13 @@ func (m *AotModule) AsyncRenderLayerNoMask(texture *TiImage, screen *TiImage, op
 		RunAsync()
 }
 
-func (m *AotModule) RenderLayerNoMask(texture *TiImage, screen *TiImage, opts RenderLayerOptions) {
+func (m *AotModule) RenderLayerNoMask(texture *ctypes.TiImage, screen *ctypes.TiImage, opts RenderLayerOptions) {
 	m.AsyncRenderLayerNoMask(texture, screen, opts)
 	m.runtime.Wait()
 }
 
 // AsyncRenderLayerWithMask 渲染层（带遮罩）
-func (m *AotModule) AsyncRenderLayerWithMask(texture, mask, screen *TiImage, opts RenderLayerOptions) {
+func (m *AotModule) AsyncRenderLayerWithMask(texture, mask, screen *ctypes.TiImage, opts RenderLayerOptions) {
 	if opts.isNoAffinePath() {
 		kernel := m.getCache("render_layer_no_affine_with_mask")
 		kernel.Launch().
@@ -84,7 +85,7 @@ func (m *AotModule) AsyncRenderLayerWithMask(texture, mask, screen *TiImage, opt
 		RunAsync()
 }
 
-func (m *AotModule) RenderLayerWithMask(texture, mask, screen *TiImage, opts RenderLayerOptions) {
+func (m *AotModule) RenderLayerWithMask(texture, mask, screen *ctypes.TiImage, opts RenderLayerOptions) {
 	m.AsyncRenderLayerWithMask(texture, mask, screen, opts)
 	m.runtime.Wait()
 }

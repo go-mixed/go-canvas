@@ -3,6 +3,7 @@ package render
 import (
 	"image/color"
 
+	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/internel/misc"
 	"github.com/go-mixed/go-canvas/ti"
 	"github.com/go-mixed/go-taichi/taichi"
@@ -36,7 +37,7 @@ type IAttribute interface {
 
 type IElementOperation interface {
 	// Blur 模糊纹理（马赛克/高斯/普通）
-	Blur(mode ti.BlurMode, radius int32) error
+	Blur(mode ctypes.BlurMode, radius int32) error
 	// Fill 所有像素填充同一个颜色
 	Fill(rgba color.Color)
 }
@@ -60,10 +61,10 @@ type IElement interface {
 	IAttribute
 	IElementOperation
 
-	Attribute() *ti.Attribute
+	Attribute() *ctypes.Attribute
 
 	// ClientRect 获取元素自身旋转+缩放后的边界
-	ClientRect() ti.Rectangle[int]
+	ClientRect() ctypes.Rectangle[int]
 
 	//LockForUpdate(updateFn func(), triggerDirty func() bool)
 }
@@ -87,7 +88,7 @@ type IAnimation interface {
 }
 
 type IShape interface {
-	DrawShape(shapeType ti.ShapeType, tVal float32, options *ti.ShapeOptions)
+	DrawShape(shapeType ctypes.ShapeType, tVal float32, options *ctypes.ShapeOptions)
 }
 
 type IGarbage interface {
@@ -126,8 +127,8 @@ type IContainer interface {
 }
 
 type IMask interface {
-	FillWithTexture(texture *ti.TiImage)
-	SetFeather(featherRadius uint32, featherMode ti.FeatherMode)
+	FillWithTexture(texture *ctypes.TiImage)
+	SetFeather(featherRadius uint32, featherMode ctypes.FeatherMode)
 	RemoveFromParent()
 
 	IDirty

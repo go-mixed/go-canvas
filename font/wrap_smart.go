@@ -4,10 +4,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-mixed/go-canvas/ctypes"
 	"golang.org/x/image/font"
 )
 
-func (r *RichText) wordWrap(in TextSegments, maxWidth int, breakPolicy WordWrapMode) TextSegments {
+func (r *RichText) wordWrap(in TextSegments, maxWidth int, breakPolicy ctypes.WordWrapMode) TextSegments {
 	t0 := time.Now()
 	defer func() {
 		r.logf("[richtext.wrap.smart] maxWidth=%d breakPolicy=%d in=%d elapsed=%s", maxWidth, breakPolicy, len(in), time.Since(t0))

@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/internel/misc"
 	"github.com/go-mixed/go-canvas/ti"
 	"github.com/pkg/errors"
@@ -15,7 +16,7 @@ type Stage struct {
 	container IContainer
 	mutex     *sync.RWMutex
 
-	imageTexture *ti.BgraImage
+	imageTexture *ctypes.BgraImage
 
 	options stageOptions
 }
@@ -35,7 +36,7 @@ func NewStage(renderer *Renderer, width, height int, opts ...stageOptFunc) (*Sta
 		options:  options,
 	}
 
-	container, err := NewContainer(SelfRelease(renderer), ti.Attr().SetWH(width, height))
+	container, err := NewContainer(SelfRelease(renderer), ctypes.Attr().SetWH(width, height))
 	if err != nil {
 		return nil, errors.Wrapf(err, "create container of stage failed")
 	}
@@ -100,7 +101,7 @@ func (s *Stage) GetBgraImage(buffer []uint32) error {
 	})
 }
 
-func (s *Stage) Texture() *ti.TiImage {
+func (s *Stage) Texture() *ctypes.TiImage {
 	return s.container.Texture()
 }
 

@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-mixed/go-canvas/ti"
+	"github.com/go-mixed/go-canvas/ctypes"
 )
 
 func TestRenderTextWithAlign(t *testing.T) {
@@ -20,22 +20,22 @@ func TestRenderTextWithAlign(t *testing.T) {
 
 	cases := []struct {
 		name  string
-		align ti.Align
+		align ctypes.Align
 		text  string
 	}{
 		{
 			name:  "left-top single line",
-			align: ti.Align{HAlign: ti.HAlignLeft, VAlign: ti.VAlignTop},
+			align: ctypes.Align{HAlign: ctypes.HAlignLeft, VAlign: ctypes.VAlignTop},
 			text:  `<text font-size="24" color="#FF0000FF">Hello 世界</text>`,
 		},
 		{
 			name:  "center-middle multiline",
-			align: ti.Align{HAlign: ti.HAlignCenter, VAlign: ti.VAlignMiddle},
+			align: ctypes.Align{HAlign: ctypes.HAlignCenter, VAlign: ctypes.VAlignMiddle},
 			text:  `<text font-size="16" color="#FF0000FF">第一行</text>` + "\n" + `<text font-size="20" color="#00FF00FF">Second line</text>`,
 		},
 		{
 			name:  "right-bottom mixed size",
-			align: ti.Align{HAlign: ti.HAlignRight, VAlign: ti.VAlignBottom},
+			align: ctypes.Align{HAlign: ctypes.HAlignRight, VAlign: ctypes.VAlignBottom},
 			text:  `<text font-size="12" color="#FF0000FF">S</text><text font-size="30" color="#0000FFFF">M</text>`,
 		},
 	}
@@ -89,9 +89,9 @@ func TestRenderTextComplexLayoutCase(t *testing.T) {
 	}
 
 	opts := RTOpt().
-		SetAlign(ti.HAlignLeft, ti.VAlignBottom).
+		SetAlign(ctypes.HAlignLeft, ctypes.VAlignBottom).
 		SetFontFamily(defaultFamily).
-		SetWrapAlgorithm(WrapAlgorithmSmart).
+		SetWrapAlgorithm(ctypes.WrapAlgorithmSmart).
 		SetWidth(980).
 		SetLogger(log.Default())
 	rt := BuildRichTextLines(fs, opts)
@@ -133,7 +133,7 @@ func mustFontLibraryForRenderTests(t *testing.T) (*FontLibrary, string) {
 	t.Helper()
 
 	n := time.Now()
-	fs, err := NewFontLibrary()
+	fs, err := NewFontLibrary(nil)
 	if err != nil {
 		t.Fatalf("create font library error: %v", err)
 	}

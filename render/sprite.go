@@ -1,6 +1,7 @@
 package render
 
 import (
+	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/internel/misc"
 	"github.com/go-mixed/go-canvas/ti"
 )
@@ -20,7 +21,7 @@ var _ ISprite = (*Sprite)(nil)
 var _ IMaskParent = (*Sprite)(nil)
 
 // BuildSprite 创建非容器的精灵，需要传入纹理
-func BuildSprite[T ISprite](parent IParent, attribute *ti.Attribute, texture *ti.TiImage, instanceCreator func(s *Sprite) (T, error)) (T, error) {
+func BuildSprite[T ISprite](parent IParent, attribute *ctypes.Attribute, texture *ctypes.TiImage, instanceCreator func(s *Sprite) (T, error)) (T, error) {
 	attribute.SetCxIfNotDefined(attribute.Width() / 2)
 	attribute.SetCyIfNotDefined(attribute.Height() / 2)
 
@@ -82,7 +83,7 @@ func (s *Sprite) Masks() *misc.List[IMask] {
 }
 
 // NewBlockSprite 创建纯色块精灵，颜色为透明的
-func NewBlockSprite(parent IParent, attribute *ti.Attribute) (*Sprite, error) {
+func NewBlockSprite(parent IParent, attribute *ctypes.Attribute) (*Sprite, error) {
 	texture, err := ti.NewTiImage(parent.Renderer().Runtime(), uint32(attribute.Width()), uint32(attribute.Height()))
 	if err != nil {
 		return nil, err

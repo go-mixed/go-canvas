@@ -1,6 +1,9 @@
 package effect
 
-import "github.com/go-mixed/go-canvas/ti"
+import (
+	"github.com/go-mixed/go-canvas/ctypes"
+	"github.com/go-mixed/go-canvas/ti"
+)
 
 type FadeEffect struct {
 	inOut  EffectInOut
@@ -20,7 +23,7 @@ func (e *FadeEffect) WithEasingName(name string) *FadeEffect {
 	e.easing = ti.GetEasingFunction(name)
 	return e
 }
-func (e *FadeEffect) TargetAttributeFn(base ti.Attribute) (*ti.Attribute, *ti.TargetAttribute) {
+func (e *FadeEffect) TargetAttributeFn(base ctypes.Attribute) (*ctypes.Attribute, *ti.TargetAttribute) {
 	target := ti.TargetAttr().SetEasing(e.easing)
 	if e.inOut == EffectOut {
 		target.SetAlpha(0.0)

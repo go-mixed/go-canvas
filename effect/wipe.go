@@ -3,25 +3,26 @@ package effect
 import (
 	"image/color"
 
+	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/ti"
 )
 
 type WipeEffect struct {
 	inOut EffectInOut
 
-	shapeMaskOptions *ti.ShapeMaskOptions
+	shapeMaskOptions *ctypes.ShapeMaskOptions
 	easing           ti.EasingFunction
 }
 
 func Wipe(inOut EffectInOut) *WipeEffect {
-	return &WipeEffect{inOut: inOut, shapeMaskOptions: ti.ShapeMaskOpt(), easing: ti.DefaultEasingFunction}
+	return &WipeEffect{inOut: inOut, shapeMaskOptions: ctypes.ShapeMaskOpt(), easing: ti.DefaultEasingFunction}
 }
 
-func (e *WipeEffect) WithShapeType(shapeType ti.ShapeType) *WipeEffect {
+func (e *WipeEffect) WithShapeType(shapeType ctypes.ShapeType) *WipeEffect {
 	e.shapeMaskOptions.SetShapeType(shapeType)
 	return e
 }
-func (e *WipeEffect) WithDirection(direction ti.Direction) *WipeEffect {
+func (e *WipeEffect) WithDirection(direction ctypes.Direction) *WipeEffect {
 	e.shapeMaskOptions.SetDirection(direction)
 	return e
 }
@@ -36,12 +37,12 @@ func (e *WipeEffect) WithTRange(startT, endT float32) *WipeEffect {
 	return e
 }
 
-func (e *WipeEffect) WithFeather(radius uint32, mode ti.FeatherMode) *WipeEffect {
+func (e *WipeEffect) WithFeather(radius uint32, mode ctypes.FeatherMode) *WipeEffect {
 	e.shapeMaskOptions.SetFeather(radius, mode)
 	return e
 }
 
-func (e *WipeEffect) WithShapeMaskOptions(opts *ti.ShapeMaskOptions) *WipeEffect {
+func (e *WipeEffect) WithShapeMaskOptions(opts *ctypes.ShapeMaskOptions) *WipeEffect {
 	if opts == nil {
 		return e
 	}
@@ -66,7 +67,7 @@ func (e *WipeEffect) WithEasingName(name string) *WipeEffect {
 	return e
 }
 
-func (e *WipeEffect) TargetAttributeFn(base ti.Attribute) (*ti.Attribute, *ti.TargetAttribute) {
+func (e *WipeEffect) TargetAttributeFn(base ctypes.Attribute) (*ctypes.Attribute, *ti.TargetAttribute) {
 	target := ti.TargetAttr().SetEasing(e.easing)
 	opts := *e.shapeMaskOptions
 	if e.shapeMaskOptions.ShapeOptions != nil {

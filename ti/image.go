@@ -3,6 +3,7 @@ package ti
 import (
 	"image"
 
+	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/internel/misc"
 	"github.com/go-mixed/go-taichi/taichi"
 	"github.com/pkg/errors"
@@ -11,24 +12,24 @@ import (
 	_ "image/png"  // 注册 PNG 解码器
 )
 
-func NewTiImage(runtime *taichi.Runtime, width, height uint32) (*TiImage, error) {
+func NewTiImage(runtime *taichi.Runtime, width, height uint32) (*ctypes.TiImage, error) {
 	return taichi.NewNdArray2DWithElemShape(runtime, width, height, taichi.Shape(4), taichi.DataTypeF32)
 }
 
-func NewTiGrid(runtime *taichi.Runtime, width, height uint32) (*TiGrid, error) {
+func NewTiGrid(runtime *taichi.Runtime, width, height uint32) (*ctypes.TiGrid, error) {
 	return taichi.NewNdArray2D(runtime, width, height, taichi.DataTypeF32)
 }
 
-func NewTiMask(runtime *taichi.Runtime, width, height uint32) (*TiMask, error) {
+func NewTiMask(runtime *taichi.Runtime, width, height uint32) (*ctypes.TiMask, error) {
 	return NewTiGrid(runtime, width, height)
 }
 
-func NewBgraImage(runtime *taichi.Runtime, width, height uint32) (*TiImage, error) {
+func NewBgraImage(runtime *taichi.Runtime, width, height uint32) (*ctypes.TiImage, error) {
 	return taichi.NewNdArray2D(runtime, width, height, taichi.DataTypeU32)
 }
 
 // LoadImageToTiImage 将图片加载到 Taichi.NdArray(w, h, (r, g, b, a))
-func LoadImageToTiImage(rt *taichi.Runtime, filePath string) (*TiImage, error) {
+func LoadImageToTiImage(rt *taichi.Runtime, filePath string) (*ctypes.TiImage, error) {
 	img, err := misc.LoadImage(filePath)
 	if err != nil {
 		return nil, err
@@ -47,7 +48,7 @@ func LoadImageToTiImage(rt *taichi.Runtime, filePath string) (*TiImage, error) {
 		return nil, errors.Wrapf(err, "Cannot create taichi texture")
 	}
 
-	err = UploadImageToTexture(texture, img, Point[int]{})
+	err = UploadImageToTexture(texture, img, ctypes.Point[int]{})
 
 	if err != nil {
 		texture.Release()
@@ -58,7 +59,7 @@ func LoadImageToTiImage(rt *taichi.Runtime, filePath string) (*TiImage, error) {
 }
 
 // UploadImageToTexture 将 image.Image 上传到 TiImage
-func UploadImageToTexture(texture *TiImage, img image.Image, imgOffset Point[int]) error {
+func UploadImageToTexture(texture *ctypes.TiImage, img image.Image, imgOffset ctypes.Point[int]) error {
 	bounds := img.Bounds()
 	imgWidth := bounds.Dx()
 	imgHeight := bounds.Dy()
@@ -74,7 +75,7 @@ func UploadImageToTexture(texture *TiImage, img image.Image, imgOffset Point[int
 					continue
 				}
 
-				r, g, b, a := ExpandF32Color(img.At(imgX, imgY))
+				r, g, b, a := ctypes.ExpandF32Color(img.At(imgX, imgY))
 				idx, _ := texture.GetOffset(x, y)
 				data[idx] = r
 				data[idx+1] = g
@@ -88,7 +89,7 @@ func UploadImageToTexture(texture *TiImage, img image.Image, imgOffset Point[int
 }
 
 // SaveTiImageToFile 将 Taichi.NdArray(w, h, (r, g, b, a)) 保存到图片文件
-func SaveTiImageToFile(texture *TiImage, filePath string) error {
+func SaveTiImageToFile(texture *ctypes.TiImage, filePath string) error {
 	shape := texture.Shape()
 	width, height := int(shape[0]), int(shape[1])
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
@@ -100,7 +101,7 @@ func SaveTiImageToFile(texture *TiImage, filePath string) error {
 	return misc.SaveImage(img, filePath)
 }
 
-func DownloadTextureToImage(texture *TiImage, img ImageWriter) error {
+func DownloadTextureToImage(texture *ctypes.TiImage, img ctypes.ImageWriter) error {
 	shape := texture.Shape()
 	width, height := int(shape[0]), int(shape[1])
 
@@ -108,7 +109,7 @@ func DownloadTextureToImage(texture *TiImage, img ImageWriter) error {
 		for y := 0; y < height; y++ {
 			for x := 0; x < width; x++ {
 				idx, _ := texture.GetOffset(x, y)
-				c := TiColorToColor(data[idx], data[idx+1], data[idx+2], data[idx+3])
+				c := ctypes.TiColorToColor(data[idx], data[idx+1], data[idx+2], data[idx+3])
 				img.Set(x, y, c)
 			}
 		}
@@ -119,7 +120,7 @@ func DownloadTextureToImage(texture *TiImage, img ImageWriter) error {
 	return errors.Wrapf(err, "Cannot download taichi texture to image")
 }
 
-func CalcResizeWH(originalWidth, originalHeight int, targetWidth, targetHeight int, opts ResizeOptions) (newWidth int, newHeight int) {
+func CalcResizeWH(originalWidth, originalHeight int, targetWidth, targetHeight int, opts ctypes.ResizeOptions) (newWidth int, newHeight int) {
 	if originalWidth == 0 || originalHeight == 0 {
 		return targetWidth, targetHeight
 	}
@@ -132,11 +133,11 @@ func CalcResizeWH(originalWidth, originalHeight int, targetWidth, targetHeight i
 
 	var scale float32
 	switch opts.FillMode {
-	case FillModeStretch:
+	case ctypes.FillModeStretch:
 		scale = 1 // 不缩放，用目标尺寸
-	case FillModeFit:
+	case ctypes.FillModeFit:
 		scale = min(scaleX, scaleY)
-	case FillModeFill:
+	case ctypes.FillModeFill:
 		scale = max(scaleX, scaleY)
 	}
 

@@ -5,8 +5,8 @@ import (
 	"image/color"
 	"time"
 
+	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/internel/misc"
-	"github.com/go-mixed/go-canvas/ti"
 	"golang.org/x/image/draw"
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
@@ -53,9 +53,9 @@ func (r *RichText) RenderText() image.Image {
 		// 计算水平起始偏移
 		offsetX := 0
 		switch r.opts.align.HAlign {
-		case ti.HAlignCenter:
+		case ctypes.HAlignCenter:
 			offsetX = (maxWidth - lineWidth) / 2
-		case ti.HAlignRight:
+		case ctypes.HAlignRight:
 			offsetX = maxWidth - lineWidth
 		default:
 			// 默认左对齐
@@ -78,10 +78,10 @@ func (r *RichText) RenderText() image.Image {
 			// 计算垂直偏移
 			offsetYSeg := offsetY
 			switch r.opts.align.VAlign {
-			case ti.VAlignTop:
+			case ctypes.VAlignTop:
 				// 顶部对齐：所有字号的顶部对齐
 				offsetYSeg = offsetY + maxTopPadding - segTopPadding
-			case ti.VAlignMiddle:
+			case ctypes.VAlignMiddle:
 				// 垂直居中：所有字号的垂直中心对齐
 				// 中心 = baseline - topPadding + height/2
 				// 要让 seg 的中心与 max 的中心对齐：
@@ -89,7 +89,7 @@ func (r *RichText) RenderText() image.Image {
 				// offsetYSeg = offsetY + maxTopPadding - segTopPadding + (maxHeight - seg.Height)/2
 				maxHeight := (maxMetrics.Ascent + maxMetrics.Descent).Ceil()
 				offsetYSeg = offsetY + maxTopPadding - segTopPadding + (maxHeight-seg.Height)/2
-			case ti.VAlignBottom:
+			case ctypes.VAlignBottom:
 				fallthrough
 			default:
 				// 底部对齐：所有字号的底部对齐

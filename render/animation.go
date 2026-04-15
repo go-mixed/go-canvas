@@ -3,6 +3,7 @@ package render
 import (
 	"sync"
 
+	"github.com/go-mixed/go-canvas/ctypes"
 	misc2 "github.com/go-mixed/go-canvas/internel/misc"
 	"github.com/go-mixed/go-canvas/ti"
 )
@@ -10,7 +11,7 @@ import (
 type animationItem struct {
 	targetFn ti.TargetAttributeFn
 
-	from            *ti.Attribute
+	from            *ctypes.Attribute
 	target          *ti.TargetAttribute
 	startFrameIndex int
 	durationFrames  int
@@ -163,7 +164,7 @@ func (a *spriteAnimator) tick(frameIndex int) bool {
 }
 
 // applyModifiedFieldsLerp 按 modifiedFields 将 from->to 插值并应用到目标精灵。
-func applyModifiedFieldsLerp(dst IAttribute, from *ti.Attribute, to *ti.TargetAttribute, t float32) {
+func applyModifiedFieldsLerp(dst IAttribute, from *ctypes.Attribute, to *ti.TargetAttribute, t float32) {
 	if from == nil || to == nil || to.Attribute == nil {
 		return
 	}

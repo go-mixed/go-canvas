@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/font"
 	"github.com/go-mixed/go-canvas/internel/misc"
 	"github.com/go-mixed/go-canvas/render"
@@ -28,7 +29,7 @@ func main() {
 	defer renderer.Release()
 	fmt.Printf("[1/8] 创建渲染器: %v\n", time.Since(t))
 
-	rect := ti.RectWH[int](0, 0, 720, 1280)
+	rect := ctypes.RectWH[int](0, 0, 720, 1280)
 
 	// 2. 创建舞台
 	t = time.Now()
@@ -41,11 +42,11 @@ func main() {
 
 	//3. 创建背景块
 	t = time.Now()
-	background, err := render.NewBlockSprite(stage, ti.Attr().SetRect(rect))
+	background, err := render.NewBlockSprite(stage, ctypes.Attr().SetRect(rect))
 	if err != nil {
 		panic(err)
 	}
-	background.Fill(ti.RGBA(0x00ff00ff))
+	background.Fill(ctypes.RGBA(0x00ff00ff))
 	fmt.Printf("[3/8] 创建背景块: %v\n", time.Since(t))
 
 	// 4. 创建容器
@@ -63,7 +64,7 @@ func main() {
 
 	// 5. 加载图片
 	t = time.Now()
-	img, err := render.NewImageSprite(stage, ti.Attr().SetRect(rect), filepath.Join(cd, "examples", "1.jpg"))
+	img, err := render.NewImageSprite(stage, ctypes.Attr().SetRect(rect), filepath.Join(cd, "examples", "1.jpg"))
 	if err != nil {
 		panic(err)
 	}
@@ -81,7 +82,7 @@ func main() {
 
 	// 7. 创建文字精灵 1
 	t = time.Now()
-	text1, err := render.NewTextSprite(stage, fontLibrary, ti.Attr().SetWidth(500), font.RTOpt().SetAlign(ti.HAlignCenter, ti.VAlignMiddle))
+	text1, err := render.NewTextSprite(stage, fontLibrary, ctypes.Attr().SetWidth(500), font.RTOpt().SetAlign(ctypes.HAlignCenter, ctypes.VAlignMiddle))
 	if err != nil {
 		panic(err)
 	}
@@ -90,7 +91,7 @@ func main() {
 
 	// 8. 创建文字精灵 2
 	t = time.Now()
-	text2, err := render.NewTextSprite(stage, fontLibrary, ti.Attr().SetY(text1.Height()+20).SetWidth(500), font.RTOpt().SetAlign(ti.HAlignCenter, ti.VAlignMiddle))
+	text2, err := render.NewTextSprite(stage, fontLibrary, ctypes.Attr().SetY(text1.Height()+20).SetWidth(500), font.RTOpt().SetAlign(ctypes.HAlignCenter, ctypes.VAlignMiddle))
 	if err != nil {
 		panic(err)
 	}

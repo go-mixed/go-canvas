@@ -3,6 +3,7 @@ package render
 import (
 	"image/color"
 
+	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/internel/misc"
 	"github.com/go-mixed/go-canvas/ti"
 	"github.com/go-mixed/go-taichi/taichi"
@@ -23,7 +24,7 @@ var _ IMaskParent = (*Container)(nil)
 
 // NewContainer 创建容器，只能添加子精灵
 // 容器中的texture为空白，当Render时，会将子精灵、容器渲染在上面
-func NewContainer(parent IParent, attribute *ti.Attribute) (*Container, error) {
+func NewContainer(parent IParent, attribute *ctypes.Attribute) (*Container, error) {
 	texture, err := ti.NewTiImage(parent.Renderer().Runtime(), uint32(attribute.Width()), uint32(attribute.Height()))
 	if err != nil {
 		return nil, err
@@ -87,7 +88,7 @@ func (c *Container) IsDirty() bool {
 	return c.Sprite.IsDirty()
 }
 
-func (c *Container) ClientRect() ti.Rectangle[int] {
+func (c *Container) ClientRect() ctypes.Rectangle[int] {
 	rect := c.Sprite.ClientRect()
 	for _, child := range c.children.Range() {
 		bbox := child.ClientRect()
@@ -133,7 +134,7 @@ func (c *Container) Render(frameIndex int) {
 	c.Renderer().Module().AsyncFillColor(c.texture, color.Transparent)
 
 	w, h := c.attribute.Width(), c.attribute.Height()
-	relativeContainerRect := ti.RectWH(0, 0, w, h)
+	relativeContainerRect := ctypes.RectWH(0, 0, w, h)
 
 	for _, child := range children.Range() {
 		// 渲染子级
@@ -143,7 +144,7 @@ func (c *Container) Render(frameIndex int) {
 		// 得到子项（旋转、缩放、平移）之后真实坐标
 		bbox := child.ClientRect()
 		// 添加滚动条
-		bbox = bbox.Add(ti.Pt(c.childOffsetX, c.childOffsetY))
+		bbox = bbox.Add(ctypes.Pt(c.childOffsetX, c.childOffsetY))
 		// 计算和当前容器的交集
 		bbox = bbox.Intersect(relativeContainerRect)
 

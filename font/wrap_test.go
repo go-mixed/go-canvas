@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/go-mixed/go-canvas/ctypes"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/basicfont"
 )
@@ -14,7 +15,7 @@ func TestWordWrap_NoWrapWhenMaxWidthZero(t *testing.T) {
 		{Text: "hello world", Font: &FontInfo{Family: "Test"}, FontFamily: "Test", FontSize: 16},
 	}
 
-	out := rt.wordWrap(in, 0, BreakNormal)
+	out := rt.wordWrap(in, 0, ctypes.BreakNormal)
 	lines := collectLines(out)
 
 	want := []string{"hello world"}
@@ -30,7 +31,7 @@ func TestWordWrap_WrapAtSpace(t *testing.T) {
 	}
 
 	// basicfont.Face7x13: ASCII 单字宽约 7，42 大约可容纳 "hello "
-	out := rt.wordWrap(in, 42, BreakNormal)
+	out := rt.wordWrap(in, 42, ctypes.BreakNormal)
 	lines := collectLines(out)
 
 	want := []string{"hello ", "world"}
@@ -46,7 +47,7 @@ func TestWordWrap_ForceBreakWhenNoSemanticBreakpoint(t *testing.T) {
 	}
 
 	// 21 约等于 3 个 ASCII 字符宽度
-	out := rt.wordWrap(in, 21, BreakNormal)
+	out := rt.wordWrap(in, 21, ctypes.BreakNormal)
 	lines := collectLines(out)
 
 	want := []string{"abc", "def", "ghi", "j"}

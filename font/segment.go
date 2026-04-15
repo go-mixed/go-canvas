@@ -4,7 +4,7 @@ import (
 	"image/color"
 	"math"
 
-	"github.com/go-mixed/go-canvas/ti"
+	"github.com/go-mixed/go-canvas/ctypes"
 	"golang.org/x/image/font"
 )
 
@@ -76,7 +76,7 @@ func (t *TextSegment) CanMergeAdjacent(next *TextSegment) bool {
 		t.FontFamily != next.FontFamily {
 		return false
 	}
-	return ti.ColorEqual(t.Color, next.Color)
+	return ctypes.ColorEqual(t.Color, next.Color)
 }
 
 func syntheticItalicExtraWidth(height int) int {

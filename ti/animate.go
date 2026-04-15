@@ -1,6 +1,8 @@
 package ti
 
-type TargetAttributeFn func(base Attribute) (from *Attribute, to *TargetAttribute)
+import "github.com/go-mixed/go-canvas/ctypes"
+
+type TargetAttributeFn func(base ctypes.Attribute) (from *ctypes.Attribute, to *TargetAttribute)
 
 const (
 	ModifiedFieldX        = "x"
@@ -17,17 +19,17 @@ const (
 )
 
 type TargetAttribute struct {
-	*Attribute
+	*ctypes.Attribute
 
 	modifiedFields map[string]struct{}
 	order          []string
 	easing         EasingFunction
-	ShapeOpts      *ShapeMaskOptions
+	ShapeOpts      *ctypes.ShapeMaskOptions
 }
 
 func TargetAttr() *TargetAttribute {
 	return &TargetAttribute{
-		Attribute:      Attr(),
+		Attribute:      ctypes.Attr(),
 		modifiedFields: map[string]struct{}{},
 		easing: func(progress float32) float32 {
 			return progress
@@ -67,7 +69,7 @@ func (a *TargetAttribute) Easing(t float32) float32 {
 	return a.easing(t)
 }
 
-func (a *TargetAttribute) SetRect(rect Rectangle[int]) *TargetAttribute {
+func (a *TargetAttribute) SetRect(rect ctypes.Rectangle[int]) *TargetAttribute {
 	a.Attribute.SetRect(rect)
 	a.mark(ModifiedFieldX, ModifiedFieldY, ModifiedFieldWidth, ModifiedFieldHeight)
 	return a
@@ -157,7 +159,7 @@ func (a *TargetAttribute) SetCxy(x int, y int) *TargetAttribute {
 	return a
 }
 
-func (a *TargetAttribute) SetShapeOptions(opts *ShapeMaskOptions) *TargetAttribute {
+func (a *TargetAttribute) SetShapeOptions(opts *ctypes.ShapeMaskOptions) *TargetAttribute {
 	a.ShapeOpts = opts
 	if opts != nil {
 		a.mark(ModifiedFieldShape)

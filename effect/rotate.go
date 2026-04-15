@@ -1,6 +1,7 @@
 package effect
 
 import (
+	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/internel/misc"
 	"github.com/go-mixed/go-canvas/ti"
 )
@@ -47,7 +48,7 @@ func (e *RotateEffect) WithEasingName(name string) *RotateEffect {
 	return e
 }
 
-func (e *RotateEffect) TargetAttributeFn(base ti.Attribute) (*ti.Attribute, *ti.TargetAttribute) {
+func (e *RotateEffect) TargetAttributeFn(base ctypes.Attribute) (*ctypes.Attribute, *ti.TargetAttribute) {
 	target := ti.TargetAttr().SetEasing(e.easing)
 	if e.inOut == EffectOut {
 		target.SetRotation(misc.Deg2Rad(e.angleStart))

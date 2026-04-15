@@ -1,18 +1,21 @@
 package effect
 
-import "github.com/go-mixed/go-canvas/ti"
+import (
+	"github.com/go-mixed/go-canvas/ctypes"
+	"github.com/go-mixed/go-canvas/ti"
+)
 
 type SlideEffect struct {
 	inOut     EffectInOut
-	direction ti.Direction
+	direction ctypes.Direction
 	easing    ti.EasingFunction
 }
 
 func Slide(inOut EffectInOut) *SlideEffect {
-	return &SlideEffect{inOut: inOut, direction: ti.DirectionRight, easing: ti.DefaultEasingFunction}
+	return &SlideEffect{inOut: inOut, direction: ctypes.DirectionRight, easing: ti.DefaultEasingFunction}
 }
 
-func (e *SlideEffect) WithDirection(direction ti.Direction) *SlideEffect {
+func (e *SlideEffect) WithDirection(direction ctypes.Direction) *SlideEffect {
 	e.direction = direction
 	return e
 }
@@ -29,18 +32,18 @@ func (e *SlideEffect) WithEasingName(name string) *SlideEffect {
 	return e
 }
 
-func (e *SlideEffect) TargetAttributeFn(base ti.Attribute) (*ti.Attribute, *ti.TargetAttribute) {
+func (e *SlideEffect) TargetAttributeFn(base ctypes.Attribute) (*ctypes.Attribute, *ti.TargetAttribute) {
 	w := base.Width()
 	h := base.Height()
 	offsetX, offsetY := 0, 0
 	switch e.direction {
-	case ti.DirectionTop:
+	case ctypes.DirectionTop:
 		offsetY = -h
-	case ti.DirectionBottom:
+	case ctypes.DirectionBottom:
 		offsetY = h
-	case ti.DirectionLeft:
+	case ctypes.DirectionLeft:
 		offsetX = -w
-	case ti.DirectionRight:
+	case ctypes.DirectionRight:
 		offsetX = w
 	}
 

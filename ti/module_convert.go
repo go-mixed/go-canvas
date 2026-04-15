@@ -1,38 +1,42 @@
 package ti
 
-import "image/color"
+import (
+	"image/color"
 
-func (m *AotModule) AsyncTiImageToBgra(input *TiImage, output *BgraImage) {
+	"github.com/go-mixed/go-canvas/ctypes"
+)
+
+func (m *AotModule) AsyncTiImageToBgra(input *ctypes.TiImage, output *ctypes.BgraImage) {
 	kernel := m.getCache("ti_image_to_bgra")
 	kernel.Launch().ArgNdArray(input).ArgNdArray(output).RunAsync()
 }
 
-func (m *AotModule) TiImageToBgra(input *TiImage, output *BgraImage) {
+func (m *AotModule) TiImageToBgra(input *ctypes.TiImage, output *ctypes.BgraImage) {
 	m.AsyncTiImageToBgra(input, output)
 	m.runtime.Wait()
 }
 
 // AsyncFillColor 填充纹理
-func (m *AotModule) AsyncFillColor(texture *TiImage, c color.Color) {
+func (m *AotModule) AsyncFillColor(texture *ctypes.TiImage, c color.Color) {
 	kernel := m.getCache("fill_color")
 
-	kernel.Launch().ArgNdArray(texture).ArgVectorFloat32(Color2TiColor(c)...).RunAsync()
+	kernel.Launch().ArgNdArray(texture).ArgVectorFloat32(ctypes.Color2TiColor(c)...).RunAsync()
 }
 
-func (m *AotModule) FillColor(texture *TiImage, c color.Color) {
+func (m *AotModule) FillColor(texture *ctypes.TiImage, c color.Color) {
 	m.AsyncFillColor(texture, c)
 	m.runtime.Wait()
 }
 
 // AsyncBlur 对纹理进行模糊处理
-func (m *AotModule) AsyncBlur(input *TiImage, output *TiImage, mode BlurMode, radius int32) {
+func (m *AotModule) AsyncBlur(input *ctypes.TiImage, output *ctypes.TiImage, mode ctypes.BlurMode, radius int32) {
 	var kernelName string
 	switch mode {
-	case BlurModeBox:
+	case ctypes.BlurModeBox:
 		kernelName = "blur_box"
-	case BlurModeGaussian:
+	case ctypes.BlurModeGaussian:
 		kernelName = "blur_gaussian"
-	case BlurModeMosaic:
+	case ctypes.BlurModeMosaic:
 		kernelName = "blur_mosaic"
 	}
 
@@ -44,7 +48,7 @@ func (m *AotModule) AsyncBlur(input *TiImage, output *TiImage, mode BlurMode, ra
 		RunAsync()
 }
 
-func (m *AotModule) Blur(input *TiImage, output *TiImage, mode BlurMode, radius int32) {
+func (m *AotModule) Blur(input *ctypes.TiImage, output *ctypes.TiImage, mode ctypes.BlurMode, radius int32) {
 	m.AsyncBlur(input, output, mode, radius)
 	m.runtime.Wait()
 }

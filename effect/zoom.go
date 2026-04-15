@@ -1,6 +1,9 @@
 package effect
 
-import "github.com/go-mixed/go-canvas/ti"
+import (
+	"github.com/go-mixed/go-canvas/ctypes"
+	"github.com/go-mixed/go-canvas/ti"
+)
 
 type ZoomEffect struct {
 	inOut     EffectInOut
@@ -30,7 +33,7 @@ func (e *ZoomEffect) WithEasingName(name string) *ZoomEffect {
 	return e
 }
 
-func (e *ZoomEffect) TargetAttributeFn(base ti.Attribute) (*ti.Attribute, *ti.TargetAttribute) {
+func (e *ZoomEffect) TargetAttributeFn(base ctypes.Attribute) (*ctypes.Attribute, *ti.TargetAttribute) {
 	target := ti.TargetAttr().SetEasing(e.easing)
 	if e.inOut == EffectOut {
 		target.SetScale(e.zoomStart, e.zoomStart)

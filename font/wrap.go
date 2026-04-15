@@ -5,20 +5,21 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/go-mixed/go-canvas/ctypes"
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
 )
 
 // isLineBreakNever 判断策略是否为“禁止自动换行”。
 // isLineBreakNever reports whether policy disables auto wrapping.
-func isLineBreakNever(p WordWrapMode) bool {
-	return p == NoWrap
+func isLineBreakNever(p ctypes.WordWrapMode) bool {
+	return p == ctypes.NoWrap
 }
 
 // isLineBreakAlways 判断策略是否为“总是按宽度断行”。
 // isLineBreakAlways reports whether policy forces width-based wrapping.
-func isLineBreakAlways(p WordWrapMode) bool {
-	return p == BreakAll
+func isLineBreakAlways(p ctypes.WordWrapMode) bool {
+	return p == ctypes.BreakAll
 }
 
 // chooseBreakIndex 选择当前行可放下的最佳断点（先估算，再在候选断点上二分）。

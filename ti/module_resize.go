@@ -1,5 +1,7 @@
 package ti
 
+import "github.com/go-mixed/go-canvas/ctypes"
+
 // resizeParams 缩放参数
 type resizeParams struct {
 	scaleX  float32
@@ -9,25 +11,25 @@ type resizeParams struct {
 }
 
 // computeResizeScaleAndOffset 计算缩放比例和偏移量
-func computeResizeScaleAndOffset(srcWidth, srcHeight, dstWidth, dstHeight float32, fillMode FillMode) resizeParams {
+func computeResizeScaleAndOffset(srcWidth, srcHeight, dstWidth, dstHeight float32, fillMode ctypes.FillMode) resizeParams {
 	scaleX := dstWidth / srcWidth
 	scaleY := dstHeight / srcHeight
 
 	var offsetX, offsetY float32
 
 	switch fillMode {
-	case FillModeStretch:
+	case ctypes.FillModeStretch:
 		// 直接拉伸，scaleX/scaleY 不变
 		offsetX = 0
 		offsetY = 0
-	case FillModeFit:
+	case ctypes.FillModeFit:
 		// 等比适应，可能有黑边
 		scale := min(scaleX, scaleY)
 		scaleX = scale
 		scaleY = scale
 		offsetX = (dstWidth - srcWidth*scaleX) * 0.5
 		offsetY = (dstHeight - srcHeight*scaleY) * 0.5
-	case FillModeFill:
+	case ctypes.FillModeFill:
 		// 等比填充，可能裁剪
 		scale := max(scaleX, scaleY)
 		scaleX = scale
@@ -45,7 +47,7 @@ func computeResizeScaleAndOffset(srcWidth, srcHeight, dstWidth, dstHeight float3
 }
 
 // AsyncResize 缩放纹理
-func (m *AotModule) AsyncResize(input *TiImage, output *TiImage, opts ResizeOptions) {
+func (m *AotModule) AsyncResize(input *ctypes.TiImage, output *ctypes.TiImage, opts ctypes.ResizeOptions) {
 	// 获取源和目标的尺寸
 	srcShape := input.Shape()
 	dstShape := output.Shape()
@@ -60,13 +62,13 @@ func (m *AotModule) AsyncResize(input *TiImage, output *TiImage, opts ResizeOpti
 	// 根据 ScaleMode 调用对应的 kernel
 	var kernelName string
 	switch opts.ScaleMode {
-	case ScaleModeNearest:
+	case ctypes.ScaleModeNearest:
 		kernelName = "resize_nearest"
-	case ScaleModeLinear:
+	case ctypes.ScaleModeLinear:
 		kernelName = "resize_bilinear"
-	case ScaleModeCubic:
+	case ctypes.ScaleModeCubic:
 		kernelName = "resize_bicubic"
-	case ScaleModeLanczos:
+	case ctypes.ScaleModeLanczos:
 		kernelName = "resize_lanczos"
 	}
 
@@ -81,7 +83,7 @@ func (m *AotModule) AsyncResize(input *TiImage, output *TiImage, opts ResizeOpti
 		RunAsync()
 }
 
-func (m *AotModule) Resize(input *TiImage, output *TiImage, opts ResizeOptions) {
+func (m *AotModule) Resize(input *ctypes.TiImage, output *ctypes.TiImage, opts ctypes.ResizeOptions) {
 	m.AsyncResize(input, output, opts)
 	m.runtime.Wait()
 }
