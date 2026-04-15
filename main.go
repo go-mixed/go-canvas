@@ -82,7 +82,7 @@ func main() {
 
 	// 7. 创建文字精灵 1
 	t = time.Now()
-	text1, err := render.NewTextSprite(stage, fontLibrary, ctypes.Attr().SetHeight(80), font.RTOpt().SetAlign(ctypes.HAlignCenter, ctypes.VAlignTop))
+	text1, err := render.NewTextSprite(stage, fontLibrary, ctypes.Attr().SetHeight(60), font.RTOpt().SetAlign(ctypes.HAlignCenter, ctypes.VAlignTop))
 	if err != nil {
 		panic(err)
 	}

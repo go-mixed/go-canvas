@@ -13,6 +13,8 @@ import (
 	"golang.org/x/image/font/opentype"
 )
 
+const pointsPerInch = 72.0
+
 type FontInfo struct {
 	Bold              FontWeight
 	Italic            bool
@@ -40,6 +42,9 @@ type FontLibrary struct {
 }
 
 func NewFontLibrary(fontOpt *FontOptions, paths ...string) (*FontLibrary, error) {
+	if fontOpt == nil {
+		fontOpt = FontOpt()
+	}
 	fs := &FontLibrary{
 		fonts:       make(map[string][]*FontInfo),
 		matchCache:  make(map[string]fontCollection),
@@ -288,14 +293,19 @@ func (fs *FontLibrary) fontFaceKey(fi *FontInfo, size int) string {
 	return strconv.Itoa(size)
 }
 
+// CreateFace 常见字体Face
+//
+//	fontSize 需要以像素为单位
 func (fs *FontLibrary) CreateFace(fi *FontInfo, fontSize int) xfont.Face {
 	of, err := fi.GetOpenTypeFont()
 	if err != nil || of == nil {
 		return nil
 	}
+	// Keep external fontSize in px semantics by converting px -> pt for opentype.
+	// Given px = pt * dpi / 72, then pt = px * 72 / dpi.
+	sizePt := float64(fontSize) * pointsPerInch / fs.fontOptions.dpi
 	face, err := opentype.NewFace(of, &opentype.FaceOptions{
-		Size: float64(fontSize),
-		// px = size * dpi / 72
+		Size:    sizePt,
 		DPI:     fs.fontOptions.dpi,
 		Hinting: xfont.HintingFull,
 	})
