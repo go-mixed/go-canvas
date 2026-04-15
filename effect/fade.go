@@ -2,6 +2,7 @@ package effect
 
 import (
 	"github.com/go-mixed/go-canvas/ctypes"
+	"github.com/go-mixed/go-canvas/internel/misc"
 	"github.com/go-mixed/go-canvas/ti"
 )
 
@@ -26,8 +27,14 @@ func (e *FadeEffect) WithEasingName(name string) *FadeEffect {
 func (e *FadeEffect) TargetAttributeFn(base ctypes.Attribute) (*ctypes.Attribute, *ti.TargetAttribute) {
 	target := ti.TargetAttr().SetEasing(e.easing)
 	if e.inOut == EffectOut {
-		target.SetAlpha(0.0)
+		if misc.NumberEqual(base.Alpha(), 0, misc.Epsilon) {
+			base.SetAlpha(1)
+		}
+		target.SetAlpha(0.3)
 	} else {
+		if misc.NumberEqual(base.Alpha(), 1, misc.Epsilon) {
+			base.SetAlpha(0.3)
+		}
 		target.SetAlpha(1.0)
 	}
 	return &base, target

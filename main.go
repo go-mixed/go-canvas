@@ -41,13 +41,13 @@ func main() {
 	fmt.Printf("[2/8] 创建舞台: %v\n", time.Since(t))
 
 	//3. 创建背景块
-	t = time.Now()
-	background, err := render.NewBlockSprite(stage, ctypes.Attr().SetRect(rect))
-	if err != nil {
-		panic(err)
-	}
-	background.Fill(ctypes.RGBA(0x00ff00ff))
-	fmt.Printf("[3/8] 创建背景块: %v\n", time.Since(t))
+	//t = time.Now()
+	//background, err := render.NewBlockSprite(stage, ctypes.Attr().SetRect(rect))
+	//if err != nil {
+	//	panic(err)
+	//}
+	//background.Fill(ctypes.RGBA(0x00ff00ff))
+	//fmt.Printf("[3/8] 创建背景块: %v\n", time.Since(t))
 
 	// 4. 创建容器
 	//t = time.Now()
@@ -64,7 +64,7 @@ func main() {
 
 	// 5. 加载图片
 	t = time.Now()
-	img, err := render.NewImageSprite(stage, ctypes.Attr().SetRect(rect), filepath.Join(cd, "examples", "1.jpg"))
+	img, err := render.NewImageSprite(stage, ctypes.Attr().SetRect(rect).SetAlpha(0.5), filepath.Join(cd, "examples", "1.jpg"))
 	if err != nil {
 		panic(err)
 	}

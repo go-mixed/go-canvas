@@ -10,10 +10,23 @@ def ti_image_to_bgra(
         rgba = texture[x, y]
         rgba = ti.math.clamp(rgba, 0.0, 1.0)
 
-        r = ti.cast(rgba[0] * 255.0 + 0.5, ti.u32)
-        g = ti.cast(rgba[1] * 255.0 + 0.5, ti.u32)
-        b = ti.cast(rgba[2] * 255.0 + 0.5, ti.u32)
-        a = ti.cast(rgba[3] * 255.0 + 0.5, ti.u32)
+        # Export premultiplied BGRA for better downstream compositing consistency
+        # in raw/video pipelines (e.g. ffmpeg).
+        a_f = rgba[3]
+        r_f = 0.0
+        g_f = 0.0
+        b_f = 0.0
+        if a_f <= 1e-6:
+            a_f = 0.0
+        else:
+            r_f = rgba[0] * a_f
+            g_f = rgba[1] * a_f
+            b_f = rgba[2] * a_f
+
+        r = ti.cast(r_f * 255.0 + 0.5, ti.u32)
+        g = ti.cast(g_f * 255.0 + 0.5, ti.u32)
+        b = ti.cast(b_f * 255.0 + 0.5, ti.u32)
+        a = ti.cast(a_f * 255.0 + 0.5, ti.u32)
 
         # BGRA 打包（ bgra 小端内存布局）
         output[y, x] = (a << 24) | (r << 16) | (g << 8) | b

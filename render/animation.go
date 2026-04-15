@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/go-mixed/go-canvas/ctypes"
-	misc2 "github.com/go-mixed/go-canvas/internel/misc"
+	"github.com/go-mixed/go-canvas/internel/misc"
 	"github.com/go-mixed/go-canvas/ti"
 )
 
@@ -25,14 +25,14 @@ type spriteAnimator struct {
 	sprite IElement
 
 	mutex   sync.Mutex
-	queue   *misc2.List[*animationItem]
+	queue   *misc.List[*animationItem]
 	stopped bool
 }
 
 func newSpriteAnimator(sprite IElement) *spriteAnimator {
 	return &spriteAnimator{
 		sprite: sprite,
-		queue:  misc2.NewList[*animationItem](),
+		queue:  misc.NewList[*animationItem](),
 	}
 }
 
@@ -156,7 +156,7 @@ func (a *spriteAnimator) tick(frameIndex int) bool {
 			continue
 		}
 
-		progress := misc2.Clamp(float32(elapsed) / float32(item.durationFrames))
+		progress := misc.Clamp(float32(elapsed) / float32(item.durationFrames))
 		eased := item.target.Easing(progress)
 		applyModifiedFieldsLerp(a.sprite, item.from, item.target, eased)
 		return true
@@ -175,13 +175,13 @@ func applyModifiedFieldsLerp(dst IAttribute, from *ctypes.Attribute, to *ti.Targ
 		w := from.Width()
 		h := from.Height()
 		if hasWidth {
-			w = misc2.Lerp(from.Width(), to.Width(), t)
+			w = misc.Lerp(from.Width(), to.Width(), t)
 			if w <= 0 {
 				w = 1
 			}
 		}
 		if hasHeight {
-			h = misc2.Lerp(from.Height(), to.Height(), t)
+			h = misc.Lerp(from.Height(), to.Height(), t)
 			if h <= 0 {
 				h = 1
 			}
@@ -193,44 +193,44 @@ func applyModifiedFieldsLerp(dst IAttribute, from *ctypes.Attribute, to *ti.Targ
 		x := from.X()
 		y := from.Y()
 		if to.IsModified(ti.ModifiedFieldX) {
-			x = misc2.Lerp(from.X(), to.X(), t)
+			x = misc.Lerp(from.X(), to.X(), t)
 		}
 		if to.IsModified(ti.ModifiedFieldY) {
-			y = misc2.Lerp(from.Y(), to.Y(), t)
+			y = misc.Lerp(from.Y(), to.Y(), t)
 		}
 		dst.MoveTo(x, y)
 	}
 
 	if to.IsModified(ti.ModifiedFieldCx) {
-		dst.SetCx(misc2.Lerp(from.Cx(), to.Cx(), t))
+		dst.SetCx(misc.Lerp(from.Cx(), to.Cx(), t))
 	}
 	if to.IsModified(ti.ModifiedFieldCy) {
-		dst.SetCy(misc2.Lerp(from.Cy(), to.Cy(), t))
+		dst.SetCy(misc.Lerp(from.Cy(), to.Cy(), t))
 	}
 
 	if to.IsModified(ti.ModifiedFieldScaleX) || to.IsModified(ti.ModifiedFieldScaleY) {
 		scaleX := from.ScaleX()
 		scaleY := from.ScaleY()
 		if to.IsModified(ti.ModifiedFieldScaleX) {
-			scaleX = misc2.Lerp(from.ScaleX(), to.ScaleX(), t)
+			scaleX = misc.Lerp(from.ScaleX(), to.ScaleX(), t)
 		}
 		if to.IsModified(ti.ModifiedFieldScaleY) {
-			scaleY = misc2.Lerp(from.ScaleY(), to.ScaleY(), t)
+			scaleY = misc.Lerp(from.ScaleY(), to.ScaleY(), t)
 		}
 		dst.SetScale(scaleX, scaleY)
 	}
 
 	if to.IsModified(ti.ModifiedFieldRotation) {
-		dst.SetRotation(misc2.Lerp(from.Rotation(), to.Rotation(), t))
+		dst.SetRotation(misc.Lerp(from.Rotation(), to.Rotation(), t))
 	}
 	if to.IsModified(ti.ModifiedFieldAlpha) {
-		dst.SetAlpha(misc2.Lerp(from.Alpha(), to.Alpha(), t))
+		dst.SetAlpha(misc.Lerp(from.Alpha(), to.Alpha(), t))
 	}
 
 	if to.IsModified(ti.ModifiedFieldShape) && to.ShapeOpts != nil {
 		if shapeSprite, ok := dst.(IShape); ok {
 			opts := to.ShapeOpts
-			tVal := misc2.Lerp(opts.StartT, opts.EndT, t)
+			tVal := misc.Lerp(opts.StartT, opts.EndT, t)
 			shapeSprite.DrawShape(opts.ShapeType, tVal, opts.ShapeOptions)
 		}
 	}

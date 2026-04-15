@@ -13,7 +13,7 @@ type ZoomEffect struct {
 }
 
 func Zoom(inOut EffectInOut) *ZoomEffect {
-	return &ZoomEffect{inOut: inOut, zoomStart: 0.5, zoomEnd: 1, easing: ti.DefaultEasingFunction}
+	return &ZoomEffect{inOut: inOut, zoomStart: 0.1, zoomEnd: 1, easing: ti.DefaultEasingFunction}
 }
 
 func (e *ZoomEffect) WithZoomRange(start, end float32) *ZoomEffect {

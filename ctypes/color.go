@@ -6,11 +6,6 @@ import (
 	"github.com/go-mixed/go-taichi/f16"
 )
 
-// BGR 0xBBGGRR
-type BGR uint32
-
-var _ color.Color = (*BGR)(nil)
-
 // u8ColorTo16 将 8 位颜色转换为 16 位颜色（0-255 -> 0-65535）
 func u8ColorTo16(v uint32) uint32 {
 	return v * 0xffff / 0xff
@@ -39,82 +34,117 @@ func f16ColorToU8(v f16.Float16) uint32 {
 	return uint32(vv * 255)
 }
 
+// BGR 0xBBGGRR
+type BGR uint32
+
+var _ color.Color = (*BGR)(nil)
+
 func (C BGR) RGBA() (r, g, b, a uint32) {
 	return u8ColorTo16(uint32(C>>16) & 0xff), u8ColorTo16(uint32(C>>8) & 0xff), u8ColorTo16(uint32(C) & 0xff), 0xffff
 }
 
-// BGRA 0xBBGGRRAA
-type BGRA uint32
+// NBGRA 0xBBGGRRAA
+type NBGRA uint32
 
-var _ color.Color = (*BGRA)(nil)
+var _ color.Color = (*NBGRA)(nil)
 
-func (C BGRA) RGBA() (r, g, b, a uint32) {
-	return u8ColorTo16(uint32(C>>8) & 0xff), u8ColorTo16(uint32(C>>16) & 0xff), u8ColorTo16(uint32(C>>24) & 0xff), u8ColorTo16(uint32(C) & 0xff)
+func (C NBGRA) RGBA() (r, g, b, a uint32) {
+	// Go color.Color contract requires RGBA() to return alpha-premultiplied channels.
+	// If we return straight RGB here, PNG/export paths may show colorful artifacts.
+	r8 := uint32(C>>8) & 0xff
+	g8 := uint32(C>>16) & 0xff
+	b8 := uint32(C>>24) & 0xff
+	a8 := uint32(C) & 0xff
+	a = u8ColorTo16(a8)
+	r = u8ColorTo16(r8) * a / 0xffff
+	g = u8ColorTo16(g8) * a / 0xffff
+	b = u8ColorTo16(b8) * a / 0xffff
+	return
 }
 
-func ToBGRA(color color.Color) BGRA {
+func ToNBGRA(color color.Color) NBGRA {
 	r, g, b, a := color.RGBA()
-	return BGRA(u16ColorTo8(b)<<8 | u16ColorTo8(g)<<16 | u16ColorTo8(r)<<24 | u16ColorTo8(a))
+	return NBGRA(u16ColorTo8(b)<<8 | u16ColorTo8(g)<<16 | u16ColorTo8(r)<<24 | u16ColorTo8(a))
 }
 
-// ARGB 0xAARRGGBB
-type ARGB uint32
+// NARGB 0xAARRGGBB
+type NARGB uint32
 
-var _ color.Color = (*ARGB)(nil)
+var _ color.Color = (*NARGB)(nil)
 
-func (A ARGB) RGBA() (r, g, b, a uint32) {
-	return u8ColorTo16(uint32(A>>16) & 0xff), u8ColorTo16(uint32(A>>8) & 0xff), u8ColorTo16(uint32(A) & 0xff), u8ColorTo16(uint32(A>>24) & 0xff)
+func (A NARGB) RGBA() (r, g, b, a uint32) {
+	// Go color.Color contract requires RGBA() to return alpha-premultiplied channels.
+	r8 := uint32(A>>16) & 0xff
+	g8 := uint32(A>>8) & 0xff
+	b8 := uint32(A) & 0xff
+	a8 := uint32(A>>24) & 0xff
+	a = u8ColorTo16(a8)
+	r = u8ColorTo16(r8) * a / 0xffff
+	g = u8ColorTo16(g8) * a / 0xffff
+	b = u8ColorTo16(b8) * a / 0xffff
+	return
 }
 
-func ToARGB(color color.Color) ARGB {
+func ToNARGB(color color.Color) NARGB {
 	r, g, b, a := color.RGBA()
-	return ARGB(u16ColorTo8(a)<<24 | u16ColorTo8(r)<<16 | u16ColorTo8(g)<<8 | u16ColorTo8(b))
+	return NARGB(u16ColorTo8(a)<<24 | u16ColorTo8(r)<<16 | u16ColorTo8(g)<<8 | u16ColorTo8(b))
 }
 
-// RGBA 0xRRGGBBAA
-type RGBA uint32
+// NRGBA 0xRRGGBBAA
+type NRGBA uint32
 
-var _ color.Color = (*RGBA)(nil)
+var _ color.Color = (*NRGBA)(nil)
 
-func (R RGBA) RGBA() (r, g, b, a uint32) {
-	return u8ColorTo16(uint32(R>>24) & 0xff), u8ColorTo16(uint32(R>>16) & 0xff), u8ColorTo16(uint32(R>>8) & 0xff), u8ColorTo16(uint32(R) & 0xff)
+func (R NRGBA) RGBA() (r, g, b, a uint32) {
+	// Go color.Color contract requires RGBA() to return alpha-premultiplied channels.
+	r8 := uint32(R>>24) & 0xff
+	g8 := uint32(R>>16) & 0xff
+	b8 := uint32(R>>8) & 0xff
+	a8 := uint32(R) & 0xff
+	a = u8ColorTo16(a8)
+	r = u8ColorTo16(r8) * a / 0xffff
+	g = u8ColorTo16(g8) * a / 0xffff
+	b = u8ColorTo16(b8) * a / 0xffff
+	return
 }
 
-func ToRGBA(color color.Color) RGBA {
+func ToRGBA(color color.Color) NRGBA {
 	r, g, b, a := color.RGBA()
-	return RGBA(u16ColorTo8(r)<<24 | u16ColorTo8(g)<<16 | u16ColorTo8(b)<<8 | u16ColorTo8(a))
+	return NRGBA(u16ColorTo8(r)<<24 | u16ColorTo8(g)<<16 | u16ColorTo8(b)<<8 | u16ColorTo8(a))
 }
 
 // TiColorToColor 将 Taichi 纹理颜色转换为 Go 颜色
 func TiColorToColor(r, g, b, a float32) color.Color {
-	return RGBA(f32ColorToU8(r)<<24 | f32ColorToU8(g)<<16 | f32ColorToU8(b)<<8 | f32ColorToU8(a))
+	return NRGBA(f32ColorToU8(r)<<24 | f32ColorToU8(g)<<16 | f32ColorToU8(b)<<8 | f32ColorToU8(a))
 }
 
 // ExpandF32Color 将 Go 颜色转换为 0-1 float32 颜色
-func ExpandF32Color(color color.Color) (r, g, b, a float32) {
-	ir, ig, ib, ia := color.RGBA()
-	return float32(ir) / 65535., float32(ig) / 65535., float32(ib) / 65535., float32(ia) / 65535.
+func ExpandF32Color(c color.Color) (r, g, b, a float32) {
+	// Use straight RGBA channels (not premultiplied) so callers like Color2TiColor
+	// preserve intuitive color values across APIs.
+	nrgba := color.NRGBAModel.Convert(c).(color.NRGBA)
+	return float32(nrgba.R) / 255., float32(nrgba.G) / 255., float32(nrgba.B) / 255., float32(nrgba.A) / 255.
 }
 
 // ExpandF16Color 将 Go 颜色转换为 0-1 float16 颜色
-func ExpandF16Color(color color.Color) (r, g, b, a float32) {
-	fr, fg, fb, fa := ExpandF32Color(color)
+func ExpandF16Color(c color.Color) (r, g, b, a float32) {
+	fr, fg, fb, fa := ExpandF32Color(c)
 	return fr, fg, fb, fa
 }
 
 // ExpandU8Color 将 Go 颜色转换为 0xff 颜色
-func ExpandU8Color(color color.Color) (r, g, b, a uint32) {
-	ir, ig, ib, ia := color.RGBA()
-	return u16ColorTo8(ir), u16ColorTo8(ig), u16ColorTo8(ib), u16ColorTo8(ia)
+func ExpandU8Color(c color.Color) (r, g, b, a uint32) {
+	nrgba := color.NRGBAModel.Convert(c).(color.NRGBA)
+	return uint32(nrgba.R), uint32(nrgba.G), uint32(nrgba.B), uint32(nrgba.A)
 }
 
-func Color2TiColor(color color.Color) TiColor {
-	r, g, b, a := ExpandF32Color(color)
+func Color2TiColor(c color.Color) TiColor {
+	r, g, b, a := ExpandF32Color(c)
 	return TiColor{r, g, b, a}
 }
 
-// ColorEqual 比较两个 color.Color 的 RGBA 展开值是否一致。
-// ColorEqual compares two color.Color values by expanded RGBA components.
+// ColorEqual 比较两个 color.Color 的 NRGBA 展开值是否一致。
+// ColorEqual compares two color.Color values by expanded NRGBA components.
 func ColorEqual(a, b color.Color) bool {
 	if a == nil || b == nil {
 		return a == b
