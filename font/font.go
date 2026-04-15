@@ -34,18 +34,18 @@ type FontLibrary struct {
 	fallbackBoldInfo    *FontInfo
 	fallbackLightInfo   *FontInfo
 
-	logger misc.Logger
+	fontOptions *FontOptions
 
 	mutex *sync.RWMutex
 }
 
-func NewFontLibrary(logger misc.Logger, paths ...string) (*FontLibrary, error) {
+func NewFontLibrary(fontOpt *FontOptions, paths ...string) (*FontLibrary, error) {
 	fs := &FontLibrary{
-		fonts:      make(map[string][]*FontInfo),
-		matchCache: make(map[string]fontCollection),
-		faceCache:  make(map[string]xfont.Face),
-		mutex:      &sync.RWMutex{},
-		logger:     logger,
+		fonts:       make(map[string][]*FontInfo),
+		matchCache:  make(map[string]fontCollection),
+		faceCache:   make(map[string]xfont.Face),
+		mutex:       &sync.RWMutex{},
+		fontOptions: fontOpt,
 	}
 	fs.fonts = fs.loadFonts(paths...)
 	if len(fs.fonts) == 0 {
@@ -62,8 +62,8 @@ type fontScore struct {
 }
 
 func (fs *FontLibrary) logf(format string, args ...any) {
-	if fs.logger != nil {
-		fs.logger.Printf(format, args...)
+	if fs.fontOptions.logger != nil {
+		fs.fontOptions.logger.Printf(format, args...)
 	}
 }
 
@@ -294,9 +294,10 @@ func (fs *FontLibrary) CreateFace(fi *FontInfo, fontSize int) xfont.Face {
 		return nil
 	}
 	face, err := opentype.NewFace(of, &opentype.FaceOptions{
-		Size:    float64(fontSize),
-		DPI:     120,
-		Hinting: xfont.HintingNone,
+		Size: float64(fontSize),
+		// px = size * dpi / 72
+		DPI:     fs.fontOptions.dpi,
+		Hinting: xfont.HintingFull,
 	})
 	if err != nil {
 		return nil

@@ -57,7 +57,7 @@ func main() {
 	//}
 	//fmt.Printf("[4/8] 创建容器: %v\n", time.Since(t))
 	//
-	fontLibrary, err := font.NewFontLibrary(log.Default())
+	fontLibrary, err := font.NewFontLibrary(font.FontOpt().SetLogger(log.Default()))
 	if err != nil {
 		panic(err)
 	}
@@ -82,11 +82,11 @@ func main() {
 
 	// 7. 创建文字精灵 1
 	t = time.Now()
-	text1, err := render.NewTextSprite(stage, fontLibrary, ctypes.Attr().SetWidth(500), font.RTOpt().SetAlign(ctypes.HAlignCenter, ctypes.VAlignMiddle))
+	text1, err := render.NewTextSprite(stage, fontLibrary, ctypes.Attr().SetHeight(80), font.RTOpt().SetAlign(ctypes.HAlignCenter, ctypes.VAlignTop))
 	if err != nil {
 		panic(err)
 	}
-	text1.SetText("<text font-size='50'>Hello Hi 123</text>\n <text font-size='50' color='#ffffff'>Interesting</text>\n<text font-size='60' color='#ff0000'>World!</text>")
+	text1.SetText("<text font-size='40'>Interesting</text> <text font-size='40' color='#ffffff'>qg</text><text font-size='40' color='#ff0000'>World!</text>")
 	fmt.Printf("[7/9] 创建文字1: %v\n", time.Since(t))
 
 	// 8. 创建文字精灵 2

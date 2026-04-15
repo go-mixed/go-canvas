@@ -45,7 +45,7 @@ func BuildRichTextLines(fs *FontLibrary, opts *RichTextOptions) *RichText {
 	}
 
 	if opts.logger == nil {
-		opts.SetLogger(fs.logger)
+		opts.SetLogger(fs.fontOptions.logger)
 	}
 
 	return &RichText{

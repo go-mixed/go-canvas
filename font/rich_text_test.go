@@ -133,7 +133,7 @@ func mustFontLibraryForRenderTests(t *testing.T) (*FontLibrary, string) {
 	t.Helper()
 
 	n := time.Now()
-	fs, err := NewFontLibrary(nil)
+	fs, err := NewFontLibrary(FontOpt())
 	if err != nil {
 		t.Fatalf("create font library error: %v", err)
 	}
