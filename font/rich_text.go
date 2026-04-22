@@ -366,10 +366,31 @@ func (r *RichText) Height() int {
 
 	var totalHeight int
 	for _, segments := range r.lines.Range() {
-		totalHeight += segments.Height()
+		totalHeight += r.resolvedLineHeight(segments.Height())
 	}
 	r.height = totalHeight
 	return r.height
+}
+
+// resolvedLineHeight 计算实际行高：
+// 1) lineHeightRatio > 0 时，先用 ratio * currentLineHeight 得到候选行高；
+// 2) 否则 lineHeight > 0 时，使用 lineHeight；
+// 3) 最终都取 max(candidate, currentLineHeight)，避免压缩当前行。
+func (r *RichText) resolvedLineHeight(currentLineHeight int) int {
+	if currentLineHeight < 0 {
+		currentLineHeight = 0
+	}
+
+	candidate := 0
+	if r != nil && r.opts != nil {
+		if r.opts.lineHeightRatio > 0 {
+			candidate = misc.Ceil[int](float32(currentLineHeight) * r.opts.lineHeightRatio)
+		} else if r.opts.lineHeight > 0 {
+			candidate = r.opts.lineHeight
+		}
+	}
+
+	return max(candidate, currentLineHeight)
 }
 
 func (r *RichText) IsEmpty() bool {

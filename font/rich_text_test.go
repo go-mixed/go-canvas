@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-mixed/go-canvas/ctypes"
+	"github.com/go-mixed/go-canvas/internel/misc"
 )
 
 func TestRenderTextWithAlign(t *testing.T) {
@@ -127,6 +128,78 @@ func TestRenderTextComplexLayoutCase(t *testing.T) {
 		t.Fatalf("save png failed: %v", err)
 	}
 	t.Logf("saved png: %s", filepath.Join("test_output", "rich_text_complex_layout.png"))
+}
+
+func TestResolvedLineHeight(t *testing.T) {
+	tests := []struct {
+		name    string
+		opts    *RichTextOptions
+		current int
+		want    int
+	}{
+		{
+			name:    "default uses current line height",
+			opts:    RTOpt(),
+			current: 20,
+			want:    20,
+		},
+		{
+			name:    "fixed lineHeight larger than current",
+			opts:    RTOpt().SetLineHeight(28),
+			current: 20,
+			want:    28,
+		},
+		{
+			name:    "fixed lineHeight smaller than current",
+			opts:    RTOpt().SetLineHeight(18),
+			current: 20,
+			want:    20,
+		},
+		{
+			name:    "ratio based lineHeight",
+			opts:    RTOpt().SetLineHeightScale(1.5),
+			current: 20,
+			want:    30,
+		},
+		{
+			name:    "ratio still cannot shrink current line",
+			opts:    &RichTextOptions{lineHeightRatio: 0.8},
+			current: 20,
+			want:    20,
+		},
+		{
+			name:    "ratio has higher priority than fixed lineHeight",
+			opts:    &RichTextOptions{lineHeight: 50, lineHeightRatio: 1.2},
+			current: 20,
+			want:    24,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			rt := &RichText{opts: tc.opts}
+			got := rt.resolvedLineHeight(tc.current)
+			if got != tc.want {
+				t.Fatalf("resolvedLineHeight(%d)=%d, want=%d", tc.current, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHeightUsesResolvedLineHeight(t *testing.T) {
+	rt := &RichText{
+		opts:   RTOpt().SetLineHeight(30),
+		lines:  misc.NewList[TextSegments](),
+		height: -1,
+	}
+	rt.lines.PushBack(TextSegments{&TextSegment{Height: 20}})
+	rt.lines.PushBack(TextSegments{&TextSegment{Height: 35}})
+
+	got := rt.Height()
+	want := 65 // max(30,20) + max(30,35)
+	if got != want {
+		t.Fatalf("Height()=%d, want=%d", got, want)
+	}
 }
 
 func mustFontLibraryForRenderTests(t *testing.T) (*FontLibrary, string) {

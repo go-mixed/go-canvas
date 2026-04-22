@@ -17,6 +17,10 @@ type RichTextOptions struct {
 
 	width  int
 	height int
+	// 行高，单位px
+	lineHeight int
+	// 行高比例，比如当前行的字体为20，如果lineHeightRatio为1.2时，则行高为20*1.2=24
+	lineHeightRatio float32
 }
 
 func RTOpt() *RichTextOptions {
@@ -32,11 +36,13 @@ func RTOpt() *RichTextOptions {
 			Bold:       false,
 			Underline:  false,
 		},
-		wordWrapMode: ctypes.BreakNormal,
-		wordWrapAlgo: ctypes.WrapAlgorithmSmart,
-		bidi:         ctypes.BidiAuto,
-		width:        misc.NaNInt,
-		height:       misc.NaNInt,
+		wordWrapMode:    ctypes.BreakNormal,
+		wordWrapAlgo:    ctypes.WrapAlgorithmSmart,
+		bidi:            ctypes.BidiAuto,
+		width:           misc.NaNInt,
+		height:          misc.NaNInt,
+		lineHeight:      0,
+		lineHeightRatio: 1,
 	}
 }
 
@@ -91,6 +97,19 @@ func (r *RichTextOptions) SetFontColor(color color.Color) *RichTextOptions {
 
 func (r *RichTextOptions) SetFontStyle(font RichTextFontStyle) *RichTextOptions {
 	r.fontStyle = font
+	return r
+}
+
+func (r *RichTextOptions) SetLineHeight(lineHeight int) *RichTextOptions {
+	r.lineHeight = lineHeight
+	r.lineHeightRatio = 0
+	return r
+}
+
+func (r *RichTextOptions) SetLineHeightScale(lineHeightScale float32) *RichTextOptions {
+
+	r.lineHeightRatio = max(1, lineHeightScale)
+	r.lineHeight = 0
 	return r
 }
 

@@ -45,7 +45,7 @@ func (r *RichText) RenderText() image.Image {
 	offsetY := 0
 	for _, segments := range r.lines.Range() {
 		lineWidth := segments.Width()
-		lineHeight := segments.Height()
+		lineHeight := r.resolvedLineHeight(segments.Height())
 		if offsetY >= totalHeight {
 			break
 		}
