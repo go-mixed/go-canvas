@@ -58,8 +58,8 @@ func (s *Sprite) AddMask(mask IMask) {
 			return
 		}
 		s.masks.PushBack(mask)
-	}, func() bool {
-		return true
+	}, func() ctypes.DirtyMode {
+		return ctypes.DirtyModeMask | ctypes.DirtyModeComposite
 	})
 }
 
@@ -71,8 +71,8 @@ func (s *Sprite) RemoveMask(mask IMask) {
 
 		// 递归删除
 		mask.Release()
-	}, func() bool {
-		return true
+	}, func() ctypes.DirtyMode {
+		return ctypes.DirtyModeMask | ctypes.DirtyModeComposite
 	})
 }
 
@@ -94,7 +94,7 @@ func NewBlockSprite(parent IParent, attribute *ctypes.Attribute) (*Sprite, error
 	})
 }
 
-func (s *Sprite) SetDirty(val bool) {
+func (s *Sprite) SetDirty(val ctypes.DirtyMode) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.dirty = val
@@ -104,7 +104,7 @@ func (s *Sprite) IsDirty() bool {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
-	if s.dirty {
+	if s.dirty != ctypes.DirtyModeNone {
 		return true
 	}
 
@@ -120,7 +120,7 @@ func (s *Sprite) IsDirty() bool {
 
 func (s *Sprite) Render(frameIndex int) {
 	defer func() {
-		s.SetDirty(false)
+		s.SetDirty(ctypes.DirtyModeNone)
 	}()
 
 	for _, mask := range s.masks.Range() {
@@ -186,8 +186,11 @@ func (s *Sprite) SetInstance(m ISprite) {
 	s.LockForUpdate(func() {
 		s.instance = m
 		s.animator.setSprite(m)
-	}, func() bool {
-		return s.instance != m
+	}, func() ctypes.DirtyMode {
+		if s.instance != m {
+			return ctypes.DirtyModeComposite
+		}
+		return ctypes.DirtyModeNone
 	})
 }
 
@@ -195,6 +198,9 @@ func (s *Sprite) Release() {
 	s.mutex.RLock()
 	if s.texture != nil {
 		s.texture.Release()
+	}
+	if s.canvas != nil {
+		s.canvas.Release()
 	}
 	s.mutex.RUnlock()
 
@@ -207,6 +213,7 @@ func (s *Sprite) Release() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.texture = nil
+	s.canvas = nil
 	s.masks.Clear()
 	s.animator.clear()
 }

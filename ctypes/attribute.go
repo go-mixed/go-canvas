@@ -43,9 +43,14 @@ type Attribute struct {
 }
 
 type BorderAttribute struct {
-	LeftWidth, RightWidth, TopWidth, BottomWidth float32
+	// 边框宽度
+	LeftWidth, RightWidth, TopWidth, BottomWidth int
+	// 边框样式
 	LeftStyle, RightStyle, TopStyle, BottomStyle BorderStyle
+	// 边框颜色
 	LeftColor, RightColor, TopColor, BottomColor color.Color
+	// 圆角像素
+	TopLeftRadius, BottomLeftRadius, TopRightRadius, BottomRightRadius int
 }
 
 type BorderStyle uint
@@ -229,6 +234,57 @@ func (a *Attribute) SetResizeOptions(fillMode FillMode, scaleMode ScaleMode) *At
 
 func (a *Attribute) ResizeOptions() ResizeOptions {
 	return a.resizeOptions
+}
+
+// SetBorderRadius 设置边框圆角半径（像素），顺序：top-left, top-right, bottom-right, bottom-left。
+func (a *Attribute) SetBorderRadius(topLeftRadius, topRightRadius, bottomRightRadius, bottomLeftRadius int) *Attribute {
+	a.Border.TopLeftRadius = topLeftRadius
+	a.Border.TopRightRadius = topRightRadius
+	a.Border.BottomRightRadius = bottomRightRadius
+	a.Border.BottomLeftRadius = bottomLeftRadius
+	return a
+}
+
+// SetBorderWidth 设置四边边框宽度（像素），顺序：top, right, bottom, left。
+func (a *Attribute) SetBorderWidth(top, right, bottom, left int) *Attribute {
+	a.Border.TopWidth = top
+	a.Border.RightWidth = right
+	a.Border.BottomWidth = bottom
+	a.Border.LeftWidth = left
+	return a
+}
+
+// SetAllBorderWidths 设置四边统一边框宽度（像素）。
+func (a *Attribute) SetAllBorderWidths(width int) *Attribute {
+	return a.SetBorderWidth(width, width, width, width)
+}
+
+// SetBorderStyle 设置四边边框样式，顺序：top, right, bottom, left。
+func (a *Attribute) SetBorderStyle(top, right, bottom, left BorderStyle) *Attribute {
+	a.Border.TopStyle = top
+	a.Border.RightStyle = right
+	a.Border.BottomStyle = bottom
+	a.Border.LeftStyle = left
+	return a
+}
+
+// SetAllBorderStyles 设置四边统一边框样式。
+func (a *Attribute) SetAllBorderStyles(style BorderStyle) *Attribute {
+	return a.SetBorderStyle(style, style, style, style)
+}
+
+// SetBorderColor 设置四边边框颜色，顺序：top, right, bottom, left。
+func (a *Attribute) SetBorderColor(top, right, bottom, left color.Color) *Attribute {
+	a.Border.TopColor = top
+	a.Border.RightColor = right
+	a.Border.BottomColor = bottom
+	a.Border.LeftColor = left
+	return a
+}
+
+// SetAllBorderColors 设置四边统一边框颜色。
+func (a *Attribute) SetAllBorderColors(c color.Color) *Attribute {
+	return a.SetBorderColor(c, c, c, c)
 }
 
 func (a *Attribute) Copy() *Attribute {

@@ -17,11 +17,12 @@ type tiElement struct {
 	attribute *ctypes.Attribute
 
 	texture *ctypes.TiImage
+	canvas  *ctypes.TiImage
 
 	mutex    *sync.RWMutex
 	renderer *Renderer
 
-	dirty bool
+	dirty ctypes.DirtyMode
 
 	garbageTextures []*taichi.NdArray
 }
@@ -33,11 +34,11 @@ func (e *tiElement) initial(renderer *Renderer) *tiElement {
 }
 
 // LockForUpdate 锁定并更新数据，请勿在 SetDirty 变量中使用RLock, Lock，否则会死锁
-func (e *tiElement) LockForUpdate(updateFn func(), triggerDirty func() bool) {
+func (e *tiElement) LockForUpdate(updateFn func(), triggerDirty func() ctypes.DirtyMode) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
-	if triggerDirty() {
-		e.dirty = true
+	if bit := triggerDirty(); bit > 0 {
+		e.dirty |= bit
 	}
 	updateFn()
 }
@@ -49,7 +50,7 @@ func (e *tiElement) AddGarbageTexture(texture *taichi.NdArray) {
 	}
 	e.LockForUpdate(func() {
 		e.addGarbageTexture(texture)
-	}, func() bool { return false })
+	}, func() ctypes.DirtyMode { return ctypes.DirtyModeNone })
 }
 
 func (e *tiElement) addGarbageTexture(texture *taichi.NdArray) {
@@ -101,8 +102,11 @@ func (e *tiElement) Y() int {
 func (e *tiElement) MoveTo(x int, y int) {
 	e.LockForUpdate(func() {
 		e.attribute.MoveTo(x, y)
-	}, func() bool {
-		return !misc.NumberEqual(e.attribute.X(), x, misc.Epsilon) || !misc.NumberEqual(e.attribute.Y(), y, misc.Epsilon)
+	}, func() ctypes.DirtyMode {
+		if !misc.NumberEqual(e.attribute.X(), x, misc.Epsilon) || !misc.NumberEqual(e.attribute.Y(), y, misc.Epsilon) {
+			return ctypes.DirtyModeComposite
+		}
+		return ctypes.DirtyModeNone
 	})
 }
 
@@ -121,8 +125,11 @@ func (e *tiElement) Height() int {
 func (e *tiElement) SetScale(scaleX, scaleY float32) {
 	e.LockForUpdate(func() {
 		e.attribute.SetScale(scaleX, scaleY)
-	}, func() bool {
-		return !misc.NumberEqual(e.attribute.ScaleX(), scaleX, misc.Epsilon) || !misc.NumberEqual(e.attribute.ScaleY(), scaleY, misc.Epsilon)
+	}, func() ctypes.DirtyMode {
+		if !misc.NumberEqual(e.attribute.ScaleX(), scaleX, misc.Epsilon) || !misc.NumberEqual(e.attribute.ScaleY(), scaleY, misc.Epsilon) {
+			return ctypes.DirtyModeComposite
+		}
+		return ctypes.DirtyModeNone
 	})
 }
 
@@ -141,8 +148,11 @@ func (e *tiElement) ScaleY() float32 {
 func (e *tiElement) SetRotation(rotation float32) {
 	e.LockForUpdate(func() {
 		e.attribute.SetRotation(rotation)
-	}, func() bool {
-		return !misc.NumberEqual(e.attribute.Rotation(), rotation, misc.Epsilon)
+	}, func() ctypes.DirtyMode {
+		if !misc.NumberEqual(e.attribute.Rotation(), rotation, misc.Epsilon) {
+			return ctypes.DirtyModeComposite
+		}
+		return ctypes.DirtyModeNone
 	})
 }
 
@@ -155,8 +165,11 @@ func (e *tiElement) Rotation() float32 {
 func (e *tiElement) SetAlpha(alpha float32) {
 	e.LockForUpdate(func() {
 		e.attribute.SetAlpha(alpha)
-	}, func() bool {
-		return !misc.NumberEqual(e.attribute.Alpha(), alpha, misc.Epsilon)
+	}, func() ctypes.DirtyMode {
+		if !misc.NumberEqual(e.attribute.Alpha(), alpha, misc.Epsilon) {
+			return ctypes.DirtyModeComposite
+		}
+		return ctypes.DirtyModeNone
 	})
 }
 
@@ -164,6 +177,70 @@ func (e *tiElement) Alpha() float32 {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
 	return e.attribute.Alpha()
+}
+
+func (e *tiElement) SetBorderRadius(topLeftRadius, topRightRadius, bottomRightRadius, bottomLeftRadius int) {
+	e.LockForUpdate(func() {
+		e.attribute.SetBorderRadius(topLeftRadius, topRightRadius, bottomRightRadius, bottomLeftRadius)
+	}, func() ctypes.DirtyMode {
+		b := e.attribute.Border
+		if b.TopLeftRadius != topLeftRadius || b.TopRightRadius != topRightRadius ||
+			b.BottomRightRadius != bottomRightRadius || b.BottomLeftRadius != bottomLeftRadius {
+			return ctypes.DirtyModePainting
+		}
+		return ctypes.DirtyModeNone
+	})
+}
+
+func (e *tiElement) SetBorderWidth(top, right, bottom, left int) {
+	e.LockForUpdate(func() {
+		e.attribute.SetBorderWidth(top, right, bottom, left)
+	}, func() ctypes.DirtyMode {
+		b := e.attribute.Border
+		if b.TopWidth != top || b.RightWidth != right || b.BottomWidth != bottom || b.LeftWidth != left {
+			return ctypes.DirtyModeLayout
+		}
+		return ctypes.DirtyModeNone
+	})
+}
+
+func (e *tiElement) SetAllBorderWidths(width int) {
+	e.SetBorderWidth(width, width, width, width)
+}
+
+func (e *tiElement) SetBorderStyle(top, right, bottom, left ctypes.BorderStyle) {
+	e.LockForUpdate(func() {
+		e.attribute.SetBorderStyle(top, right, bottom, left)
+	}, func() ctypes.DirtyMode {
+		b := e.attribute.Border
+		if b.TopStyle != top || b.RightStyle != right || b.BottomStyle != bottom || b.LeftStyle != left {
+			return ctypes.DirtyModeLayout
+		}
+		return ctypes.DirtyModeNone
+	})
+}
+
+func (e *tiElement) SetAllBorderStyles(style ctypes.BorderStyle) {
+	e.SetBorderStyle(style, style, style, style)
+}
+
+func (e *tiElement) SetBorderColor(top, right, bottom, left color.Color) {
+	e.LockForUpdate(func() {
+		e.attribute.SetBorderColor(top, right, bottom, left)
+	}, func() ctypes.DirtyMode {
+		b := e.attribute.Border
+		if !ctypes.ColorEqual(b.TopColor, top) ||
+			!ctypes.ColorEqual(b.RightColor, right) ||
+			!ctypes.ColorEqual(b.BottomColor, bottom) ||
+			!ctypes.ColorEqual(b.LeftColor, left) {
+			return ctypes.DirtyModePainting
+		}
+		return ctypes.DirtyModeNone
+	})
+}
+
+func (e *tiElement) SetAllBorderColors(c color.Color) {
+	e.SetBorderColor(c, c, c, c)
 }
 
 func (e *tiElement) Cx() int {
@@ -175,8 +252,11 @@ func (e *tiElement) Cx() int {
 func (e *tiElement) SetCx(cx int) {
 	e.LockForUpdate(func() {
 		e.attribute.SetCx(cx)
-	}, func() bool {
-		return e.attribute.Cx() != cx
+	}, func() ctypes.DirtyMode {
+		if e.attribute.Cx() != cx {
+			return ctypes.DirtyModeComposite
+		}
+		return ctypes.DirtyModeNone
 	})
 }
 
@@ -189,7 +269,12 @@ func (e *tiElement) Cy() int {
 func (e *tiElement) SetCy(cy int) {
 	e.LockForUpdate(func() {
 		e.attribute.SetCy(cy)
-	}, func() bool { return e.attribute.Cy() != cy })
+	}, func() ctypes.DirtyMode {
+		if e.attribute.Cy() != cy {
+			return ctypes.DirtyModeComposite
+		}
+		return ctypes.DirtyModeNone
+	})
 }
 
 func (e *tiElement) Attribute() *ctypes.Attribute {
@@ -202,12 +287,15 @@ func (e *tiElement) Attribute() *ctypes.Attribute {
 func (e *tiElement) Fill(color color.Color) {
 	e.LockForUpdate(func() {
 		e.Renderer().Module().AsyncFillColor(e.texture, color)
-	}, func() bool { return true })
+	}, func() ctypes.DirtyMode { return ctypes.DirtyModePainting })
 }
 
 func (e *tiElement) Texture() *ctypes.TiImage {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
+	if e.canvas != nil {
+		return e.canvas
+	}
 	return e.texture
 }
 
@@ -218,11 +306,11 @@ func (e *tiElement) Resize(width, height int) error {
 
 	var err error
 	e.LockForUpdate(func() {
-		if e.attribute.Width() == width && e.attribute.Width() == height {
+		if e.attribute.Width() == width && e.attribute.Height() == height {
 			return
 		}
 
-		nW, nH := ti.CalcResizeWH(e.attribute.Width(), e.attribute.Width(), width, height, e.attribute.ResizeOptions())
+		nW, nH := ti.CalcResizeWH(e.attribute.Width(), e.attribute.Height(), width, height, e.attribute.ResizeOptions())
 
 		var newTexture *ctypes.TiImage
 		newTexture, err = ti.NewTiImage(e.Renderer().Runtime(), uint32(nW), uint32(nH))
@@ -241,8 +329,11 @@ func (e *tiElement) Resize(width, height int) error {
 		e.texture = newTexture
 		e.attribute.SetWH(nW, nH)
 		e.attribute.SetCxy(width/2, height/2)
-	}, func() bool {
-		return e.attribute.Width() != width || e.attribute.Width() != height
+	}, func() ctypes.DirtyMode {
+		if e.attribute.Width() != width || e.attribute.Height() != height {
+			return ctypes.DirtyModeLayout | ctypes.DirtyModePainting
+		}
+		return ctypes.DirtyModeNone
 	})
 
 	if err != nil {
@@ -271,7 +362,7 @@ func (e *tiElement) Blur(mode ctypes.BlurMode, radius int32) error {
 		e.Renderer().Module().AsyncBlur(e.texture, newTexture, mode, radius)
 		e.addGarbageTexture(e.texture) // 将原来的纹理加入垃圾纹理列表
 		e.texture = newTexture
-	}, func() bool { return true })
+	}, func() ctypes.DirtyMode { return ctypes.DirtyModePainting })
 
 	if err != nil {
 		return errors.Wrap(err, "blur texture failed")
@@ -279,7 +370,7 @@ func (e *tiElement) Blur(mode ctypes.BlurMode, radius int32) error {
 	return nil
 }
 
-// ClientRect 获取元素自身旋转+缩放后的边界框
+// ClientRect 获取元素自身旋转+缩放后的边界框（基于 border box，不含 margin）
 // 注意：不与父级区域求交集。
 // 计算过程分两步：
 // 1) 先在元素局部坐标系（左上角为原点）计算旋转后的包围盒；
@@ -304,12 +395,19 @@ func (e *tiElement) ClientRect() ctypes.Rectangle[int] {
 	// World/parent bbox is obtained by translating local bbox with (attribute.X, attribute.Y).
 	cx, cy := float32(e.attribute.Cx()), float32(e.attribute.Cy())
 	w, h := float32(e.attribute.Width()), float32(e.attribute.Height())
+	b := e.attribute.Border
+
+	// CSS-like border-box in local space (without margin/padding for now).
+	localMinX := -max(0, float32(b.LeftWidth))
+	localMinY := -max(0, float32(b.TopWidth))
+	localMaxX := w + max(0, float32(b.RightWidth))
+	localMaxY := h + max(0, float32(b.BottomWidth))
 
 	corners := [][2]float32{
-		{0 - cx, 0 - cy},
-		{w - cx, 0 - cy},
-		{w - cx, h - cy},
-		{0 - cx, h - cy},
+		{localMinX - cx, localMinY - cy},
+		{localMaxX - cx, localMinY - cy},
+		{localMaxX - cx, localMaxY - cy},
+		{localMinX - cx, localMaxY - cy},
 	}
 
 	cosR := float32(math.Cos(float64(e.attribute.Rotation())))

@@ -30,6 +30,13 @@ type IAttribute interface {
 	SetScale(scaleX, scaleY float32)
 	SetRotation(rotation float32)
 	SetAlpha(alpha float32)
+	SetBorderRadius(topLeftRadius, topRightRadius, bottomRightRadius, bottomLeftRadius int)
+	SetBorderWidth(top, right, bottom, left int)
+	SetAllBorderWidths(width int)
+	SetBorderStyle(top, right, bottom, left ctypes.BorderStyle)
+	SetAllBorderStyles(style ctypes.BorderStyle)
+	SetBorderColor(top, right, bottom, left color.Color)
+	SetAllBorderColors(c color.Color)
 
 	// Resize 设置尺寸
 	Resize(width, height int) error
@@ -44,7 +51,7 @@ type IElementOperation interface {
 
 type IDirty interface {
 	IsDirty() bool
-	SetDirty(val bool)
+	SetDirty(val ctypes.DirtyMode)
 }
 
 type ITexture interface {
@@ -66,7 +73,7 @@ type IElement interface {
 	// ClientRect 获取元素自身旋转+缩放后的边界
 	ClientRect() ctypes.Rectangle[int]
 
-	//LockForUpdate(updateFn func(), triggerDirty func() bool)
+	// LockForUpdate(updateFn func(), triggerDirty func() ctypes.DirtyMode)
 }
 
 type IRender interface {

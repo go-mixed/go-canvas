@@ -48,7 +48,7 @@ func (c *Container) AddChild(sprite ISprite) {
 		}
 
 		c.children.PushBack(sprite)
-	}, func() bool { return true })
+	}, func() ctypes.DirtyMode { return ctypes.DirtyModeChildren | ctypes.DirtyModeComposite })
 }
 
 func (c *Container) RemoveChild(sprite ISprite) {
@@ -60,7 +60,7 @@ func (c *Container) RemoveChild(sprite ISprite) {
 
 		// 递归释放
 		sprite.Release()
-	}, func() bool { return true })
+	}, func() ctypes.DirtyMode { return ctypes.DirtyModeChildren | ctypes.DirtyModeComposite })
 }
 
 func (c *Container) RemoveFromParent() {
@@ -113,7 +113,7 @@ func (c *Container) HasAnimationAt(frameIndex int) bool {
 
 func (c *Container) Render(frameIndex int) {
 	defer func() {
-		c.SetDirty(false)
+		c.SetDirty(ctypes.DirtyModeNone)
 	}()
 
 	c.TickAnimation(frameIndex)
@@ -235,8 +235,11 @@ func (c *Container) ScrollTop(y int) {
 		}
 
 		c.childOffsetY = -y
-	}, func() bool {
-		return y != c.childOffsetY
+	}, func() ctypes.DirtyMode {
+		if y != c.childOffsetY {
+			return ctypes.DirtyModeComposite
+		}
+		return ctypes.DirtyModeNone
 	})
 }
 
@@ -246,13 +249,16 @@ func (c *Container) ScrollLeft(x int) {
 			x = 0
 		}
 		cr := c.ClientRect()
-		ch := int(cr.Height())
+		ch := cr.Height()
 		if x > ch {
 			x = ch
 		}
 
 		c.childOffsetX = -x
-	}, func() bool {
-		return x != c.childOffsetX
+	}, func() ctypes.DirtyMode {
+		if x != c.childOffsetX {
+			return ctypes.DirtyModeComposite
+		}
+		return ctypes.DirtyModeNone
 	})
 }

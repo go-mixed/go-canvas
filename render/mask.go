@@ -13,7 +13,7 @@ type Mask struct {
 	parent    IMaskParent
 	// 真实的实例
 	instance IMask
-	isDirty  bool
+	dirty    ctypes.DirtyMode
 
 	featherRadius uint32
 	featherMode   ctypes.FeatherMode
@@ -53,29 +53,29 @@ func (m *Mask) SetInstance(instance IMask) {
 }
 
 func (m *Mask) IsDirty() bool {
-	return m.isDirty
+	return m.dirty != ctypes.DirtyModeNone
 }
 
-func (m *Mask) SetDirty(val bool) {
-	m.isDirty = val
+func (m *Mask) SetDirty(val ctypes.DirtyMode) {
+	m.dirty = val
 }
 
 // FillWithTexture 将纹理填充到 Mask
 func (m *Mask) FillWithTexture(texture *ctypes.TiImage) {
 	//  将图像转换为遮罩（提取 alpha 通道）
 	m.parent.Renderer().Module().AsyncImageToMask(texture, m.texture)
-	m.isDirty = true
+	m.dirty |= ctypes.DirtyModePaint
 }
 
 func (m *Mask) SetFeather(featherRadius uint32, featherMode ctypes.FeatherMode) {
 	m.featherRadius = featherRadius
 	m.featherMode = featherMode
-	m.isDirty = true
+	m.dirty |= ctypes.DirtyModePaint
 }
 
 func (m *Mask) Render(frameIndex int) {
 	defer func() {
-		m.SetDirty(false)
+		m.SetDirty(ctypes.DirtyModeNone)
 	}()
 
 	if !m.IsDirty() {

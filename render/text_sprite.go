@@ -94,8 +94,11 @@ func (s *TextSprite) SetText(text string) error {
 		s.attribute.SetCx(width / 2)
 		s.attribute.SetCy(height / 2)
 
-	}, func() bool {
-		return !s.richText.Equal(text)
+	}, func() ctypes.DirtyMode {
+		if !s.richText.Equal(text) {
+			return ctypes.DirtyModePainting | ctypes.DirtyModeLayout
+		}
+		return ctypes.DirtyModeNone
 	})
 
 	return err
