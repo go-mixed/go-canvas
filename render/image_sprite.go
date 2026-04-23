@@ -19,18 +19,18 @@ func NewImageSprite(parent IParent, attribute *ctypes.Attribute, filePath string
 		return nil, errors.Wrapf(err, "Cannot load image to taichi")
 	}
 	shape := texture.Shape()
-	w, h := shape[0], shape[1]
+	w, h := int(shape[0]), int(shape[1])
 	// 自适应宽高
 	if attribute.Width() == 0 {
-		attribute.SetWidth(int(w))
+		attribute.SetWidth(w)
 	}
 	if attribute.Height() == 0 {
-		attribute.SetHeight(int(h))
+		attribute.SetHeight(h)
 	}
 
 	// Resize Image if image.w/h != attribute.w/h
-	if attribute.Width() != int(w) || attribute.Height() != int(h) {
-		nW, nH := ti.CalcResizeWH(int(w), int(h), attribute.Width(), attribute.Height(), attribute.ResizeOptions())
+	if attribute.Width() != w || attribute.Height() != h {
+		nW, nH := ti.CalcResizeWH(w, h, attribute.Width(), attribute.Height(), attribute.ResizeOptions())
 		newTexture, err := ti.NewTiImage(parent.Renderer().Runtime(), uint32(nW), uint32(nH))
 		if err != nil {
 			texture.Release()

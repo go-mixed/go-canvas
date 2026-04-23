@@ -131,18 +131,20 @@ func CalcResizeWH(originalWidth, originalHeight int, targetWidth, targetHeight i
 	scaleX := dstW / srcW
 	scaleY := dstH / srcH
 
+	// 处理拉伸模式：直接返回目标宽高
+	if opts.FillMode == ctypes.FillModeStretch {
+		return targetWidth, targetHeight
+	}
+
 	var scale float32
 	switch opts.FillMode {
-	case ctypes.FillModeStretch:
-		scale = 1 // 不缩放，用目标尺寸
 	case ctypes.FillModeFit:
 		scale = min(scaleX, scaleY)
 	case ctypes.FillModeFill:
 		scale = max(scaleX, scaleY)
+	default:
+		scale = 1 // 不缩放，用目标尺寸
 	}
 
-	newWidth = int(srcW * scale)
-	newHeight = int(srcH * scale)
-
-	return newWidth, newHeight
+	return int(srcW * scale), int(srcH * scale)
 }

@@ -66,8 +66,8 @@ func main() {
 	// 5. 加载图片
 	t = time.Now()
 	img, err := render.NewImageSprite(stage, ctypes.Attr().
-		SetResizeOptions(ctypes.FillModeFill, ctypes.ScaleModeLanczos).
-		SetRect(rect.Resize(rect.Width()-100, rect.Height()-100)). // 要减去padding+border
+		SetResizeOptions(ctypes.FillModeFill, ctypes.ScaleModeLinear).
+		SetRect(rect.Resize(200, 200)). // 要减去padding+border
 		//SetScale(1.2, 1.2).
 		//SetLeftPadding(20).
 		SetAllBorderRadius(50).

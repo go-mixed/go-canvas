@@ -44,7 +44,7 @@ func Attr() *Attribute {
 		cx:       misc.NaNInt,
 		cy:       misc.NaNInt,
 		resizeOptions: ResizeOptions{
-			FillMode:  FillModeFill,
+			FillMode:  FillModeStretch,
 			ScaleMode: ScaleModeNearest,
 		},
 		border: Border{
