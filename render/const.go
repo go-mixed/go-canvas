@@ -37,14 +37,14 @@ type IAttribute interface {
 	SetAllBorderStyles(style ctypes.BorderStyle)
 	SetBorderColor(top, right, bottom, left color.Color)
 	SetAllBorderColors(c color.Color)
-
 	// Resize 设置尺寸
-	Resize(width, height int) error
+	Resize(width, height int)
 }
 
 type IElementOperation interface {
+
 	// Blur 模糊纹理（马赛克/高斯/普通）
-	Blur(mode ctypes.BlurMode, radius int32) error
+	Blur(mode ctypes.BlurMode, radius int)
 	// Fill 所有像素填充同一个颜色
 	Fill(rgba color.Color)
 }
@@ -77,7 +77,7 @@ type IElement interface {
 }
 
 type IRender interface {
-	Render(frameIndex int)
+	Render(frameIndex int) error
 }
 
 type IAnimation interface {

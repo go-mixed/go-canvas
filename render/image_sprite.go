@@ -37,7 +37,7 @@ func NewImageSprite(parent IParent, attribute *ctypes.Attribute, filePath string
 			return nil, errors.Wrapf(err, "Cannot create new texture while image resizing")
 		}
 
-		parent.Renderer().Module().Resize(texture, newTexture, attribute.ResizeOptions())
+		parent.Renderer().Module().Resize(texture, newTexture, attribute.ResizeOptions(), ctypes.Rectangle[int]{}, ctypes.Rectangle[int]{})
 		texture.Release()
 		texture = newTexture
 		attribute.SetWH(nW, nH)

@@ -10,7 +10,6 @@ import (
 	"github.com/go-mixed/go-canvas/internel/misc"
 	"github.com/go-mixed/go-canvas/ti"
 	"github.com/go-mixed/go-taichi/taichi"
-	"github.com/pkg/errors"
 )
 
 type tiElement struct {
@@ -183,7 +182,7 @@ func (e *tiElement) SetBorderRadius(topLeftRadius, topRightRadius, bottomRightRa
 	e.LockForUpdate(func() {
 		e.attribute.SetBorderRadius(topLeftRadius, topRightRadius, bottomRightRadius, bottomLeftRadius)
 	}, func() ctypes.DirtyMode {
-		b := e.attribute.Border
+		b := e.attribute.Border()
 		if b.TopLeftRadius != topLeftRadius || b.TopRightRadius != topRightRadius ||
 			b.BottomRightRadius != bottomRightRadius || b.BottomLeftRadius != bottomLeftRadius {
 			return ctypes.DirtyModePainting
@@ -196,7 +195,7 @@ func (e *tiElement) SetBorderWidth(top, right, bottom, left int) {
 	e.LockForUpdate(func() {
 		e.attribute.SetBorderWidth(top, right, bottom, left)
 	}, func() ctypes.DirtyMode {
-		b := e.attribute.Border
+		b := e.attribute.Border()
 		if b.TopWidth != top || b.RightWidth != right || b.BottomWidth != bottom || b.LeftWidth != left {
 			return ctypes.DirtyModeLayout
 		}
@@ -212,7 +211,7 @@ func (e *tiElement) SetBorderStyle(top, right, bottom, left ctypes.BorderStyle) 
 	e.LockForUpdate(func() {
 		e.attribute.SetBorderStyle(top, right, bottom, left)
 	}, func() ctypes.DirtyMode {
-		b := e.attribute.Border
+		b := e.attribute.Border()
 		if b.TopStyle != top || b.RightStyle != right || b.BottomStyle != bottom || b.LeftStyle != left {
 			return ctypes.DirtyModeLayout
 		}
@@ -228,7 +227,7 @@ func (e *tiElement) SetBorderColor(top, right, bottom, left color.Color) {
 	e.LockForUpdate(func() {
 		e.attribute.SetBorderColor(top, right, bottom, left)
 	}, func() ctypes.DirtyMode {
-		b := e.attribute.Border
+		b := e.attribute.Border()
 		if !ctypes.ColorEqual(b.TopColor, top) ||
 			!ctypes.ColorEqual(b.RightColor, right) ||
 			!ctypes.ColorEqual(b.BottomColor, bottom) ||
@@ -299,75 +298,41 @@ func (e *tiElement) Texture() *ctypes.TiImage {
 	return e.texture
 }
 
-func (e *tiElement) Resize(width, height int) error {
-	if width <= 0 || height <= 0 {
-		return errors.New("width or height must be greater than 0")
+func (e *tiElement) Resize(width, height int) {
+	if width <= 0 || height <= 0 || e.texture == nil {
+		return
 	}
 
-	var err error
+	shape := e.texture.Shape()
+	srcW, srcH := int(shape[0]), int(shape[1])
+	newW, newH := ti.CalcResizeWH(srcW, srcH, width, height, e.attribute.ResizeOptions())
+
 	e.LockForUpdate(func() {
-		if e.attribute.Width() == width && e.attribute.Height() == height {
+		if newW != e.attribute.Width() || newH != e.attribute.Height() {
 			return
 		}
 
-		nW, nH := ti.CalcResizeWH(e.attribute.Width(), e.attribute.Height(), width, height, e.attribute.ResizeOptions())
-
-		var newTexture *ctypes.TiImage
-		newTexture, err = ti.NewTiImage(e.Renderer().Runtime(), uint32(nW), uint32(nH))
-		if err != nil {
-			return
-		}
-
-		if e.texture == nil {
-			e.texture = newTexture
-			return
-		}
-
-		e.Renderer().Module().AsyncResize(e.texture, newTexture, e.attribute.ResizeOptions())
-
-		e.addGarbageTexture(e.texture) // 将原来的纹理加入垃圾纹理列表
-		e.texture = newTexture
-		e.attribute.SetWH(nW, nH)
+		e.attribute.SetWH(newW, newH)
 		e.attribute.SetCxy(width/2, height/2)
 	}, func() ctypes.DirtyMode {
-		if e.attribute.Width() != width || e.attribute.Height() != height {
+		if newW != e.attribute.Width() || newH != e.attribute.Height() {
 			return ctypes.DirtyModeLayout | ctypes.DirtyModePainting
 		}
 		return ctypes.DirtyModeNone
 	})
-
-	if err != nil {
-		return errors.Wrap(err, "resize texture failed")
-	}
-	return nil
 }
 
-// Blur 模糊纹理（马赛克/高斯/普通），原地修改
-func (e *tiElement) Blur(mode ctypes.BlurMode, radius int32) error {
-	var err error
-
+// Blur 模糊纹理（马赛克/高斯/普通）
+func (e *tiElement) Blur(mode ctypes.BlurMode, radius int) {
 	e.LockForUpdate(func() {
-		if e.texture == nil {
-			return
+		e.attribute.SetBlur(mode, radius)
+	}, func() ctypes.DirtyMode {
+		blur := e.attribute.Blur()
+		if blur.Mode != mode || blur.Radius != radius {
+			return ctypes.DirtyModePainting
 		}
-
-		var newTexture *ctypes.TiImage
-		shape := e.texture.Shape()
-		width, height := shape[0], shape[1]
-		newTexture, err = ti.NewTiImage(e.Renderer().Runtime(), width, height)
-		if err != nil {
-			return
-		}
-
-		e.Renderer().Module().AsyncBlur(e.texture, newTexture, mode, radius)
-		e.addGarbageTexture(e.texture) // 将原来的纹理加入垃圾纹理列表
-		e.texture = newTexture
-	}, func() ctypes.DirtyMode { return ctypes.DirtyModePainting })
-
-	if err != nil {
-		return errors.Wrap(err, "blur texture failed")
-	}
-	return nil
+		return ctypes.DirtyModeNone
+	})
 }
 
 // ClientRect 获取元素自身旋转+缩放后的边界框（基于 border box，不含 margin）
@@ -395,13 +360,14 @@ func (e *tiElement) ClientRect() ctypes.Rectangle[int] {
 	// World/parent bbox is obtained by translating local bbox with (attribute.X, attribute.Y).
 	cx, cy := float32(e.attribute.Cx()), float32(e.attribute.Cy())
 	w, h := float32(e.attribute.Width()), float32(e.attribute.Height())
-	b := e.attribute.Border
+	b := e.attribute.Border()
+	p := e.attribute.Padding()
 
 	// CSS-like border-box in local space (without margin/padding for now).
-	localMinX := -max(0, float32(b.LeftWidth))
-	localMinY := -max(0, float32(b.TopWidth))
-	localMaxX := w + max(0, float32(b.RightWidth))
-	localMaxY := h + max(0, float32(b.BottomWidth))
+	localMinX := -max(0, float32(b.LeftWidth+p.Left))
+	localMinY := -max(0, float32(b.TopWidth+p.Top))
+	localMaxX := w + max(0, float32(b.RightWidth+p.Right))
+	localMaxY := h + max(0, float32(b.BottomWidth+p.Bottom))
 
 	corners := [][2]float32{
 		{localMinX - cx, localMinY - cy},
@@ -461,7 +427,7 @@ func (e *tiElement) ClientRect() ctypes.Rectangle[int] {
 	// Translate local bbox into parent coordinates.
 	// Use Add(x, y) instead of MoveTo(x, y): MoveTo would overwrite Min and
 	// break negative local bounds produced by rotation.
-	return bbox.Add(ctypes.Pt(e.attribute.X(), e.attribute.Y()))
+	return bbox.Add(ctypes.Pt(e.attribute.X()+b.LeftWidth+p.Left, e.attribute.Y()+b.TopWidth+p.Top))
 }
 
 func (e *tiElement) Renderer() *Renderer {

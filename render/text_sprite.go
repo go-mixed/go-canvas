@@ -95,8 +95,10 @@ func (s *TextSprite) SetText(text string) error {
 		s.attribute.SetCy(height / 2)
 
 	}, func() ctypes.DirtyMode {
+		// TextSprite 比较特殊，修改文字之后 s.texture 已经修改，只用触发 DirtyModeComposite，
+		// 如果还有Border之类的设置，才能触发 DirtyModeLayout、 DirtyModePainting
 		if !s.richText.Equal(text) {
-			return ctypes.DirtyModePainting | ctypes.DirtyModeLayout
+			return ctypes.DirtyModeComposite | s.attribute.Dirty()
 		}
 		return ctypes.DirtyModeNone
 	})

@@ -6,30 +6,6 @@ import (
 	"github.com/go-mixed/go-canvas/internel/misc"
 )
 
-// FillMode 缩放填充模式
-type FillMode int32
-
-const (
-	FillModeStretch FillMode = 0 // 拉伸（不保持宽高比）
-	FillModeFit     FillMode = 1 // 等比适应（可能有黑边）
-	FillModeFill    FillMode = 2 // 等比填充（可能裁剪）
-)
-
-// ScaleMode 缩放算法模式
-type ScaleMode int32
-
-const (
-	ScaleModeNearest ScaleMode = 0 // 最近邻
-	ScaleModeLinear  ScaleMode = 1 // 双线性
-	ScaleModeCubic   ScaleMode = 2 // 双三次
-	ScaleModeLanczos ScaleMode = 3 // Lanczos4（质量最高）
-)
-
-type ResizeOptions struct {
-	FillMode  FillMode  // fit, fill
-	ScaleMode ScaleMode // nearest, linear, cubic
-}
-
 type Attribute struct {
 	rect Rectangle[int]
 	// 中心点的相对值
@@ -39,18 +15,9 @@ type Attribute struct {
 	alpha          float32 // 0.0 for no alpha, 1.0 for full alpha
 	resizeOptions  ResizeOptions
 
-	Border BorderAttribute
-}
-
-type BorderAttribute struct {
-	// 边框宽度
-	LeftWidth, RightWidth, TopWidth, BottomWidth int
-	// 边框样式
-	LeftStyle, RightStyle, TopStyle, BottomStyle BorderStyle
-	// 边框颜色
-	LeftColor, RightColor, TopColor, BottomColor color.Color
-	// 圆角像素
-	TopLeftRadius, BottomLeftRadius, TopRightRadius, BottomRightRadius int
+	border  Border
+	blur    Blur
+	padding Padding
 }
 
 type BorderStyle uint
@@ -77,8 +44,22 @@ func Attr() *Attribute {
 		cx:       misc.NaNInt,
 		cy:       misc.NaNInt,
 		resizeOptions: ResizeOptions{
-			FillMode:  FillModeFit,
+			FillMode:  FillModeFill,
 			ScaleMode: ScaleModeNearest,
+		},
+		border: Border{
+			LeftStyle:         BorderStyleSolid,
+			RightStyle:        BorderStyleSolid,
+			TopStyle:          BorderStyleSolid,
+			BottomStyle:       BorderStyleSolid,
+			LeftColor:         color.Black,
+			RightColor:        color.Black,
+			TopColor:          color.Black,
+			BottomColor:       color.Black,
+			TopLeftRadius:     0,
+			BottomLeftRadius:  0,
+			TopRightRadius:    0,
+			BottomRightRadius: 0,
 		},
 	}
 }
@@ -132,6 +113,14 @@ func (a *Attribute) SetWidth(width int) *Attribute {
 
 func (a *Attribute) Width() int {
 	return a.rect.Max.X - a.rect.Min.X
+}
+
+func (a *Attribute) ClientWidth() int {
+	return a.Width() + a.padding.Left + a.padding.Right + a.border.LeftWidth + a.border.RightWidth
+}
+
+func (a *Attribute) ClientHeight() int {
+	return a.Height() + a.padding.Top + a.padding.Bottom + a.border.TopWidth + a.border.BottomWidth
 }
 
 func (a *Attribute) SetHeight(height int) *Attribute {
@@ -236,21 +225,63 @@ func (a *Attribute) ResizeOptions() ResizeOptions {
 	return a.resizeOptions
 }
 
+func (a *Attribute) SetPaddings(top, right, bottom, left int) *Attribute {
+	a.padding = Padding{top, right, bottom, left}
+	return a
+}
+
+func (a *Attribute) SetLeftPadding(left int) *Attribute {
+	a.padding.Left = left
+	return a
+}
+
+func (a *Attribute) SetRightPadding(right int) *Attribute {
+	a.padding.Right = right
+	return a
+}
+
+func (a *Attribute) SetTopPadding(top int) *Attribute {
+	a.padding.Top = top
+	return a
+}
+
+func (a *Attribute) SetBottomPadding(bottom int) *Attribute {
+	a.padding.Bottom = bottom
+	return a
+}
+
+func (a *Attribute) Padding() Padding {
+	return a.padding
+}
+
+func (a *Attribute) SetBorder(border Border) *Attribute {
+	a.border = border
+	return a
+}
+
+func (a *Attribute) Border() Border {
+	return a.border
+}
+
 // SetBorderRadius 设置边框圆角半径（像素），顺序：top-left, top-right, bottom-right, bottom-left。
 func (a *Attribute) SetBorderRadius(topLeftRadius, topRightRadius, bottomRightRadius, bottomLeftRadius int) *Attribute {
-	a.Border.TopLeftRadius = topLeftRadius
-	a.Border.TopRightRadius = topRightRadius
-	a.Border.BottomRightRadius = bottomRightRadius
-	a.Border.BottomLeftRadius = bottomLeftRadius
+	a.border.TopLeftRadius = topLeftRadius
+	a.border.TopRightRadius = topRightRadius
+	a.border.BottomRightRadius = bottomRightRadius
+	a.border.BottomLeftRadius = bottomLeftRadius
 	return a
+}
+
+func (a *Attribute) SetAllBorderRadius(radius int) *Attribute {
+	return a.SetBorderRadius(radius, radius, radius, radius)
 }
 
 // SetBorderWidth 设置四边边框宽度（像素），顺序：top, right, bottom, left。
 func (a *Attribute) SetBorderWidth(top, right, bottom, left int) *Attribute {
-	a.Border.TopWidth = top
-	a.Border.RightWidth = right
-	a.Border.BottomWidth = bottom
-	a.Border.LeftWidth = left
+	a.border.TopWidth = top
+	a.border.RightWidth = right
+	a.border.BottomWidth = bottom
+	a.border.LeftWidth = left
 	return a
 }
 
@@ -261,10 +292,10 @@ func (a *Attribute) SetAllBorderWidths(width int) *Attribute {
 
 // SetBorderStyle 设置四边边框样式，顺序：top, right, bottom, left。
 func (a *Attribute) SetBorderStyle(top, right, bottom, left BorderStyle) *Attribute {
-	a.Border.TopStyle = top
-	a.Border.RightStyle = right
-	a.Border.BottomStyle = bottom
-	a.Border.LeftStyle = left
+	a.border.TopStyle = top
+	a.border.RightStyle = right
+	a.border.BottomStyle = bottom
+	a.border.LeftStyle = left
 	return a
 }
 
@@ -275,10 +306,10 @@ func (a *Attribute) SetAllBorderStyles(style BorderStyle) *Attribute {
 
 // SetBorderColor 设置四边边框颜色，顺序：top, right, bottom, left。
 func (a *Attribute) SetBorderColor(top, right, bottom, left color.Color) *Attribute {
-	a.Border.TopColor = top
-	a.Border.RightColor = right
-	a.Border.BottomColor = bottom
-	a.Border.LeftColor = left
+	a.border.TopColor = top
+	a.border.RightColor = right
+	a.border.BottomColor = bottom
+	a.border.LeftColor = left
 	return a
 }
 
@@ -287,10 +318,45 @@ func (a *Attribute) SetAllBorderColors(c color.Color) *Attribute {
 	return a.SetBorderColor(c, c, c, c)
 }
 
+// Blur 获取模糊参数。
+func (a *Attribute) Blur() Blur {
+	return a.blur
+}
+
+// SetBlur 设置模糊参数。
+func (a *Attribute) SetBlur(mode BlurMode, radius int) *Attribute {
+	a.blur.Mode = mode
+	a.blur.Radius = radius
+	return a
+}
+
 func (a *Attribute) Copy() *Attribute {
 	if a == nil {
 		return nil
 	}
 	cp := *a
 	return &cp
+}
+
+func (a *Attribute) Dirty() DirtyMode {
+	var dirtyMode DirtyMode
+	if !misc.NumberEqual(a.Alpha(), 1, misc.Epsilon) ||
+		!misc.NumberEqual(a.ScaleX(), 1, misc.Epsilon) || !misc.NumberEqual(a.ScaleY(), 1, misc.Epsilon) ||
+		!misc.NumberEqual(a.rotation, 0, misc.Epsilon) {
+		dirtyMode |= DirtyModeComposite
+	}
+
+	if !a.border.IsEmpty() {
+		dirtyMode |= DirtyModeLayout
+	}
+
+	if !a.padding.IsEmpty() {
+		dirtyMode |= DirtyModeLayout
+	}
+
+	if a.blur.Radius > 0 {
+		dirtyMode |= DirtyModePaint
+	}
+
+	return dirtyMode
 }

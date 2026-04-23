@@ -73,13 +73,13 @@ func (m *Mask) SetFeather(featherRadius uint32, featherMode ctypes.FeatherMode) 
 	m.dirty |= ctypes.DirtyModePaint
 }
 
-func (m *Mask) Render(frameIndex int) {
+func (m *Mask) Render(frameIndex int) error {
 	defer func() {
 		m.SetDirty(ctypes.DirtyModeNone)
 	}()
 
 	if !m.IsDirty() {
-		return
+		return nil
 	}
 
 	if m.featherRadius > 0 {
@@ -88,6 +88,7 @@ func (m *Mask) Render(frameIndex int) {
 		// 应用羽化
 		m.parent.Renderer().Module().AsyncComputeFeather(m.distField, m.texture, float32(m.featherRadius), m.featherMode)
 	}
+	return nil
 }
 
 func (m *Mask) RemoveFromParent() {
@@ -150,16 +151,16 @@ func (m *ShapeMask) IsDirty() bool {
 }
 
 // Render 覆盖父类 Render 方法
-func (m *ShapeMask) Render(frameIndex int) {
+func (m *ShapeMask) Render(frameIndex int) error {
 	if !m.IsDirty() {
-		return
+		return nil
 	}
 
 	m.ShapeSprite.Render(frameIndex)
 
 	// FillWithTexture 会触发mask的dirty，下面的Render才会真正执行
 	m.mask.FillWithTexture(m.ShapeSprite.Texture())
-	m.mask.Render(frameIndex)
+	return m.mask.Render(frameIndex)
 }
 
 func (m *ShapeMask) SetFeather(radius uint32, featherMode ctypes.FeatherMode) {

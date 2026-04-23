@@ -1,6 +1,8 @@
 package render
 
 import (
+	"image/color"
+
 	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/internel/misc"
 	"github.com/go-mixed/go-canvas/ti"
@@ -28,6 +30,7 @@ func BuildSprite[T ISprite](parent IParent, attribute *ctypes.Attribute, texture
 	element := &tiElement{
 		attribute: attribute,
 		texture:   texture,
+		dirty:     attribute.Dirty(),
 	}
 	s := &Sprite{
 		tiElement: element.initial(parent.Renderer()),
@@ -118,14 +121,108 @@ func (s *Sprite) IsDirty() bool {
 	return false
 }
 
-func (s *Sprite) Render(frameIndex int) {
+func (s *Sprite) Render(frameIndex int) error {
 	defer func() {
 		s.SetDirty(ctypes.DirtyModeNone)
 	}()
 
 	for _, mask := range s.masks.Range() {
-		mask.Render(frameIndex)
+		if err := mask.Render(frameIndex); err != nil {
+			return err
+		}
 	}
+
+	if err := s.renderCanvas(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// renderCanvas 在 Layout/Painting 脏时重建并重绘展示 canvas。
+// canvas 尺寸变化时会新建纹理，并将旧纹理加入垃圾回收列表。
+func (s *Sprite) renderCanvas() error {
+	s.mutex.RLock()
+	dirty := s.dirty
+	clientW := s.attribute.ClientWidth()
+	clientH := s.attribute.ClientHeight()
+	src := s.texture
+	border := s.attribute.Border()
+	padding := s.attribute.Padding()
+	blur := s.attribute.Blur()
+	s.mutex.RUnlock()
+
+	if src == nil || dirty&(ctypes.DirtyModeLayout|ctypes.DirtyModePainting) == 0 {
+		return nil
+	}
+
+	if clientW <= 0 || clientH <= 0 {
+		return nil
+	}
+
+	var originalCanvasW, originalCanvasH int
+	if s.canvas != nil {
+		shape := s.canvas.Shape()
+		originalCanvasW = int(shape[0])
+		originalCanvasH = int(shape[1])
+	}
+
+	// 新建新的canvas
+	if originalCanvasW != clientW || originalCanvasH != clientH || s.canvas == nil {
+		newCanvas, err := ti.NewTiImage(s.renderer.Runtime(), uint32(clientW), uint32(clientH))
+		if err != nil {
+			return err
+		}
+		s.mutex.Lock()
+		s.addGarbageTexture(s.canvas)
+		s.canvas = newCanvas
+		s.mutex.Unlock()
+	} else {
+		// 清空
+		s.Renderer().Module().FillColor(s.canvas, color.Transparent)
+	}
+
+	contentX := max(0, border.LeftWidth+padding.Left)
+	contentY := max(0, border.TopWidth+padding.Top)
+	contentW := max(0, s.attribute.Width())
+	contentH := max(0, s.attribute.Height())
+
+	shape := s.texture.Shape()
+	srcW, srcH := int(shape[0]), int(shape[1])
+
+	// 需要Resize
+	if s.attribute.Width() != srcW || s.attribute.Height() != srcH {
+		s.Renderer().Module().AsyncResize(src, s.canvas,
+			s.attribute.ResizeOptions(),
+			ctypes.RectWH(0, 0, srcW, srcH),
+			ctypes.RectWH(contentX, contentY, contentW, contentH),
+		)
+	} else {
+		s.Renderer().Module().AsyncCopy(src, s.canvas,
+			ctypes.RectWH(0, 0, srcW, srcH),
+			ctypes.RectWH(contentX, contentY, contentW, contentH),
+		)
+	}
+
+	// 需要Blur
+	if !blur.IsEmpty() {
+		newCanvas, err := ti.NewTiImage(s.renderer.Runtime(), uint32(clientW), uint32(clientH))
+		if err != nil {
+			return err
+		}
+		s.Renderer().Module().AsyncBlur(s.canvas, newCanvas, blur.Mode, int32(blur.Radius))
+		s.mutex.Lock()
+		s.addGarbageTexture(s.canvas)
+		s.canvas = newCanvas
+		s.mutex.Unlock()
+	}
+
+	// 渲染盒模型：border 叠加 + 圆角裁剪（content 已由 AsyncResize 写入）
+	if !s.attribute.Border().IsEmpty() {
+		s.Renderer().Module().AsyncRenderBorder(s.canvas, border)
+	}
+
+	return nil
 }
 
 // HasAnimationAt returns true when an animation segment should be evaluated

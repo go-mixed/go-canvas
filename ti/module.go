@@ -49,6 +49,10 @@ func LoadAotModule(runtime *taichi.Runtime) (*AotModule, error) {
 	var modules = []string{
 		"ti_image_to_bgra",
 		"fill_color",
+		"copy_region",
+		"draw_line",
+		"draw_rect",
+		"render_border",
 		"resize_nearest", "resize_bilinear", "resize_bicubic", "resize_lanczos",
 		"blur_box", "blur_gaussian", "blur_mosaic",
 

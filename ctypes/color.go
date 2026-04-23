@@ -153,3 +153,11 @@ func ColorEqual(a, b color.Color) bool {
 	br, bg, bb, ba := b.RGBA()
 	return ar == br && ag == bg && ab == bb && aa == ba
 }
+
+// OrTransparentColor 如果 c 为 nil，则返回 color.Transparent
+func OrTransparentColor(c color.Color) color.Color {
+	if c == nil {
+		return color.Transparent
+	}
+	return c
+}

@@ -111,7 +111,7 @@ func (c *Container) HasAnimationAt(frameIndex int) bool {
 	return false
 }
 
-func (c *Container) Render(frameIndex int) {
+func (c *Container) Render(frameIndex int) error {
 	defer func() {
 		c.SetDirty(ctypes.DirtyModeNone)
 	}()
@@ -127,7 +127,7 @@ func (c *Container) Render(frameIndex int) {
 	}
 
 	if !c.IsDirty() {
-		return
+		return nil
 	}
 
 	// 置空为透明
@@ -138,7 +138,9 @@ func (c *Container) Render(frameIndex int) {
 
 	for _, child := range children.Range() {
 		// 渲染子级
-		child.Render(frameIndex)
+		if err := child.Render(frameIndex); err != nil {
+			return err
+		}
 		childTexture := child.Texture()
 
 		// 得到子项（旋转、缩放、平移）之后真实坐标
@@ -164,8 +166,8 @@ func (c *Container) Render(frameIndex int) {
 		options := ti.RenderLayerOptions{
 			X:        float32(childAttribute.X() + c.childOffsetX),
 			Y:        float32(childAttribute.Y() + c.childOffsetY),
-			Width:    float32(childAttribute.Width()),
-			Height:   float32(childAttribute.Height()),
+			Width:    float32(childAttribute.ClientWidth()),
+			Height:   float32(childAttribute.ClientHeight()),
 			Cx:       float32(childAttribute.Cx()),
 			Cy:       float32(childAttribute.Cy()),
 			ScaleX:   childAttribute.ScaleX(),
@@ -193,6 +195,7 @@ func (c *Container) Render(frameIndex int) {
 			)
 		}
 	}
+	return nil
 }
 
 func (c *Container) Release() {

@@ -1,4 +1,24 @@
 import taichi as ti
+import taichi.math as tm
+
+@ti.kernel
+def copy_region(
+    src: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),
+    dst: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),
+    src_x: ti.i32, src_y: ti.i32, src_w: ti.i32, src_h: ti.i32,
+    dst_x: ti.i32, dst_y: ti.i32, dst_w: ti.i32, dst_h: ti.i32,
+):
+    """将 src 的 [src_x, src_y, src_w, src_h] 区块直接复制到 dst 的 [dst_x, dst_y, dst_w, dst_h] 区块，无插值"""
+    copy_w = ti.min(src_w, dst_w)
+    copy_h = ti.min(src_h, dst_h)
+    for i, j in ti.ndrange(copy_w, copy_h):
+        sx = src_x + i
+        sy = src_y + j
+        dx = dst_x + i
+        dy = dst_y + j
+        if 0 <= sx < src.shape[0] and 0 <= sy < src.shape[1] \
+                and 0 <= dx < dst.shape[0] and 0 <= dy < dst.shape[1]:
+            dst[dx, dy] = src[sx, sy]
 
 
 @ti.kernel
@@ -42,6 +62,140 @@ def fill_color(
     for i, j in texture:
         texture[i, j] = color
 
+@ti.kernel
+def draw_line(
+    dst: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),
+    x1: ti.i32, y1: ti.i32, x2: ti.i32, y2: ti.i32,
+    color: ti.types.vector(4, ti.f32),
+):
+    """
+    绘制线段
+    """
+    # 1. 计算线段在 X 和 Y 方向的跨度
+    dx = x2 - x1
+    dy = y2 - y1
+
+    # 2. 确定步数（取长边的像素数，保证线条连续无断点）
+    steps = ti.max(ti.abs(dx), ti.abs(dy))
+
+    # 3. 并行化处理：每一个 i 都是线段上的一个像素点
+    for i in range(steps + 1):
+        # 计算当前点的坐标 (线性插值)
+        # 使用 float 计算位置以保证精度，最后转回 i32 索引
+        curr_x = ti.cast(x1 + i * dx / steps, ti.i32)
+        curr_y = ti.cast(y1 + i * dy / steps, ti.i32)
+
+        # 4. 边界检查（防止 ndarray 越界崩溃）
+        img_w, img_h = dst.shape[0], dst.shape[1]
+        if 0 <= curr_x < img_w and 0 <= curr_y < img_h:
+            dst[curr_x, curr_y] = color
+
+
+@ti.kernel
+def draw_rect(
+    dst: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),
+    x: ti.i32, y: ti.i32, w: ti.i32, h: ti.i32,
+    color: ti.types.vector(4, ti.f32),
+):
+    # 1. 确定图像边界
+    img_w, img_h = dst.shape[0], dst.shape[1]
+
+    # 2. 计算有效的起始点和终止点（防止 w, h 为负数或超出屏幕）
+    x_min = ti.max(0, x)
+    y_min = ti.max(0, y)
+    x_max = ti.min(img_w, x + w)
+    y_max = ti.min(img_h, y + h)
+
+    # 3. 并行填充：ti.ndrange 会自动在 GPU 上展开为二维并行循环
+    for i, j in ti.ndrange((x_min, x_max), (y_min, y_max)):
+        dst[i, j] = color
+
+
+@ti.kernel
+def render_border(
+    dst: ti.types.ndarray(element_shape=(4,), dtype=ti.f32, ndim=2),
+    border_widths: ti.types.vector(4, ti.f32), # [top, right, bottom, left]
+    border_top_color: ti.types.vector(4, ti.f32),
+    border_right_color: ti.types.vector(4, ti.f32),
+    border_bottom_color: ti.types.vector(4, ti.f32),
+    border_left_color: ti.types.vector(4, ti.f32),
+    radii: ti.types.vector(4, ti.f32),         # [tl, tr, br, bl]
+):
+    res = tm.vec2(dst.shape[0], dst.shape[1])
+    half_res = res * 0.5
+
+    for i, j in dst:
+        p = tm.vec2(i + 0.5, j + 0.5)
+
+        # --- 1. 计算圆角矩形 SDF (dist > 0 在外, dist < 0 在内) ---
+        p_centered = p - half_res
+        # 选择象限对应的圆角半径
+        r = 0.0
+        if p_centered.x < 0 and p_centered.y < 0: r = radii[0] # TL
+        elif p_centered.x >= 0 and p_centered.y < 0: r = radii[1] # TR
+        elif p_centered.x >= 0 and p_centered.y >= 0: r = radii[2] # BR
+        else: r = radii[3] # BL
+
+        # 圆角矩形核心公式
+        q = ti.abs(p_centered) - half_res + r
+        dist_outer = tm.length(tm.max(q, 0.0)) + tm.min(tm.max(q.x, q.y), 0.0) - r
+
+        # --- 2. 完美的裁剪逻辑 (Content Clipping) ---
+        # 即使这里有浮点数精度误差，我们通过 Alpha 混合解决它
+        alpha_out = 1.0 - tm.smoothstep(-0.5, 0.5, dist_outer)
+
+        # --- 3. 完美的边框绘制逻辑 (Border Rendering) ---
+        # 核心：必须处理四条不同颜色边的对角线切分
+        uv = p / res
+        active_color = tm.vec4(0.0)
+        bw = 0.0
+
+        if uv.x < uv.y: # 左下三角
+            if uv.x < (1.0 - uv.y): # 左
+                active_color = border_left_color
+                bw = border_widths[3]
+            else: # 下
+                active_color = border_bottom_color
+                bw = border_widths[2]
+        else: # 右上三角
+            if uv.x < (1.0 - uv.y): # 上
+                active_color = border_top_color
+                bw = border_widths[0]
+            else: # 右
+                active_color = border_right_color
+                bw = border_widths[1]
+
+        # 计算边框强度的 Mask
+        # 此 Mask 确保边框是一个内沿圆角的环形区域
+        alpha_in = 1.0 - tm.smoothstep(-bw - 0.5, -bw + 0.5, dist_outer)
+
+        # --- 4. 无缝混合的核心逻辑 ---
+        if alpha_out > 0.0:
+            # 第一步：不管有没有边框，先把 content 裁剪成完美的圆角形状
+            # (注意：这是在内存中修改 Alpha 通道)
+            current_pixel = dst[i, j]
+            current_pixel.w *= alpha_out
+
+            # 第二步：将边框 Alpha 混合叠加在已裁剪的内容之上
+            # 当 dist_outer 恰好等于边界时，content 的 alpha 会微小减小，
+            # 但边框的 alpha 会精确填补这个空缺，两者共享一个 Alpha 通道边界。
+
+            # 边框在 dist_outer 处的有效强度
+            b_mask = alpha_out - alpha_in
+
+            if b_mask > 0.0:
+                # 使用标准的 Alpha 混合公式进行覆盖
+                src = active_color * b_mask # 边框色带其 Mask
+
+                # 最终颜色写入
+                dst[i, j].rgb = src.rgb * src.w + current_pixel.rgb * current_pixel.w * (1.0 - src.w)
+                dst[i, j].w = src.w + current_pixel.w * (1.0 - src.w)
+            else:
+                # 只有 content 区域，更新裁剪后的 alpha
+                dst[i, j].w = current_pixel.w
+        else:
+            # 外部
+            dst[i, j] = tm.vec4(0.0)
 
 # ============================================================================
 # Blur 模糊效果 kernels

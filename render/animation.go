@@ -186,7 +186,7 @@ func applyModifiedFieldsLerp(dst IAttribute, from *ctypes.Attribute, to *ti.Targ
 				h = 1
 			}
 		}
-		_ = dst.Resize(w, h)
+		dst.Resize(w, h)
 	}
 
 	if to.IsModified(ti.ModifiedFieldX) || to.IsModified(ti.ModifiedFieldY) {

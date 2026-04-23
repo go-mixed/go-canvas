@@ -12,6 +12,7 @@ import (
 	"github.com/go-mixed/go-canvas/render"
 	"github.com/go-mixed/go-canvas/ti"
 	"github.com/go-mixed/go-taichi/taichi"
+	"golang.org/x/image/colornames"
 )
 
 func main() {
@@ -64,7 +65,16 @@ func main() {
 
 	// 5. 加载图片
 	t = time.Now()
-	img, err := render.NewImageSprite(stage, ctypes.Attr().SetRect(rect).SetAlpha(0.5), filepath.Join(cd, "examples", "1.jpg"))
+	img, err := render.NewImageSprite(stage, ctypes.Attr().
+		SetResizeOptions(ctypes.FillModeFill, ctypes.ScaleModeLanczos).
+		SetRect(rect.Resize(rect.Width()-100, rect.Height()-100)). // 要减去padding+border
+		//SetScale(1.2, 1.2).
+		//SetLeftPadding(20).
+		SetAllBorderRadius(50).
+		SetAllBorderWidths(5).
+		SetAllBorderColors(colornames.Green),
+		filepath.Join(cd, "docs", "ruler.png"),
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -82,7 +92,12 @@ func main() {
 
 	// 7. 创建文字精灵 1
 	t = time.Now()
-	text1, err := render.NewTextSprite(stage, fontLibrary, ctypes.Attr().SetHeight(60), font.RTOpt().SetAlign(ctypes.HAlignCenter, ctypes.VAlignTop))
+	text1, err := render.NewTextSprite(stage, fontLibrary, ctypes.Attr().
+		SetHeight(60).
+		SetAllBorderWidths(1).
+		SetAllBorderColors(colornames.Black),
+
+		font.RTOpt().SetAlign(ctypes.HAlignCenter, ctypes.VAlignTop))
 	if err != nil {
 		panic(err)
 	}
@@ -119,6 +134,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	err = ti.SaveTiImageToFile(img.Texture(), filepath.Join(misc.GetCurrentDir(), "img.png"))
 
 	fmt.Printf("%x", buf[:16])
 

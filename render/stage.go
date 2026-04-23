@@ -61,9 +61,11 @@ func (s *Stage) logf(format string, args ...interface{}) {
 }
 
 // Render 修改之后，需要调用本函数来渲染，之后才能得到渲染结果
-func (s *Stage) Render(frameIndex int) {
+func (s *Stage) Render(frameIndex int) error {
 	t0 := time.Now()
-	s.container.Render(frameIndex)
+	if err := s.container.Render(frameIndex); err != nil {
+		return err
+	}
 
 	if s.options.enabledRAWImage {
 		// 将 ti image 转换为 bgra image
@@ -76,6 +78,7 @@ func (s *Stage) Render(frameIndex int) {
 	// 后置释放，这样可以让Resize、Blur等方法异步执行
 	s.container.ReleaseGarbageTextures()
 	s.logf("render frame %d elapsed %.9gs", frameIndex, time.Since(t0).Seconds())
+	return nil
 }
 
 func (s *Stage) IsDirty() bool {

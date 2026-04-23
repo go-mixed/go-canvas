@@ -291,3 +291,12 @@ func (r Rectangle[T]) Center() Point[T] {
 	return Point[T]{r.Min.X + r.Dx()/2,
 		r.Min.Y + r.Dy()/2}
 }
+
+type Padding struct {
+	// 内边距
+	Left, Right, Top, Bottom int
+}
+
+func (p Padding) IsEmpty() bool {
+	return p.Top != 0 || p.Right != 0 || p.Bottom != 0 || p.Left != 0
+}
