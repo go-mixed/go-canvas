@@ -6,11 +6,12 @@ import (
 	"strings"
 
 	"github.com/go-mixed/go-canvas/internel/misc"
+	"golang.org/x/image/font"
 )
 
 // RichTextFontStyle 富文本的样式
 type RichTextFontStyle struct {
-	Bold       bool
+	Weight     font.Weight
 	Italic     bool
 	Underline  bool
 	Color      color.Color
@@ -70,7 +71,7 @@ func (r *RichText) parseText(input string) TextSegments {
 				Color:      currentStyle.Color,
 				FontSize:   currentStyle.FontSize,
 				FontFamily: currentStyle.FontFamily,
-				Bold:       currentStyle.Bold,
+				Weight:     currentStyle.Weight,
 				Italic:     currentStyle.Italic,
 				Underline:  currentStyle.Underline,
 			}
@@ -155,7 +156,9 @@ func (r *RichText) parseAttributes(tag string, opts *RichTextFontStyle) {
 
 		switch key {
 		case "bold":
-			opts.Bold = value == "" || misc.ToBool(value)
+			if value == "" || misc.ToBool(value) {
+				opts.Weight = font.WeightBold
+			}
 		case "italic":
 			opts.Italic = value == "" || misc.ToBool(value)
 		case "underline":
@@ -194,15 +197,11 @@ func parseColor(s string) (color.Color, error) {
 
 // createSegment 根据当前选项创建文本片段
 func (r *RichText) createSegment(text string, opts RichTextFontStyle) *TextSegment {
-	weight := FontWeightRegular
-	if opts.Bold {
-		weight = FontWeightBold
-	}
-	fi := r.fontLibrary.MatchOrFeedback(opts.FontFamily, weight, opts.Italic)
+	fi := r.fontLibrary.MatchOrFeedback(opts.FontFamily, opts.Weight, opts.Italic)
 	if opts.FontFamily != fi.Family {
 		r.logf(
 			"[richtext.fallback] req=%q got=%q bold=%d italic=%t text=%q",
-			opts.FontFamily, fi.Family, weight, opts.Italic, summarizeTextForLog(text),
+			opts.FontFamily, fi.Family, opts.Weight, opts.Italic, summarizeTextForLog(text),
 		)
 	}
 	return &TextSegment{
@@ -210,7 +209,7 @@ func (r *RichText) createSegment(text string, opts RichTextFontStyle) *TextSegme
 		Font:       fi,
 		FontSize:   opts.FontSize,
 		Color:      opts.Color,
-		Bold:       weight,
+		Bold:       opts.Weight,
 		Italic:     opts.Italic,
 		Underline:  opts.Underline,
 		FakeItalic: opts.Italic && !fi.Italic,

@@ -3,57 +3,42 @@ package font
 import (
 	"sort"
 	"strings"
+
+	xfont "golang.org/x/image/font"
 )
 
-type FontWeight int16
-
-// Font weight constants (CSS Font Weight 100-900)
-const (
-	FontWeightThin       FontWeight = 100
-	FontWeightExtraLight FontWeight = 200
-	FontWeightLight      FontWeight = 300
-	FontWeightRegular    FontWeight = 400
-	FontWeightMedium     FontWeight = 500
-	FontWeightSemiBold   FontWeight = 600
-	FontWeightBold       FontWeight = 700
-	FontWeightExtraBold  FontWeight = 800
-	FontWeightBlack      FontWeight = 900
-
-	FontWeightMax = FontWeightBlack
-)
-
-var fontStyles = map[string]FontWeight{
+var xfontStyles = map[string]xfont.Weight{
 	// Thin/Hairline (100)
-	"thin":     FontWeightThin,
-	"hairline": FontWeightThin,
+	"thin":     xfont.WeightThin,
+	"hairline": xfont.WeightThin,
 	// ExtraLight/UltraLight (200)
-	"extralight":  FontWeightExtraLight,
-	"ultralight":  FontWeightExtraLight,
-	"ultra light": FontWeightExtraLight,
-	"ultrathin":   FontWeightExtraLight,
+	"extralight":  xfont.WeightExtraLight,
+	"ultralight":  xfont.WeightExtraLight,
+	"ultra light": xfont.WeightExtraLight,
+	"ultrathin":   xfont.WeightExtraLight,
 	// Light (300)
-	"light": FontWeightLight,
+	"light": xfont.WeightLight,
 	// Regular/Normal/Medium (400)
-	"medium":  FontWeightRegular,
-	"regular": FontWeightRegular,
-	"normal":  FontWeightRegular,
-	"book":    FontWeightRegular,
-	"roman":   FontWeightRegular,
-	"plain":   FontWeightRegular,
+	"medium":  xfont.WeightNormal,
+	"regular": xfont.WeightNormal,
+	"normal":  xfont.WeightNormal,
+	"book":    xfont.WeightNormal,
+	"roman":   xfont.WeightNormal,
+	"plain":   xfont.WeightNormal,
 	// SemiBold/DemiBold (600)
-	"semibold":  FontWeightSemiBold,
-	"demibold":  FontWeightSemiBold,
-	"demi bold": FontWeightSemiBold,
-	"semi bold": FontWeightSemiBold,
+	"semibold":  xfont.WeightSemiBold,
+	"demibold":  xfont.WeightSemiBold,
+	"demi bold": xfont.WeightSemiBold,
+	"semi bold": xfont.WeightSemiBold,
 	// Bold/Heavy (700)
-	"bold":  FontWeightBold,
-	"heavy": FontWeightBold,
+	"bold":  xfont.WeightBold,
+	"heavy": xfont.WeightBold,
 	// ExtraBold (800)
-	"extrabold":  FontWeightExtraBold,
-	"ultra bold": FontWeightExtraBold,
+	"extrabold":  xfont.WeightExtraBold,
+	"ultra bold": xfont.WeightExtraBold,
 	// Black/Ultra (900)
-	"black": FontWeightBlack,
-	"ultra": FontWeightBlack,
+	"black": xfont.WeightBlack,
+	"ultra": xfont.WeightBlack,
 }
 
 // italicStyles 记录斜体关键词

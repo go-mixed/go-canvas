@@ -5,7 +5,7 @@ import (
 	"math"
 
 	"github.com/go-mixed/go-canvas/ctypes"
-	"golang.org/x/image/font"
+	xfont "golang.org/x/image/font"
 )
 
 // TextSegment 单个文本片段
@@ -14,7 +14,7 @@ type TextSegment struct {
 	Font       *FontInfo
 	FontSize   int
 	Color      color.Color
-	Bold       FontWeight
+	Bold       xfont.Weight
 	BreakLine  bool
 	Italic     bool
 	Underline  bool
@@ -23,7 +23,7 @@ type TextSegment struct {
 	baseWidth  int
 	Width      int
 	Height     int
-	metrics    font.Metrics
+	metrics    xfont.Metrics
 	measured   bool
 }
 
@@ -37,14 +37,14 @@ func (t *TextSegment) CopyWithText(text string) *TextSegment {
 	newSegment.baseWidth = 0
 	newSegment.Width = 0
 	newSegment.Height = 0
-	newSegment.metrics = font.Metrics{}
+	newSegment.metrics = xfont.Metrics{}
 	newSegment.measured = false
 
 	return &newSegment
 }
 
-func (t *TextSegment) MeasureString(face font.Face) (int, int) {
-	segWidth := font.MeasureString(face, t.Text).Ceil()
+func (t *TextSegment) MeasureString(face xfont.Face) (int, int) {
+	segWidth := xfont.MeasureString(face, t.Text).Ceil()
 	t.baseWidth = segWidth
 
 	t.Width = segWidth
@@ -101,8 +101,8 @@ func (s TextSegments) Height() int {
 }
 
 // MaxMetrics 返回该行最大字号的 Metrics
-func (s TextSegments) MaxMetrics() font.Metrics {
-	var maxMetrics font.Metrics
+func (s TextSegments) MaxMetrics() xfont.Metrics {
+	var maxMetrics xfont.Metrics
 	for _, seg := range s {
 		if (maxMetrics.Ascent + maxMetrics.Descent).Ceil() < seg.Height {
 			maxMetrics = seg.metrics

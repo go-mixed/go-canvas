@@ -16,7 +16,7 @@ import (
 const pointsPerInch = 72.0
 
 type FontInfo struct {
-	Bold              FontWeight
+	Bold              xfont.Weight
 	Italic            bool
 	Family, SubFamily string
 	FontPath          string
@@ -74,7 +74,7 @@ func (fs *FontLibrary) logf(format string, args ...any) {
 
 // MatchOrFeedback 从字体列表中匹配最合适的字体
 // weight: 粗细数值 (100-900)，italic: 是否斜体
-func (fs *FontLibrary) MatchOrFeedback(fontFamily string, weight FontWeight, italic bool) *FontInfo {
+func (fs *FontLibrary) MatchOrFeedback(fontFamily string, weight xfont.Weight, italic bool) *FontInfo {
 	if fontFamily == "" {
 		return fs.fallbackFontInfo(weight)
 	}
@@ -141,7 +141,7 @@ func (fs *FontLibrary) MatchRuneOrFeedback(base *FontInfo, rn rune) *FontInfo {
 // rankFonts ranks candidates for two paths:
 // - rn == 0: base matching without glyph-coverage filtering.
 // - rn != 0: rune-aware fallback matching that requires coverage for the rune.
-func (fs *FontLibrary) rankFonts(fontFamily string, weight FontWeight, italic bool, rn rune) []fontScore {
+func (fs *FontLibrary) rankFonts(fontFamily string, weight xfont.Weight, italic bool, rn rune) []fontScore {
 	var matches []fontScore
 
 	var detectedRune = rn > 0
@@ -315,7 +315,7 @@ func (fs *FontLibrary) CreateFace(fi *FontInfo, fontSize int) xfont.Face {
 	return face
 }
 
-func (fs *FontLibrary) findFontByFamilies(families []string, fontWeight FontWeight) *FontInfo {
+func (fs *FontLibrary) findFontByFamilies(families []string, fontWeight xfont.Weight) *FontInfo {
 	for _, family := range families {
 		if fi := fs.findFontByWeight(family, fontWeight); fi != nil {
 			return fi
@@ -328,7 +328,7 @@ func (fs *FontLibrary) findFontByFamilies(families []string, fontWeight FontWeig
 // 仅在指定 family 中按目标字重挑选最接近字体，不参与 rune 覆盖判断与全局排序。
 // findFontByWeight is the precise family-local matcher:
 // it picks the closest weight inside one family only, without rune coverage checks.
-func (fs *FontLibrary) findFontByWeight(family string, fontWeight FontWeight) *FontInfo {
+func (fs *FontLibrary) findFontByWeight(family string, fontWeight xfont.Weight) *FontInfo {
 	want := family
 	if want == "" {
 		return nil

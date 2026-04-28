@@ -3,6 +3,8 @@ package font
 import (
 	"image/color"
 	"testing"
+
+	xfont "golang.org/x/image/font"
 )
 
 func TestParseColor(t *testing.T) {
@@ -128,7 +130,7 @@ func TestParseText(t *testing.T) {
 				if seg.FontSize != exp.FontSize {
 					t.Errorf("segment[%d].FontSize = %v, want %v", i, seg.FontSize, exp.FontSize)
 				}
-				gotBold := seg.Bold >= FontWeightBold
+				gotBold := seg.Bold >= xfont.WeightBold
 				if gotBold != exp.Bold {
 					t.Errorf("segment[%d].Bold = %v, want %v", i, gotBold, exp.Bold)
 				}
@@ -179,9 +181,9 @@ type parserExpectedSegment struct {
 func newParserTestRichText() *RichText {
 	fs := &FontLibrary{
 		fonts: map[string][]*FontInfo{
-			"Default": {{Family: "Default", Bold: FontWeightRegular, Italic: false}},
-			"Arial":   {{Family: "Arial", Bold: FontWeightRegular, Italic: false}},
-			"Test":    {{Family: "Test", Bold: FontWeightRegular, Italic: false}},
+			"Default": {{Family: "Default", Bold: xfont.WeightNormal, Italic: false}},
+			"Arial":   {{Family: "Arial", Bold: xfont.WeightNormal, Italic: false}},
+			"Test":    {{Family: "Test", Bold: xfont.WeightNormal, Italic: false}},
 		},
 	}
 	opts := RTOpt().SetFontFamily("Default")

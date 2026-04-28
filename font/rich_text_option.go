@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/internel/misc"
+	xfont "golang.org/x/image/font"
 )
 
 type RichTextOptions struct {
@@ -33,7 +34,7 @@ func RTOpt() *RichTextOptions {
 			FontFamily: "",
 			FontSize:   16,
 			Color:      color.Black,
-			Bold:       false,
+			Weight:     xfont.WeightNormal,
 			Underline:  false,
 		},
 		wordWrapMode:    ctypes.BreakNormal,
@@ -65,8 +66,8 @@ func (r *RichTextOptions) SetAlign(hAlign ctypes.HorizontalAlign, vAlign ctypes.
 	return r
 }
 
-func (r *RichTextOptions) SetBold(bold bool) *RichTextOptions {
-	r.fontStyle.Bold = bold
+func (r *RichTextOptions) SetWeight(weight xfont.Weight) *RichTextOptions {
+	r.fontStyle.Weight = weight
 	return r
 }
 

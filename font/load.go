@@ -8,11 +8,12 @@ import (
 	"sort"
 	"strings"
 
+	xfont "golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/font/sfnt"
 )
 
-const fontIndexCacheVersion = 6
+const fontIndexCacheVersion = 7
 
 type fontIndexCache struct {
 	Version int                         `json:"version"`
@@ -22,7 +23,7 @@ type fontIndexCache struct {
 type fontIndexEntry struct {
 	Family    string              `json:"family"`
 	SubFamily string              `json:"sub_family"`
-	Bold      FontWeight          `json:"bold"`
+	Bold      xfont.Weight        `json:"bold"`
 	Italic    bool                `json:"italic"`
 	Path      string              `json:"path"`
 	FaceIndex int                 `json:"face_index,omitempty"`
@@ -685,19 +686,19 @@ func isItalic(subFamily string) bool {
 	return false
 }
 
-func matchWeight(subFamily string) FontWeight {
+func matchWeight(subFamily string) xfont.Weight {
 	if subFamily == "" {
-		return FontWeightRegular // 默认 Regular
+		return xfont.WeightNormal // 默认 Regular
 	}
 	lower := strings.ToLower(subFamily)
-	var maxWeight FontWeight = 0
-	for style, weight := range fontStyles {
+	var maxWeight xfont.Weight = xfont.WeightNormal
+	for style, weight := range xfontStyles {
 		if strings.Contains(lower, style) && weight > maxWeight {
 			maxWeight = weight
 		}
 	}
-	if maxWeight == 0 {
-		maxWeight = FontWeightRegular
+	if maxWeight == xfont.WeightNormal {
+		maxWeight = xfont.WeightNormal
 	}
 	return maxWeight
 }

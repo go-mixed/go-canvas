@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/go-mixed/go-canvas/internel/misc"
+	xfont "golang.org/x/image/font"
 )
 
 // initFallbackPaths 初始化 3 个 fallback 字体（regular/bold/light）。
@@ -21,15 +22,15 @@ func (fs *FontLibrary) initFallbackPaths() error {
 	fs.logf("[font-library]locale \"%s\", font families: %q", locale, systemFamilies)
 
 	var err error
-	fs.fallbackRegularInfo, err = fs.findFallbackFont(systemFamilies, preferred, FontWeightRegular)
+	fs.fallbackRegularInfo, err = fs.findFallbackFont(systemFamilies, preferred, xfont.WeightNormal)
 	if err != nil {
 		return err
 	}
-	fs.fallbackBoldInfo, err = fs.findFallbackFont(systemFamilies, preferred, FontWeightBold)
+	fs.fallbackBoldInfo, err = fs.findFallbackFont(systemFamilies, preferred, xfont.WeightBold)
 	if err != nil {
 		return err
 	}
-	fs.fallbackLightInfo, err = fs.findFallbackFont(systemFamilies, preferred, FontWeightLight)
+	fs.fallbackLightInfo, err = fs.findFallbackFont(systemFamilies, preferred, xfont.WeightLight)
 	// Light 失败时回退到 Regular，避免初始化中断。
 	if err != nil {
 		fs.fallbackLightInfo = fs.fallbackRegularInfo
@@ -41,11 +42,11 @@ func (fs *FontLibrary) initFallbackPaths() error {
 
 // fallbackFontInfo 按字重返回已初始化好的 fallback 字体。
 // fallbackFontInfo returns pre-initialized fallback font by weight.
-func (fs *FontLibrary) fallbackFontInfo(weight FontWeight) *FontInfo {
-	if weight == FontWeightRegular {
+func (fs *FontLibrary) fallbackFontInfo(weight xfont.Weight) *FontInfo {
+	if weight == xfont.WeightNormal {
 		return fs.fallbackRegularInfo
 	}
-	if weight > FontWeightRegular {
+	if weight > xfont.WeightNormal {
 		return fs.fallbackBoldInfo
 	}
 	return fs.fallbackLightInfo
@@ -72,7 +73,7 @@ func systemLanguage() string {
 // 1) locale 对应家族表
 // 2) coverage 评分
 // 3) systemFallbackFamilies 兜底
-func (fs *FontLibrary) findFallbackFont(systemFamilies []string, preferred unicodeRanges, fontWeight FontWeight) (*FontInfo, error) {
+func (fs *FontLibrary) findFallbackFont(systemFamilies []string, preferred unicodeRanges, fontWeight xfont.Weight) (*FontInfo, error) {
 	fi := fs.findFontByFamilies(systemFamilies, fontWeight)
 	if fi != nil {
 		fs.logf("[font-library]set fallback %d font: [%s] from system locale", fontWeight, fi.Family)
@@ -165,7 +166,7 @@ func preferredUnicodeRangesForLocale(locale string) unicodeRanges {
 
 // selectFallbackFontByCoverage 在可用字体中按覆盖区间与字重评分选 fallback。
 // selectFallbackFontByCoverage picks fallback by coverage and weight score.
-func (fs *FontLibrary) selectFallbackFontByCoverage(preferred unicodeRanges, fontWeight FontWeight) *FontInfo {
+func (fs *FontLibrary) selectFallbackFontByCoverage(preferred unicodeRanges, fontWeight xfont.Weight) *FontInfo {
 	var best *FontInfo = nil
 	bestScore := -1
 
@@ -189,7 +190,7 @@ func (fs *FontLibrary) selectFallbackFontByCoverage(preferred unicodeRanges, fon
 
 // coverageFallbackScore 计算 fallback 候选评分。
 // coverageFallbackScore computes score for fallback candidate selection.
-func (fs *FontLibrary) coverageFallbackScore(fi *FontInfo, preferred unicodeRanges, fontWeight FontWeight) int {
+func (fs *FontLibrary) coverageFallbackScore(fi *FontInfo, preferred unicodeRanges, fontWeight xfont.Weight) int {
 	preferredCoverage := fi.coverageRanges.IntersectionCount(preferred)
 	breadthScore := len(fi.coverageRanges) * 10
 	weightScore := int(2000 - misc.Abs(fi.Bold-fontWeight))
