@@ -7,38 +7,37 @@ import (
 	xfont "golang.org/x/image/font"
 )
 
-var xfontStyles = map[string]xfont.Weight{
-	// Thin/Hairline (100)
-	"thin":     xfont.WeightThin,
-	"hairline": xfont.WeightThin,
-	// ExtraLight/UltraLight (200)
-	"extralight":  xfont.WeightExtraLight,
-	"ultralight":  xfont.WeightExtraLight,
-	"ultra light": xfont.WeightExtraLight,
-	"ultrathin":   xfont.WeightExtraLight,
-	// Light (300)
-	"light": xfont.WeightLight,
-	// Regular/Normal/Medium (400)
-	"medium":  xfont.WeightNormal,
-	"regular": xfont.WeightNormal,
-	"normal":  xfont.WeightNormal,
-	"book":    xfont.WeightNormal,
-	"roman":   xfont.WeightNormal,
-	"plain":   xfont.WeightNormal,
-	// SemiBold/DemiBold (600)
-	"semibold":  xfont.WeightSemiBold,
-	"demibold":  xfont.WeightSemiBold,
-	"demi bold": xfont.WeightSemiBold,
-	"semi bold": xfont.WeightSemiBold,
-	// Bold/Heavy (700)
-	"bold":  xfont.WeightBold,
-	"heavy": xfont.WeightBold,
-	// ExtraBold (800)
-	"extrabold":  xfont.WeightExtraBold,
-	"ultra bold": xfont.WeightExtraBold,
-	// Black/Ultra (900)
-	"black": xfont.WeightBlack,
-	"ultra": xfont.WeightBlack,
+type namedWeight struct {
+	name   string
+	weight xfont.Weight
+}
+
+var xfontStyles = []namedWeight{
+	// Put longer / more specific tokens first to avoid partial shadowing:
+	// e.g. "ultralight" must win before "light".
+	{name: "ultra light", weight: xfont.WeightExtraLight},
+	{name: "ultralight", weight: xfont.WeightExtraLight},
+	{name: "extralight", weight: xfont.WeightExtraLight},
+	{name: "ultrathin", weight: xfont.WeightExtraLight},
+	{name: "semi bold", weight: xfont.WeightSemiBold},
+	{name: "demi bold", weight: xfont.WeightSemiBold},
+	{name: "semibold", weight: xfont.WeightSemiBold},
+	{name: "demibold", weight: xfont.WeightSemiBold},
+	{name: "ultra bold", weight: xfont.WeightExtraBold},
+	{name: "extrabold", weight: xfont.WeightExtraBold},
+	{name: "hairline", weight: xfont.WeightThin},
+	{name: "medium", weight: xfont.WeightNormal},
+	{name: "regular", weight: xfont.WeightNormal},
+	{name: "normal", weight: xfont.WeightNormal},
+	{name: "roman", weight: xfont.WeightNormal},
+	{name: "plain", weight: xfont.WeightNormal},
+	{name: "light", weight: xfont.WeightLight},
+	{name: "black", weight: xfont.WeightBlack},
+	{name: "heavy", weight: xfont.WeightBold},
+	{name: "bold", weight: xfont.WeightBold},
+	{name: "thin", weight: xfont.WeightThin},
+	{name: "book", weight: xfont.WeightNormal},
+	{name: "ultra", weight: xfont.WeightBlack},
 }
 
 // italicStyles 记录斜体关键词

@@ -23,7 +23,7 @@ type fontIndexCache struct {
 type fontIndexEntry struct {
 	Family    string              `json:"family"`
 	SubFamily string              `json:"sub_family"`
-	Bold      xfont.Weight        `json:"bold"`
+	Weight    xfont.Weight        `json:"weight"`
 	Italic    bool                `json:"italic"`
 	Path      string              `json:"path"`
 	FaceIndex int                 `json:"face_index,omitempty"`
@@ -92,7 +92,7 @@ func (fs *FontLibrary) loadFonts(userFontPaths ...string) map[string][]*FontInfo
 			entries = append(entries, fontIndexEntry{
 				Family:    info.Family,
 				SubFamily: info.SubFamily,
-				Bold:      info.Bold,
+				Weight:    info.Weight,
 				Italic:    info.Italic,
 				Path:      info.FontPath,
 				FaceIndex: info.FaceIndex,
@@ -164,7 +164,7 @@ func (fs *FontLibrary) fontInfoFromEntry(entry fontIndexEntry) *FontInfo {
 	return &FontInfo{
 		Family:         entry.Family,
 		SubFamily:      entry.SubFamily,
-		Bold:           entry.Bold,
+		Weight:         entry.Weight,
 		Italic:         entry.Italic,
 		FontPath:       entry.Path,
 		FaceIndex:      entry.FaceIndex,
@@ -521,8 +521,8 @@ func (fs *FontLibrary) ReadTTCFontInfos(path string) ([]*FontInfo, error) {
 		if info.SubFamily != "" {
 			info.Italic = isItalic(info.SubFamily)
 		}
-		// 从 fontStyles 匹配粗细数值
-		info.Bold = matchWeight(info.SubFamily)
+		// 从 xfontStyles 匹配粗细数值
+		info.Weight = ParseWeight(info.SubFamily)
 
 		// 扫描阶段读取 coverage 范围并写入缓存；运行阶段只查范围，不再读取字体。
 		// Read coverage ranges during scanning and persist to cache.
@@ -686,19 +686,24 @@ func isItalic(subFamily string) bool {
 	return false
 }
 
-func matchWeight(subFamily string) xfont.Weight {
-	if subFamily == "" {
-		return xfont.WeightNormal // 默认 Regular
+// ParseWeight parses font subfamily/style text into x/image font weight.
+func ParseWeight(boldStr string) xfont.Weight {
+	if boldStr == "" {
+		return xfont.WeightNormal
 	}
-	lower := strings.ToLower(subFamily)
-	var maxWeight xfont.Weight = xfont.WeightNormal
-	for style, weight := range xfontStyles {
-		if strings.Contains(lower, style) && weight > maxWeight {
-			maxWeight = weight
+	lower := strings.ToLower(boldStr)
+	maxWeight := xfont.WeightNormal
+	matched := false
+	for _, style := range xfontStyles {
+		if strings.Contains(lower, style.name) {
+			if !matched || style.weight > maxWeight {
+				maxWeight = style.weight
+			}
+			matched = true
 		}
 	}
-	if maxWeight == xfont.WeightNormal {
-		maxWeight = xfont.WeightNormal
+	if !matched {
+		return xfont.WeightNormal
 	}
 	return maxWeight
 }

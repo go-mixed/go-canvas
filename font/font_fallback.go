@@ -193,9 +193,6 @@ func (fs *FontLibrary) selectFallbackFontByCoverage(preferred unicodeRanges, fon
 func (fs *FontLibrary) coverageFallbackScore(fi *FontInfo, preferred unicodeRanges, fontWeight xfont.Weight) int {
 	preferredCoverage := fi.coverageRanges.IntersectionCount(preferred)
 	breadthScore := len(fi.coverageRanges) * 10
-	weightScore := int(2000 - misc.Abs(fi.Bold-fontWeight))
-	if weightScore < 0 {
-		weightScore = 0
-	}
+	weightScore := int(fontWightDelta - misc.Abs(fi.Weight-fontWeight))
 	return preferredCoverage + breadthScore + weightScore
 }

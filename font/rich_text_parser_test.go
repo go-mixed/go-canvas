@@ -181,9 +181,9 @@ type parserExpectedSegment struct {
 func newParserTestRichText() *RichText {
 	fs := &FontLibrary{
 		fonts: map[string][]*FontInfo{
-			"Default": {{Family: "Default", Bold: xfont.WeightNormal, Italic: false}},
-			"Arial":   {{Family: "Arial", Bold: xfont.WeightNormal, Italic: false}},
-			"Test":    {{Family: "Test", Bold: xfont.WeightNormal, Italic: false}},
+			"Default": {{Family: "Default", Weight: xfont.WeightNormal, Italic: false}},
+			"Arial":   {{Family: "Arial", Weight: xfont.WeightNormal, Italic: false}},
+			"Test":    {{Family: "Test", Weight: xfont.WeightNormal, Italic: false}},
 		},
 	}
 	opts := RTOpt().SetFontFamily("Default")

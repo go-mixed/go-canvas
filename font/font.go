@@ -14,9 +14,10 @@ import (
 )
 
 const pointsPerInch = 72.0
+const fontWightDelta = xfont.WeightBlack - xfont.WeightThin
 
 type FontInfo struct {
-	Bold              xfont.Weight
+	Weight            xfont.Weight
 	Italic            bool
 	Family, SubFamily string
 	FontPath          string
@@ -107,7 +108,7 @@ func (fs *FontLibrary) MatchOrFeedback(fontFamily string, weight xfont.Weight, i
 // MatchRuneOrFeedback 为缺字 rune 选择降级字体。
 // MatchRuneOrFeedback picks fallback font for a missing-glyph rune.
 func (fs *FontLibrary) MatchRuneOrFeedback(base *FontInfo, rn rune) *FontInfo {
-	cacheKey := base.Family + "|" + strconv.Itoa(int(base.Bold)) + "|" + strconv.FormatBool(base.Italic)
+	cacheKey := base.Family + "|" + strconv.Itoa(int(base.Weight)) + "|" + strconv.FormatBool(base.Italic)
 	fs.mutex.RLock()
 	fc, ok := fs.matchCache[cacheKey]
 	fs.mutex.RUnlock()
@@ -118,7 +119,7 @@ func (fs *FontLibrary) MatchRuneOrFeedback(base *FontInfo, rn rune) *FontInfo {
 		}
 	}
 
-	candidates := fs.rankFonts(base.Family, base.Bold, base.Italic, rn)
+	candidates := fs.rankFonts(base.Family, base.Weight, base.Italic, rn)
 
 	var fi *FontInfo
 	if len(candidates) == 0 {
@@ -156,7 +157,7 @@ func (fs *FontLibrary) rankFonts(fontFamily string, weight xfont.Weight, italic 
 			if detectedRune && !font.coverageRanges.SupportsRune(rn) {
 				continue
 			}
-			weightSimilarity := 1. - float32(misc.Abs(font.Bold-weight))/1000.
+			weightSimilarity := float32(fontWightDelta - misc.Abs(font.Weight-weight))
 			italicSimilarity := float32(0)
 			if italic == font.Italic {
 				italicSimilarity = 1
@@ -345,9 +346,9 @@ func (fs *FontLibrary) findFontByWeight(family string, fontWeight xfont.Weight) 
 		if fi == nil || fi.FontPath == "" {
 			continue
 		}
-		score := int(1000 - misc.Abs(fi.Bold-fontWeight))
+		score := int(fontWightDelta - misc.Abs(fi.Weight-fontWeight))
 		if fi.Italic {
-			score -= 100
+			score -= 1
 		}
 		if score > bestScore {
 			best = fi
