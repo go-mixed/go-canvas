@@ -687,23 +687,15 @@ func isItalic(subFamily string) bool {
 }
 
 // ParseWeight parses font subfamily/style text into x/image font weight.
-func ParseWeight(boldStr string) xfont.Weight {
-	if boldStr == "" {
+func ParseWeight(subFamily string) xfont.Weight {
+	if subFamily == "" {
 		return xfont.WeightNormal
 	}
-	lower := strings.ToLower(boldStr)
-	maxWeight := xfont.WeightNormal
-	matched := false
+	lower := strings.ToLower(subFamily)
 	for _, style := range xfontStyles {
 		if strings.Contains(lower, style.name) {
-			if !matched || style.weight > maxWeight {
-				maxWeight = style.weight
-			}
-			matched = true
+			return style.weight
 		}
 	}
-	if !matched {
-		return xfont.WeightNormal
-	}
-	return maxWeight
+	return xfont.WeightNormal
 }
