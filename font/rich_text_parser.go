@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/go-mixed/go-canvas/internel/misc"
-	"golang.org/x/image/font"
+	xfont "golang.org/x/image/font"
 )
 
 // RichTextFontStyle 富文本的样式
 type RichTextFontStyle struct {
-	Weight     font.Weight
+	Weight     xfont.Weight
 	Italic     bool
 	Underline  bool
 	Color      color.Color
@@ -156,8 +156,14 @@ func (r *RichText) parseAttributes(tag string, opts *RichTextFontStyle) {
 
 		switch key {
 		case "bold":
-			if value == "" || misc.ToBool(value) {
-				opts.Weight = font.WeightBold
+			if value == "" || value == "true" || value == "bold" {
+				opts.Weight = xfont.WeightBold
+			} else if value == "false" {
+				opts.Weight = xfont.WeightNormal
+			} else if s, err := strconv.ParseInt(value, 10, 64); err == nil && s >= int64(xfont.WeightThin) && s <= int64(xfont.WeightBlack) {
+				opts.Weight = xfont.Weight(s)
+			} else {
+				opts.Weight = ParseWeight(value)
 			}
 		case "italic":
 			opts.Italic = value == "" || misc.ToBool(value)
