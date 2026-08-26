@@ -1,8 +1,9 @@
 package effect
 
 import (
-	"github.com/go-mixed/go-canvas/ctypes"
+	"github.com/go-mixed/go-canvas/animation"
 	"github.com/go-mixed/go-canvas/internel/misc"
+	"github.com/go-mixed/go-canvas/render"
 	"github.com/go-mixed/go-canvas/ti"
 )
 
@@ -24,18 +25,19 @@ func (e *FadeEffect) WithEasingName(name string) *FadeEffect {
 	e.easing = ti.GetEasingFunction(name)
 	return e
 }
-func (e *FadeEffect) TargetAttributeFn(base ctypes.Attribute) (*ctypes.Attribute, *ti.TargetAttribute) {
-	target := ti.TargetAttr().SetEasing(e.easing)
+func (e *FadeEffect) AnimateFn(sprite render.IElement) render.TickingFn {
+	animation := animation.NewAttributeAnimation(sprite).SetEasing(e.easing)
+	baseAttribute := animation.BaseAttribute()
 	if e.inOut == EffectOut {
-		if misc.NumberEqual(base.Alpha(), 0, misc.Epsilon) {
-			base.SetAlpha(1)
+		if misc.NumberEqual(baseAttribute.Alpha(), 0, misc.Epsilon) {
+			baseAttribute.SetAlpha(1)
 		}
-		target.SetAlpha(0.3)
+		animation.SetAlpha(0.3)
 	} else {
-		if misc.NumberEqual(base.Alpha(), 1, misc.Epsilon) {
-			base.SetAlpha(0.3)
+		if misc.NumberEqual(baseAttribute.Alpha(), 1, misc.Epsilon) {
+			baseAttribute.SetAlpha(0.3)
 		}
-		target.SetAlpha(1.0)
+		animation.SetAlpha(1.0)
 	}
-	return &base, target
+	return animation.Ticking
 }

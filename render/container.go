@@ -265,3 +265,17 @@ func (c *Container) ScrollLeft(x int) {
 		return ctypes.DirtyModeNone
 	})
 }
+
+func (c *Container) GetScrollTop() int {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	return -c.childOffsetY
+}
+
+func (c *Container) GetScrollLeft() int {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	return -c.childOffsetX
+}

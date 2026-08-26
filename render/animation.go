@@ -3,16 +3,21 @@ package render
 import (
 	"sync"
 
-	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/internel/misc"
-	"github.com/go-mixed/go-canvas/ti"
 )
 
-type animationItem struct {
-	targetFn ti.TargetAttributeFn
+// 生成动画方法的函数，会在调用时记录sprite的attribute
+type AnimateFn func(sprite IElement) TickingFn
 
-	from            *ctypes.Attribute
-	target          *ti.TargetAttribute
+// 执行动画的函数，progress=[0, 1]
+type TickingFn func(progress float32)
+
+type animationItem struct {
+	animateFn AnimateFn
+	tickFn    TickingFn
+
+	//from            *ctypes.Attribute
+	//target          *ti.TargetAttribute
 	startFrameIndex int
 	durationFrames  int
 
@@ -43,8 +48,8 @@ func (a *spriteAnimator) setSprite(sprite IElement) {
 }
 
 // enqueue 追加动画段，startAtFrameIndex 与 durationFrames 均为帧单位。
-func (a *spriteAnimator) enqueue(targetFn ti.TargetAttributeFn, startAtFrameIndex, durationFrames int) {
-	if targetFn == nil || durationFrames <= 0 {
+func (a *spriteAnimator) enqueue(animateFn AnimateFn, startAtFrameIndex, durationFrames int) {
+	if animateFn == nil || durationFrames <= 0 {
 		return
 	} else if startAtFrameIndex < 0 {
 		startAtFrameIndex = 0
@@ -54,7 +59,7 @@ func (a *spriteAnimator) enqueue(targetFn ti.TargetAttributeFn, startAtFrameInde
 	defer a.mutex.Unlock()
 
 	item := &animationItem{
-		targetFn:        targetFn,
+		animateFn:       animateFn,
 		startFrameIndex: startAtFrameIndex,
 		durationFrames:  durationFrames,
 	}
@@ -106,8 +111,8 @@ func (a *spriteAnimator) stop(reset bool) {
 
 	if reset {
 		front := a.queue.Front()
-		if front != nil && front.Value != nil && front.Value.started && front.Value.from != nil && front.Value.target != nil {
-			applyModifiedFieldsLerp(a.sprite, front.Value.from, front.Value.target, 0.0)
+		if front != nil && front.Value != nil && front.Value.started && front.Value.tickFn != nil {
+			front.Value.tickFn(0.0)
 		}
 	}
 
@@ -141,9 +146,9 @@ func (a *spriteAnimator) tick(frameIndex int) bool {
 			return true
 		}
 		if !item.started {
-			item.from, item.target = item.targetFn(*a.sprite.Attribute())
+			item.tickFn = item.animateFn(a.sprite)
 			item.started = true
-			if item.target == nil || item.target.Attribute == nil {
+			if item.tickFn == nil {
 				a.queue.PopFront()
 				continue
 			}
@@ -151,87 +156,13 @@ func (a *spriteAnimator) tick(frameIndex int) bool {
 
 		elapsed := frameIndex - item.startFrameIndex
 		if elapsed >= item.durationFrames {
-			applyModifiedFieldsLerp(a.sprite, item.from, item.target, 1.0)
+			item.tickFn(1.0)
 			a.queue.PopFront()
 			continue
 		}
 
 		progress := misc.Clamp(float32(elapsed) / float32(item.durationFrames))
-		eased := item.target.Easing(progress)
-		applyModifiedFieldsLerp(a.sprite, item.from, item.target, eased)
+		item.tickFn(progress)
 		return true
-	}
-}
-
-// applyModifiedFieldsLerp 按 modifiedFields 将 from->to 插值并应用到目标精灵。
-func applyModifiedFieldsLerp(dst IAttribute, from *ctypes.Attribute, to *ti.TargetAttribute, t float32) {
-	if from == nil || to == nil || to.Attribute == nil {
-		return
-	}
-
-	hasWidth := to.IsModified(ti.ModifiedFieldWidth)
-	hasHeight := to.IsModified(ti.ModifiedFieldHeight)
-	if hasWidth || hasHeight {
-		w := from.Width()
-		h := from.Height()
-		if hasWidth {
-			w = misc.Lerp(from.Width(), to.Width(), t)
-			if w <= 0 {
-				w = 1
-			}
-		}
-		if hasHeight {
-			h = misc.Lerp(from.Height(), to.Height(), t)
-			if h <= 0 {
-				h = 1
-			}
-		}
-		dst.Resize(w, h)
-	}
-
-	if to.IsModified(ti.ModifiedFieldX) || to.IsModified(ti.ModifiedFieldY) {
-		x := from.X()
-		y := from.Y()
-		if to.IsModified(ti.ModifiedFieldX) {
-			x = misc.Lerp(from.X(), to.X(), t)
-		}
-		if to.IsModified(ti.ModifiedFieldY) {
-			y = misc.Lerp(from.Y(), to.Y(), t)
-		}
-		dst.MoveTo(x, y)
-	}
-
-	if to.IsModified(ti.ModifiedFieldCx) {
-		dst.SetCx(misc.Lerp(from.Cx(), to.Cx(), t))
-	}
-	if to.IsModified(ti.ModifiedFieldCy) {
-		dst.SetCy(misc.Lerp(from.Cy(), to.Cy(), t))
-	}
-
-	if to.IsModified(ti.ModifiedFieldScaleX) || to.IsModified(ti.ModifiedFieldScaleY) {
-		scaleX := from.ScaleX()
-		scaleY := from.ScaleY()
-		if to.IsModified(ti.ModifiedFieldScaleX) {
-			scaleX = misc.Lerp(from.ScaleX(), to.ScaleX(), t)
-		}
-		if to.IsModified(ti.ModifiedFieldScaleY) {
-			scaleY = misc.Lerp(from.ScaleY(), to.ScaleY(), t)
-		}
-		dst.SetScale(scaleX, scaleY)
-	}
-
-	if to.IsModified(ti.ModifiedFieldRotation) {
-		dst.SetRotation(misc.Lerp(from.Rotation(), to.Rotation(), t))
-	}
-	if to.IsModified(ti.ModifiedFieldAlpha) {
-		dst.SetAlpha(misc.Lerp(from.Alpha(), to.Alpha(), t))
-	}
-
-	if to.IsModified(ti.ModifiedFieldShape) && to.ShapeOpts != nil {
-		if shapeSprite, ok := dst.(IShape); ok {
-			opts := to.ShapeOpts
-			tVal := misc.Lerp(opts.StartT, opts.EndT, t)
-			shapeSprite.DrawShape(opts.ShapeType, tVal, opts.ShapeOptions)
-		}
 	}
 }

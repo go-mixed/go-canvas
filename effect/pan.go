@@ -3,7 +3,9 @@ package effect
 import (
 	"math"
 
+	"github.com/go-mixed/go-canvas/animation"
 	"github.com/go-mixed/go-canvas/ctypes"
+	"github.com/go-mixed/go-canvas/render"
 	"github.com/go-mixed/go-canvas/ti"
 )
 
@@ -62,22 +64,23 @@ func (e *PanEffect) WithEasingName(name string) *PanEffect {
 	return e
 }
 
-func (e *PanEffect) TargetAttributeFn(base ctypes.Attribute) (*ctypes.Attribute, *ti.TargetAttribute) {
+func (e *PanEffect) AnimateFn(sprite render.IElement) render.TickingFn {
+	animation := animation.NewAttributeAnimation(sprite).SetEasing(e.easing)
+	baseAttribute := animation.BaseAttribute()
 	vec := panDirections[e.direction]
 	dx, dy := vec[0], vec[1]
-	maxPanX := float32(base.Width()) * e.panIntensity
-	maxPanY := float32(base.Height()) * e.panIntensity
+	maxPanX := float32(baseAttribute.Width()) * e.panIntensity
+	maxPanY := float32(baseAttribute.Height()) * e.panIntensity
 
-	target := ti.TargetAttr().SetEasing(e.easing)
 	if e.inOut == EffectOut {
-		target.SetScale(e.zoomStart, e.zoomStart)
-		target.SetX(base.X())
-		target.SetY(base.Y())
+		animation.SetScale(e.zoomStart, e.zoomStart)
+		animation.SetX(baseAttribute.X())
+		animation.SetY(baseAttribute.Y())
 	} else {
-		target.SetScale(e.zoomEnd, e.zoomEnd)
-		target.SetX(base.X() + int(math.Round(float64(dx*maxPanX))))
-		target.SetY(base.Y() + int(math.Round(float64(dy*maxPanY))))
+		animation.SetScale(e.zoomEnd, e.zoomEnd)
+		animation.SetX(baseAttribute.X() + int(math.Round(float64(dx*maxPanX))))
+		animation.SetY(baseAttribute.Y() + int(math.Round(float64(dy*maxPanY))))
 	}
-	target.SetAlpha(1.0)
-	return &base, target
+	animation.SetAlpha(1.0)
+	return animation.Ticking
 }

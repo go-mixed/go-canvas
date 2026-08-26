@@ -242,8 +242,8 @@ func (s *Sprite) HasAnimationAt(frameIndex int) bool {
 }
 
 // Animate 向当前精灵追加一段动画。
-func (s *Sprite) Animate(targetFn ti.TargetAttributeFn, startFrameIndex, durationFrames int) ISprite {
-	s.animator.enqueue(targetFn, startFrameIndex, durationFrames)
+func (s *Sprite) Animate(animateFn AnimateFn, startFrameIndex, durationFrames int) ISprite {
+	s.animator.enqueue(animateFn, startFrameIndex, durationFrames)
 
 	return s
 }

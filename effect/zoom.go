@@ -1,7 +1,8 @@
 package effect
 
 import (
-	"github.com/go-mixed/go-canvas/ctypes"
+	"github.com/go-mixed/go-canvas/animation"
+	"github.com/go-mixed/go-canvas/render"
 	"github.com/go-mixed/go-canvas/ti"
 )
 
@@ -33,13 +34,13 @@ func (e *ZoomEffect) WithEasingName(name string) *ZoomEffect {
 	return e
 }
 
-func (e *ZoomEffect) TargetAttributeFn(base ctypes.Attribute) (*ctypes.Attribute, *ti.TargetAttribute) {
-	target := ti.TargetAttr().SetEasing(e.easing)
+func (e *ZoomEffect) AnimateFn(sprite render.IElement) render.TickingFn {
+	animation := animation.NewShapeAttributeAnimation(sprite).SetEasing(e.easing)
 	if e.inOut == EffectOut {
-		target.SetScale(e.zoomStart, e.zoomStart)
+		animation.SetScale(e.zoomStart, e.zoomStart)
 	} else {
-		target.SetScale(e.zoomEnd, e.zoomEnd)
+		animation.SetScale(e.zoomEnd, e.zoomEnd)
 	}
-	target.SetAlpha(1.0)
-	return &base, target
+	animation.SetAlpha(1.0)
+	return animation.Ticking
 }

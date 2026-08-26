@@ -3,7 +3,9 @@ package effect
 import (
 	"image/color"
 
+	"github.com/go-mixed/go-canvas/animation"
 	"github.com/go-mixed/go-canvas/ctypes"
+	"github.com/go-mixed/go-canvas/render"
 	"github.com/go-mixed/go-canvas/ti"
 )
 
@@ -67,8 +69,9 @@ func (e *WipeEffect) WithEasingName(name string) *WipeEffect {
 	return e
 }
 
-func (e *WipeEffect) TargetAttributeFn(base ctypes.Attribute) (*ctypes.Attribute, *ti.TargetAttribute) {
-	target := ti.TargetAttr().SetEasing(e.easing)
+func (e *WipeEffect) AnimateFn(sprite render.IElement) render.TickingFn {
+	animation := animation.NewShapeAttributeAnimation(sprite)
+	animation.SetEasing(e.easing)
 	opts := *e.shapeMaskOptions
 	if e.shapeMaskOptions.ShapeOptions != nil {
 		shapeOptCopy := *e.shapeMaskOptions.ShapeOptions
@@ -79,6 +82,6 @@ func (e *WipeEffect) TargetAttributeFn(base ctypes.Attribute) (*ctypes.Attribute
 	} else {
 		opts.SetTRange(0.0, 2.0)
 	}
-	target.SetShapeOptions(&opts)
-	return &base, target
+	animation.SetShapeOptions(&opts)
+	return animation.Ticking
 }

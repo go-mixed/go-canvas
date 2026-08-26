@@ -1,7 +1,9 @@
 package effect
 
 import (
+	"github.com/go-mixed/go-canvas/animation"
 	"github.com/go-mixed/go-canvas/ctypes"
+	"github.com/go-mixed/go-canvas/render"
 	"github.com/go-mixed/go-canvas/ti"
 )
 
@@ -32,9 +34,11 @@ func (e *SlideEffect) WithEasingName(name string) *SlideEffect {
 	return e
 }
 
-func (e *SlideEffect) TargetAttributeFn(base ctypes.Attribute) (*ctypes.Attribute, *ti.TargetAttribute) {
-	w := base.Width()
-	h := base.Height()
+func (e *SlideEffect) AnimateFn(sprite render.IElement) render.TickingFn {
+	animation := animation.NewAttributeAnimation(sprite).SetEasing(e.easing)
+	baseAttribute := animation.BaseAttribute()
+	w := baseAttribute.Width()
+	h := baseAttribute.Height()
 	offsetX, offsetY := 0, 0
 	switch e.direction {
 	case ctypes.DirectionTop:
@@ -47,15 +51,14 @@ func (e *SlideEffect) TargetAttributeFn(base ctypes.Attribute) (*ctypes.Attribut
 		offsetX = w
 	}
 
-	target := ti.TargetAttr().SetEasing(e.easing)
 	if e.inOut == EffectOut {
-		target.MoveTo(base.X()+offsetX, base.Y()+offsetY)
+		animation.MoveTo(baseAttribute.X()+offsetX, baseAttribute.Y()+offsetY)
 	} else {
 		// EffectIn: treat current position as the final on-screen position.
 		// Move animation start(base) off-screen first, then animate back to current.
-		finalX, finalY := base.X(), base.Y()
-		base.MoveTo(finalX+offsetX, finalY+offsetY)
-		target.MoveTo(finalX, finalY)
+		finalX, finalY := baseAttribute.X(), baseAttribute.Y()
+		baseAttribute.MoveTo(finalX+offsetX, finalY+offsetY)
+		animation.MoveTo(finalX, finalY)
 	}
-	return &base, target
+	return animation.Ticking
 }

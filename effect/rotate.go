@@ -1,8 +1,9 @@
 package effect
 
 import (
-	"github.com/go-mixed/go-canvas/ctypes"
+	"github.com/go-mixed/go-canvas/animation"
 	"github.com/go-mixed/go-canvas/internel/misc"
+	"github.com/go-mixed/go-canvas/render"
 	"github.com/go-mixed/go-canvas/ti"
 )
 
@@ -48,15 +49,15 @@ func (e *RotateEffect) WithEasingName(name string) *RotateEffect {
 	return e
 }
 
-func (e *RotateEffect) TargetAttributeFn(base ctypes.Attribute) (*ctypes.Attribute, *ti.TargetAttribute) {
-	target := ti.TargetAttr().SetEasing(e.easing)
+func (e *RotateEffect) AnimateFn(sprite render.IElement) render.TickingFn {
+	animation := animation.NewAttributeAnimation(sprite).SetEasing(e.easing)
 	if e.inOut == EffectOut {
-		target.SetRotation(misc.Deg2Rad(e.angleStart))
-		target.SetScale(e.scaleStart, e.scaleStart)
+		animation.SetRotation(misc.Deg2Rad(e.angleStart))
+		animation.SetScale(e.scaleStart, e.scaleStart)
 	} else {
-		target.SetRotation(misc.Deg2Rad(e.angleEnd))
-		target.SetScale(e.scaleEnd, e.scaleEnd)
+		animation.SetRotation(misc.Deg2Rad(e.angleEnd))
+		animation.SetScale(e.scaleEnd, e.scaleEnd)
 	}
-	target.SetAlpha(1.0)
-	return &base, target
+	animation.SetAlpha(1.0)
+	return animation.Ticking
 }

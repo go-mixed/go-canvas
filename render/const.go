@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-mixed/go-canvas/ctypes"
 	"github.com/go-mixed/go-canvas/internel/misc"
-	"github.com/go-mixed/go-canvas/ti"
 	"github.com/go-mixed/go-taichi/taichi"
 )
 
@@ -85,7 +84,7 @@ type IAnimation interface {
 	HasAnimationAt(frameIndex int) bool
 	// Animate 追加一段动画任务。
 	// targetFn 在动画实际开始帧被调用，基于当时属性生成目标属性。
-	Animate(targetFn ti.TargetAttributeFn, startFrameIndex, durationFrames int) ISprite
+	Animate(animateFn AnimateFn, startFrameIndex, durationFrames int) ISprite
 	// ClearAnimations 清空当前精灵的动画队列。
 	ClearAnimations() ISprite
 	// StopAnimation 停止后续动画；reset=true 时回到当前段起点状态。
@@ -131,6 +130,8 @@ type IContainer interface {
 	IParent
 	ScrollTop(y int)
 	ScrollLeft(x int)
+	GetScrollTop() int
+	GetScrollLeft() int
 }
 
 type IMask interface {
