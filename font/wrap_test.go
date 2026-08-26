@@ -2,6 +2,7 @@ package font
 
 import (
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/go-mixed/go-canvas/ctypes"
@@ -88,11 +89,49 @@ func TestSplitGraphemeClusters_KeepZWJEmojiTogether(t *testing.T) {
 	}
 }
 
+func TestNoWrapEllipsis_TruncatesAcrossSegments(t *testing.T) {
+	rt := newWrapTestRichText()
+	first := &TextSegment{Text: "hello", Font: &FontInfo{Family: "Test"}, FontFamily: "Test", FontSize: 16}
+	second := &TextSegment{Text: " world", Font: &FontInfo{Family: "Test"}, FontFamily: "Test", FontSize: 16}
+
+	out := rt.noWrapEllipsis(TextSegments{first, second}, 42)
+
+	if got := collectLines(out); !reflect.DeepEqual(got, []string{"hello…"}) {
+		t.Fatalf("lines mismatch: got=%v want=%v", got, []string{"hello…"})
+	}
+	if got := out.Width(); got > 42 {
+		t.Fatalf("ellipsis width=%d exceeds limit=42", got)
+	}
+}
+
+func TestNoWrapEllipsis_PreservesGraphemeClusters(t *testing.T) {
+	rt := newWrapTestRichText()
+	seg := &TextSegment{Text: "e\u0301BCDE", Font: &FontInfo{Family: "Test"}, FontFamily: "Test", FontSize: 16}
+
+	out := rt.noWrapEllipsis(TextSegments{seg}, 28)
+
+	if got := collectLines(out); !reflect.DeepEqual(got, []string{"e\u0301BC…"}) {
+		t.Fatalf("lines mismatch: got=%v want=%v", got, []string{"e\u0301BC…"})
+	}
+}
+
+func TestNoWrapEllipsis_DropsEverythingWhenEllipsisDoesNotFit(t *testing.T) {
+	rt := newWrapTestRichText()
+	seg := &TextSegment{Text: "hello", Font: &FontInfo{Family: "Test"}, FontFamily: "Test", FontSize: 16}
+
+	out := rt.noWrapEllipsis(TextSegments{seg}, 6)
+
+	if len(out) != 0 {
+		t.Fatalf("got=%q want no output", collectLines(out))
+	}
+}
+
 func newWrapTestRichText() *RichText {
 	fs := &FontLibrary{
 		faceCache: map[string]font.Face{
-			"Test-16": basicfont.Face7x13,
+			"Test-0-16": basicfont.Face7x13,
 		},
+		mutex: &sync.RWMutex{},
 	}
 	return &RichText{
 		fontLibrary: fs,

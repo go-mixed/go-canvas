@@ -128,6 +128,8 @@ func (r *RichText) SetText(input string) {
 		// 无宽度限制：不自动换行，直接使用展开后的 segments。
 		// Unlimited width: skip wrapping and keep expanded segments as-is.
 		wrapped = expanded
+	} else if r.opts.wordWrapMode == ctypes.NoWrapEllipsis {
+		wrapped = r.noWrapEllipsis(expanded, maxWidth)
 	} else {
 		// 如果只有一行，就快速返回
 		if fast, ok := r.fastPathNoWrap(expanded, maxWidth); ok {

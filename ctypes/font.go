@@ -9,6 +9,9 @@ const (
 	// NoWrap 不自动换行（类似 CSS white-space: nowrap）。
 	// NoWrap disables auto wrapping.
 	NoWrap
+	// NoWrapEllipsis 禁止自动换行；超宽时在末尾显示 "…"，并截断后面的内容。
+	// NoWrapEllipsis disables auto wrapping and truncates overflow with a trailing "…".
+	NoWrapEllipsis
 	// BreakAll 可在任意 cluster 边界断行（类似 CSS overflow-wrap:anywhere）。
 	// BreakAll allows break at any cluster boundary.
 	BreakAll
