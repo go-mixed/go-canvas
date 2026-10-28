@@ -142,6 +142,11 @@ func (c *Container) Render(frameIndex int) error {
 			return err
 		}
 		childTexture := child.Texture()
+		// 没有纹理的精灵没有可合成的像素（比如空文本的精灵），直接退出，不要将 nil 传给 Taichi 的 ArgNdArray。
+		// A sprite without a texture has no pixels to composite (for example, an empty-text sprite); exit directly and do not pass nil to Taichi's ArgNdArray.
+		if childTexture == nil {
+			continue
+		}
 
 		// 得到子项（旋转、缩放、平移）之后真实坐标
 		bbox := child.ClientRect()

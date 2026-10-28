@@ -49,6 +49,21 @@ func (s *TextSprite) SetText(text string) error {
 
 		s.richText.SetText(text)
 
+		// 当上一次有文本、本次清空文本时，回收上一次生成的纹理和画布，避免 Texture() 返回残留像素。
+		// 清空后不再保留纹理，Container.Render 会跳过没有纹理的精灵。
+		// When clearing previously non-empty text, recycle the previously generated texture and canvas so Texture() cannot return stale pixels.
+		// No texture is retained after clearing; Container.Render skips texture-less sprites.
+		if s.richText.IsEmpty() {
+			s.addGarbageTexture(s.texture)
+			s.addGarbageTexture(s.canvas)
+			s.texture = nil
+			s.canvas = nil
+			s.attribute.SetWH(s.originalWidth, s.originalHeight)
+			s.attribute.SetCx(s.originalWidth / 2)
+			s.attribute.SetCy(s.originalHeight / 2)
+			return
+		}
+
 		img := s.richText.RenderText()
 		imgW, imgH := img.Bounds().Dx(), img.Bounds().Dy()
 		var width, height = s.originalWidth, s.originalHeight
